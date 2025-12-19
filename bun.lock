@@ -12,7 +12,11 @@
       },
     },
     "packages/rule-engine": {
-      "name": "rule-engine",
+      "name": "@payid/rule-engine",
+      "version": "0.1.0",
+      "dependencies": {
+        "@payid/types": "*",
+      },
       "devDependencies": {
         "@types/bun": "latest",
       },
@@ -21,7 +25,12 @@
       },
     },
     "packages/sdk-core": {
-      "name": "sdk-core",
+      "name": "@payid/sdk-core",
+      "version": "0.1.0",
+      "dependencies": {
+        "@payid/rule-engine": "*",
+        "@payid/types": "*",
+      },
       "devDependencies": {
         "@types/bun": "latest",
       },
@@ -30,7 +39,8 @@
       },
     },
     "packages/types": {
-      "name": "types",
+      "name": "@payid/types",
+      "version": "0.1.0",
       "devDependencies": {
         "@types/bun": "latest",
       },
@@ -179,6 +189,12 @@
     "@octokit/rest": ["@octokit/rest@20.1.2", "", { "dependencies": { "@octokit/core": "^5.0.2", "@octokit/plugin-paginate-rest": "11.4.4-cjs.2", "@octokit/plugin-request-log": "^4.0.0", "@octokit/plugin-rest-endpoint-methods": "13.3.2-cjs.1" } }, "sha512-GmYiltypkHHtihFwPRxlaorG5R9VAHuk/vbszVoRTGXnAsY60wYLkh/E2XiFmdZmqrisw+9FaazS1i5SbdWYgA=="],
 
     "@octokit/types": ["@octokit/types@13.10.0", "", { "dependencies": { "@octokit/openapi-types": "^24.2.0" } }, "sha512-ifLaO34EbbPj0Xgro4G5lP5asESjwHracYJvVaPIyXMuiuXLlhic3S47cBdTb+jfODkTE5YtGCLt3Ay3+J97sA=="],
+
+    "@payid/rule-engine": ["@payid/rule-engine@workspace:packages/rule-engine"],
+
+    "@payid/sdk-core": ["@payid/sdk-core@workspace:packages/sdk-core"],
+
+    "@payid/types": ["@payid/types@workspace:packages/types"],
 
     "@pkgjs/parseargs": ["@pkgjs/parseargs@0.11.0", "", {}, "sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg=="],
 
@@ -806,8 +822,6 @@
 
     "rimraf": ["rimraf@4.4.1", "", { "dependencies": { "glob": "^9.2.0" }, "bin": { "rimraf": "dist/cjs/src/bin.js" } }, "sha512-Gk8NlF062+T9CqNGn6h4tls3k6T1+/nXdOcSZVikNVtlRdYpA7wRJJMoXmuvOnLW844rPjdQ7JgXCYM6PPC/og=="],
 
-    "rule-engine": ["rule-engine@workspace:packages/rule-engine"],
-
     "run-async": ["run-async@4.0.6", "", {}, "sha512-IoDlSLTs3Yq593mb3ZoKWKXMNu3UpObxhgA/Xuid5p4bbfi2jdY1Hj0m1K+0/tEuQTxIGMhQDqGjKb7RuxGpAQ=="],
 
     "rxjs": ["rxjs@7.8.2", "", { "dependencies": { "tslib": "^2.1.0" } }, "sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA=="],
@@ -815,8 +829,6 @@
     "safe-buffer": ["safe-buffer@5.1.2", "", {}, "sha512-Gd2UZBJDkXlY7GbJxfsE8/nvKkUEU1G38c1siN6QP6a9PT9MmHB8GnpscSmMJSoF8LOIrt8ud/wPtojys4G6+g=="],
 
     "safer-buffer": ["safer-buffer@2.1.2", "", {}, "sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg=="],
-
-    "sdk-core": ["sdk-core@workspace:packages/sdk-core"],
 
     "semver": ["semver@7.7.2", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-RF0Fw+rO5AMf9MAyaRXI4AV0Ulj5lMHqVxxdSgiVbixSCXoEmmX/jk0CuJw4+3SqroYO9VoUh+HcuJivvtJemA=="],
 
@@ -909,8 +921,6 @@
     "type-fest": ["type-fest@0.6.0", "", {}, "sha512-q+MB8nYR1KDLrgr4G5yemftpMC7/QLqVndBmEEdqzmNj5dcFOO4Oo8qlwZE3ULT3+Zim1F8Kq4cBnikNhlCMlg=="],
 
     "typedarray": ["typedarray@0.0.6", "", {}, "sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA=="],
-
-    "types": ["types@workspace:packages/types"],
 
     "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 

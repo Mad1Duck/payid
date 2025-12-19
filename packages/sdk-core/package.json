@@ -1,8 +1,17 @@
 {
-  "name": "sdk-core",
-  "module": "src/index.ts",
-  "type": "module",
+  "name": "@payid/sdk-core",
+  "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@payid/types": "*",
+    "@payid/rule-engine": "*"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

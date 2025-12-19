@@ -1,11 +1,14 @@
 {
-  "name": "payid-sdk",
   "module": "index.ts",
+  "name": "payid",
   "type": "module",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
+  "scripts": {
+    "build": "bun run --filter ./packages/* build"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "lerna": "^9.0.3"

@@ -1,8 +1,14 @@
 {
-  "name": "rule-engine",
-  "module": "index.ts",
-  "type": "module",
+  "name": "@payid/rule-engine",
+  "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/sandbox.ts --outdir dist --target node"
+  },
+  "dependencies": {
+    "@payid/types": "*"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
