@@ -5,8 +5,6 @@ import path from "path";
 import { context } from "./context";
 
 // ====== SETUP ======
-
-// 1. Load rule config
 const ruleConfig = JSON.parse(
   fs.readFileSync(
     path.join(__dirname, "./rule.config.json"),
@@ -14,19 +12,27 @@ const ruleConfig = JSON.parse(
   )
 );
 
-// 2. Load WASM
 const WASM_PATH = path.join(__dirname, "./rule_engine.wasm");
 
-// 3. Create PAY.ID SDK instance
 const payid = new PayID(WASM_PATH);
 
-// 4. Wallet (authority signer / PAY.ID owner)
 const wallet = new ethers.Wallet(
-  // ⚠️ PRIVATE KEY DEMO — jangan pakai di prod
   "0x59c6995e998f97a5a0044966f094538c5f7d6d1b1e5f9d8b52b0c9d9d2f6b3c1"
 );
 
-// ====== EXECUTION ======
+const { result, proof } = await payid.evaluateAndProveFromSource({
+  context,
+  ruleSource: {
+    uri: "ipfs://QmXyz...",
+    hash: "0xabc123..."
+  },
+  payId: "pay.id/demo",
+  owner: wallet.address,
+  signer: wallet,
+  chainId: 1,
+  verifyingContract: "0xPAYID_VERIFIER"
+});
+
 
 async function main() {
   const { result, proof } = await payid.evaluateAndProve({
@@ -50,33 +56,11 @@ async function main() {
 
   console.log("=== RULE RESULT ===");
   console.log(result);
-  /*
-    {
-      decision: 'ALLOW',
-      code: 'OK',
-      reason: 'all rules passed'
-    }
-  */
-
   console.log("\n=== DECISION PROOF ===");
   console.log({
     payload: proof.payload,
     signature: proof.signature
   });
-
-  /*
-    payload: {
-      version: 'payid.decision.v1',
-      payId: 'pay.id/demo',
-      owner: '0x...',
-      decision: 1,
-      contextHash: '0x...',
-      ruleSetHash: '0x...',
-      issuedAt: 1712345678,
-      expiresAt: 1712345738,
-      nonce: '0x...'
-    }
-  */
 }
 
 main().catch(console.error);
