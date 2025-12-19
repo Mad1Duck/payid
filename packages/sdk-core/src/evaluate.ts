@@ -1,12 +1,17 @@
 import type { RuleContext, RuleResult, RuleConfig } from "@payid/types";
 import { executeRule } from "@payid/rule-engine";
 import { normalizeContext } from "./normalize";
+import { preprocessContextV2 } from "@payid/rule-engine";
 
 export async function evaluate(
   wasmBinary: Buffer,
   context: RuleContext,
-  ruleConfig: RuleConfig
+  ruleConfig: RuleConfig,
+  options?: {
+    trustedIssuers?: Set<string>;
+  }
 ): Promise<RuleResult> {
+  // ---- basic validation (v1 behavior) ----
   if (!context || typeof context !== "object") {
     throw new Error("evaluate(): context is required");
   }
@@ -20,17 +25,28 @@ export async function evaluate(
   }
 
   let result: RuleResult;
+
   try {
-    const normalized = normalizeContext(context);
+    // ---- NEW: preprocess v2 context if enabled ----
+    const preparedContext =
+      options?.trustedIssuers
+        ? preprocessContextV2(context, ruleConfig, options.trustedIssuers)
+        : context;
+
+    // ---- existing normalization ----
+    const normalized = normalizeContext(preparedContext);
+
+    // ---- execute WASM rule engine ----
     result = await executeRule(wasmBinary, normalized, ruleConfig);
   } catch (err: any) {
     return {
       decision: "REJECT",
-      code: "ENGINE_ERROR",
-      reason: err?.message ?? "rule engine failure"
+      code: "CONTEXT_OR_ENGINE_ERROR",
+      reason: err?.message ?? "rule evaluation failed"
     };
   }
 
+  // ---- output validation ----
   if (result.decision !== "ALLOW" && result.decision !== "REJECT") {
     return {
       decision: "REJECT",
