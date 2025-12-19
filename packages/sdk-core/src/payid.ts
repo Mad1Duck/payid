@@ -1,11 +1,13 @@
 import type { RuleContext, RuleResult, RuleConfig } from "@payid/types";
 import { evaluate as evaluatePolicy } from "./evaluate";
 import fs from "fs";
+import path from "path";
 
 export class PayID {
   private wasm: Buffer;
 
   constructor(wasmPath: string) {
+
     this.wasm = fs.readFileSync(wasmPath);
   }
 

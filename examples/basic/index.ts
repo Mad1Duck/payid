@@ -1,6 +1,6 @@
 import { PayID } from "@payid/sdk-core";
 
-const payid = new PayID("./rule_engine.wasm");
+const payid = new PayID("./rule_generic_evaluator.wasm");
 
 const result = await payid.evaluate(
   {
