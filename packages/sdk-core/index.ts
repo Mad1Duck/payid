@@ -1,1 +1,1 @@
-export { PayID } from "./src/payid";
+export * from "./src";

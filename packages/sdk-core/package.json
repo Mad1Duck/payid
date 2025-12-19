@@ -6,8 +6,9 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
+    "@payid/rule-engine": "*",
     "@payid/types": "*",
-    "@payid/rule-engine": "*"
+    "ethers": "^6.16.0"
   },
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target node"
