@@ -1,6 +1,6 @@
 {
   "module": "index.ts",
-  "name": "payid",
+  "name": "programmable-payment-policy",
   "type": "module",
   "private": true,
   "workspaces": [
