@@ -30,7 +30,7 @@ contract PayIDVerifier is EIP712 {
     /* -------------------------------------------------------------------------- */
 
     struct Decision {
-        bytes32 version;      // e.g. keccak256("1")
+        bytes32 version;      // keccak256("1")
         bytes32 payId;        // keccak256("pay.id/demo")
         address owner;        // signing authority
         uint8 decision;       // 1 = ALLOW, 0 = REJECT

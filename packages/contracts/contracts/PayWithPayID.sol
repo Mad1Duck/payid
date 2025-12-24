@@ -16,7 +16,7 @@ contract PayWithPayID {
     ) external payable {
         verifier.requireAllowed(decision, signature);
 
-        // 💰 lanjutkan logic pembayaran
+        // logic pembayaran
         // transfer, mint, execute, dll
     }
 }
