@@ -7,7 +7,6 @@ dotenv.config({
 import { ethers } from "ethers";
 import fs from "fs";
 import { createPayID } from "payid";
-import { context } from "./context";
 
 import payAbi from "./abi.json";
 import usdcAbi from "./usdc.abi.json";
