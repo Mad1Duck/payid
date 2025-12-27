@@ -19,8 +19,7 @@ export default buildModule("PayIDModule", (m) => {
   );
 
   const mockUSD = m.contract(
-    "MockUSDC",
-    [admin]
+    "MockUSDC"
   );
 
 
