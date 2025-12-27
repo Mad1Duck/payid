@@ -12,9 +12,6 @@ import { context } from "./context";
 import payAbi from "./abi.json";
 import usdcAbi from "./usdc.abi.json";
 
-// =====================
-// RPC LISK SEPOLIA
-// =====================
 const RPC_URL = "https://rpc.sepolia-api.lisk.com";
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 
@@ -33,6 +30,7 @@ const wallet = new ethers.Wallet(
 console.log("Payer:", wallet.address);
 // PayIDModule#PayIDVerifier - 0x320d63373B719Db4CcadD8340BFF7908Aa4F50CD
 // PayIDModule#PayWithPayID - 0x92591803d2008b280e98defA4D096EeF05546bfd
+
 // =====================
 // DEPLOYED CONTRACTS
 // =====================
@@ -69,14 +67,11 @@ const ruleConfig = JSON.parse(
   )
 );
 
-// =====================
-// MAIN
-// =====================
 async function main() {
   const amount = 150_000_000n;
   const receiver = "0xAdfED322a38D35Db150f92Ae20BDe3EcfCEf6b84";
 
-  // 1️⃣ evaluate merchant rule + sign consent
+  // evaluate merchant rule + sign consent
   const { result, proof } =
     await payid.evaluateAndProve({
       context: {
@@ -109,7 +104,7 @@ async function main() {
 
   console.log("PAY.ID consent signed");
 
-  // 2️⃣ ensure allowance
+  // ensure allowance
   const usdc = new ethers.Contract(
     USDC,
     usdcAbi,
@@ -136,7 +131,7 @@ async function main() {
     console.log("USDC approved");
   }
 
-  // 3️⃣ execute payment (NO PARAM DRIFT)
+  // execute payment
   const payContract = new ethers.Contract(
     PAY_CONTRACT,
     payAbi.abi,
