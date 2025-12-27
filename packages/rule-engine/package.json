@@ -1,15 +1,16 @@
 {
-  "name": "@payid/rule-engine",
-  "version": "0.1.0",
-  "private": true,
+  "name": "payid-rule-engine",
+  "version": "0.1.2",
+  "private": false,
   "type": "module",
   "scripts": {
     "build": "bun build src/sandbox.ts --outdir dist --target node"
   },
   "dependencies": {
-    "@payid/types": "*",
     "@types/lodash": "^4.17.21",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "payid-attestation": "^0.1.0",
+    "payid-types": "^0.1.1"
   },
   "devDependencies": {
     "@types/bun": "latest"

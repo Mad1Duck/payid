@@ -1,7 +1,7 @@
 {
-  "name": "@payid/attestation",
+  "name": "payid-attestation",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "scripts": {
     "build": "bun build src/verify.ts --outdir dist --target node"

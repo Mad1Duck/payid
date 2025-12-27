@@ -1,5 +1,5 @@
 import { WASI } from "wasi";
-import type { RuleContext, RuleResult } from "@payid/types";
+import type { RuleContext, RuleResult } from "payid-types";
 import { loadWasm } from "./wasm";
 
 export async function runWasmRule(

@@ -1,4 +1,4 @@
-import type { RuleContext } from "@payid/types";
+import type { RuleContext } from "payid-types";
 
 export function normalizeContext(ctx: RuleContext): RuleContext {
   return {

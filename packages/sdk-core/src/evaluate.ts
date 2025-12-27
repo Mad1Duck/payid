@@ -1,7 +1,7 @@
-import type { RuleContext, RuleResult, RuleConfig } from "@payid/types";
-import { executeRule } from "@payid/rule-engine";
+import type { RuleContext, RuleResult, RuleConfig } from "payid-types";
+import { executeRule } from "payid-rule-engine";
 import { normalizeContext } from "./normalize";
-import { preprocessContextV2 } from "@payid/rule-engine";
+import { preprocessContextV2 } from "payid-rule-engine";
 
 export async function evaluate(
   wasmBinary: Buffer,

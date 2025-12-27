@@ -1,4 +1,4 @@
-import type { RuleContext, RuleResult, RuleConfig } from "@payid/types";
+import type { RuleContext, RuleResult, RuleConfig } from "payid-types";
 import { evaluate as evaluatePolicy } from "./evaluate";
 import { generateDecisionProof } from "./decision-proof/generate";
 import { resolveRule } from "./resolver/resolver";

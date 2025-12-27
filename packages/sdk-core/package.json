@@ -1,14 +1,14 @@
 {
-  "name": "@payid/sdk-core",
-  "version": "0.1.1",
+  "name": "payid",
+  "version": "0.1.3",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "@payid/rule-engine": "*",
-    "@payid/types": "*",
-    "ethers": "^6.16.0"
+    "ethers": "^6.16.0",
+    "payid-rule-engine": "^0.1.1",
+    "payid-types": "^0.1.1"
   },
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target node"
@@ -18,5 +18,20 @@
   },
   "peerDependencies": {
     "typescript": "^5"
-  }
+  },
+  "description": "pay-policy",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mad1Duck/payid.git"
+  },
+  "keywords": [
+    "payment",
+    "policy"
+  ],
+  "author": "rahvanna",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Mad1Duck/payid/issues"
+  },
+  "homepage": "https://github.com/Mad1Duck/payid#readme"
 }

@@ -1,5 +1,5 @@
 import { validateRequiredContext } from "./validateRequires";
-import { verifyAttestation } from "@payid/attestation";
+import { verifyAttestation } from "payid-attestation";
 
 export function preprocessContextV2(
   context: any,
