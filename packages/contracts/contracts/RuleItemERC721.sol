@@ -14,7 +14,13 @@ interface AggregatorV3Interface {
     function decimals() external view returns (uint8);
 }
 
+interface IRuleLicense {
+    function ruleExpiry(uint256 tokenId) external view returns (uint256);
+    function ownerOf(uint256 tokenId) external view returns (address);
+}
+
 contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
+
     bytes32 public constant ADMIN_ROLE  = keccak256("ADMIN_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
@@ -32,6 +38,8 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     uint256 public nextTokenId;
 
     /* ===================== STRUCT ===================== */
+    address public immutable deployer;
+
     struct RuleDefinition {
         bytes32 ruleHash;
         string uri;
@@ -87,7 +95,10 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         _grantRole(ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
         ethUsdFeed = AggregatorV3Interface(oracle);
+        deployer = msg.sender;
+
     }
+
 
     /* ===================================================== */
     /* ================= SUBSCRIPTION ====================== */
@@ -126,6 +137,9 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         if (msg.value > price) {
             payable(msg.sender).transfer(msg.value - price);
         }
+
+         (bool ok, ) = deployer.call{value: msg.value}("");
+        require(ok, "DEPLOYER_TRANSFER_FAILED");
 
         emit Subscribed(msg.sender, subscriptionExpiry[msg.sender]);
     }
@@ -276,7 +290,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     function extendRuleExpiry(
         uint256 tokenId,
         uint256 newExpiry
-    ) external {
+    ) external payable {
         require(
             ownerOf(tokenId) == msg.sender,
             "NOT_RULE_OWNER"
@@ -285,6 +299,22 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
             newExpiry > ruleExpiry[tokenId],
             "EXPIRY_NOT_EXTENDED"
         );
+
+        uint256 price = subscriptionPriceETH();
+        require(msg.value >= price, "INSUFFICIENT_PAYMENT");
+
+        uint256 expiry = subscriptionExpiry[msg.sender];
+        subscriptionExpiry[msg.sender] =
+            expiry < block.timestamp
+                ? block.timestamp + SUB_DURATION
+                : expiry + SUB_DURATION;
+
+        if (msg.value > price) {
+            payable(msg.sender).transfer(msg.value - price);
+        }
+
+        (bool ok, ) = deployer.call{value: msg.value}("");
+        require(ok, "DEPLOYER_TRANSFER_FAILED");
 
         ruleExpiry[tokenId] = newExpiry;
     }

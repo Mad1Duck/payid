@@ -109,20 +109,29 @@ describe("PayWithPayID ERC20 E2E (FIXED)", async () => {
       { account: merchantWallet.account }
     );
 
+    const merchantEthBefore = await publicClient.getBalance({
+      address: merchant
+    });
+
+    const payerEthBefore = await publicClient.getBalance({
+      address: payerWallet.account.address
+    });
+
     // ambil tokenId yg BENAR
     const [, , , tokenId] = await ruleNFT.read.getRule([1n]);
 
     const now2 = BigInt(Math.floor(Date.now() / 1000));
 
-    // extend expiry 30 hari
-    await ruleNFT.write.extendRuleExpiry(
-      [
-        tokenId,
-        now2 + 30n * 24n * 60n * 60n
-      ],
-      { account: merchantWallet.account }
-    );
+    const price =
+      await ruleNFT.read.subscriptionPriceETH();
 
+    await ruleNFT.write.extendRuleExpiry(
+      [tokenId, now2 + 30n * 24n * 60n * 60n],
+      {
+        account: merchantWallet.account,
+        value: BigInt(price)
+      }
+    );
     /* -------------------------------------------------- */
     /* 3. Merchant: register combined ruleSet             */
     /* -------------------------------------------------- */
@@ -208,8 +217,21 @@ describe("PayWithPayID ERC20 E2E (FIXED)", async () => {
     const merchantBalanceAfter =
       await usdc.read.balanceOf([merchant]);
 
+    const payerEthAfter = await publicClient.getBalance({
+      address: payerWallet.account.address
+    });
+
+    const merchantEthAfter = await publicClient.getBalance({
+      address: merchantWallet.account.address
+    });
+
     console.log("reciver : ", merchantBalanceBefore, merchantBalanceAfter, amount);
+    console.log("reciver ETH : ", merchantEthBefore, merchantEthAfter);
     console.log("payer : ", payerBalanceAfter, payerBalanceBefore, amount);
+    console.log("owner ETH : ", payerEthBefore, payerEthAfter);
+
+    assert.ok(payerEthAfter > payerEthBefore);
+    assert.ok(merchantEthBefore > merchantEthAfter);
 
     assert.equal(
       merchantBalanceAfter,
