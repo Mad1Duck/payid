@@ -45,13 +45,13 @@ const ruleConfig = JSON.parse(
 // =====================
 const CHAIN_ID = 4202;
 
-const SMART_ACCOUNT = "0xSMART_ACCOUNT_ADDRESS";
-const PAY_CONTRACT = "0xPAY_CONTRACT";
-const ENTRY_POINT = "0xENTRY_POINT_LISK_SEPOLIA";
-const PAYID_VERIFIER = "0xPAYID_VERIFIER_LISK_SEPOLIA";
+const SMART_ACCOUNT = "0x73F98364f6B62a5683F2C14ae86a23D7288f6106";
+const ENTRY_POINT = "0xAdfED322a38D35Db150f92Ae20BDe3EcfCEf6b84";
+const PAYID_VERIFIER = "0x68E1c5685380aa677c67EE21D70356b6d040946d";
+const PAY_CONTRACT = "0xEF5CB265407eD989ef3842051D974F83B843016c";
 
 const BUNDLER_RPC =
-  "https://bundler.lisk.com/sepolia"; // contoh
+  "https://bundler.lisk.com/sepolia";
 
 // =====================
 // EXECUTION
@@ -95,16 +95,16 @@ async function main() {
   console.log("\n=== USER OPERATION ===");
   console.log(userOp);
 
-  const bundler = new BundlerClient(
-    BUNDLER_RPC,
-    ENTRY_POINT
-  );
+  // const bundler = new BundlerClient(
+  //   BUNDLER_RPC,
+  //   ENTRY_POINT
+  // );
 
-  const userOpHash =
-    await bundler.sendUserOperation(userOp);
+  // const userOpHash =
+  //   await bundler.sendUserOperation(userOp);
 
-  console.log("\n=== SENT TO LISK SEPOLIA ===");
-  console.log("userOpHash:", userOpHash);
+  // console.log("\n=== SENT TO LISK SEPOLIA ===");
+  // console.log("userOpHash:", userOpHash);
 }
 
 main().catch(console.error);
