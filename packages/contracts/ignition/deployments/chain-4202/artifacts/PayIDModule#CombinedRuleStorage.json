@@ -1,4 +1,24 @@
 {
+  "language": "Solidity",
+  "settings": {
+    "evmVersion": "cancun",
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "": ["ast"],
+        "*": ["abi", "evm.bytecode", "evm.deployedBytecode", "evm.methodIdentifiers", "metadata"]
+      }
+    },
+    "remappings": []
+  },
+  "sources": {
+    "project/contracts/CombinedRuleStorage.sol": {
+      "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.20;\r\n\r\ninterface IRuleLicense {\r\n    function ruleExpiry(uint256 tokenId) external view returns (uint256);\r\n    function ownerOf(uint256 tokenId) external view returns (address);\r\n}\r\n\r\n/**\r\n * @title CombinedRuleStorage\r\n * @notice Registry of ACTIVE ruleSets used by PayIDVerifier\r\n */\r\ncontract CombinedRuleStorage {\r\n    /* ===================== STRUCT ===================== */\r\n\r\n    struct CombinedRule {\r\n        address owner;\r\n        bytes32 ruleSetHash;\r\n        address ruleNFT;\r\n        uint256 tokenId;\r\n        uint64  version;\r\n        bool    active;\r\n    }\r\n\r\n    /* ===================== STORAGE ===================== */\r\n\r\n    // ruleSetHash => CombinedRule\r\n    mapping(bytes32 => CombinedRule) private rules;\r\n\r\n    /* ===================== EVENTS ===================== */\r\n\r\n    event RuleRegistered(\r\n        bytes32 indexed ruleSetHash,\r\n        address indexed owner,\r\n        address ruleNFT,\r\n        uint256 tokenId,\r\n        uint64 version\r\n    );\r\n\r\n    event RuleDeactivated(\r\n        bytes32 indexed ruleSetHash\r\n    );\r\n\r\n    event RuleTransferred(\r\n        bytes32 indexed ruleSetHash,\r\n        address indexed oldOwner,\r\n        address indexed newOwner\r\n    );\r\n\r\n    /* ===================== VIEW ===================== */\r\n\r\n    function getRuleByHash(\r\n        bytes32 ruleSetHash\r\n    )\r\n        external\r\n        view\r\n        returns (\r\n            address owner,\r\n            address ruleNFT,\r\n            uint256 tokenId\r\n        )\r\n    {\r\n        CombinedRule memory r = rules[ruleSetHash];\r\n        require(r.active, \"RULE_NOT_ACTIVE\");\r\n\r\n        return (r.owner, r.ruleNFT, r.tokenId);\r\n    }\r\n\r\n    function isActive(bytes32 ruleSetHash) external view returns (bool) {\r\n        return rules[ruleSetHash].active;\r\n    }\r\n\r\n    /* ===================== MUTATION ===================== */\r\n\r\n    /**\r\n     * @notice Register or replace an active ruleSet\r\n     * @dev Caller MUST be rule owner\r\n     */\r\n    function registerRule(\r\n        bytes32 ruleSetHash,\r\n        address ruleNFT,\r\n        uint256 tokenId,\r\n        uint64 version\r\n    ) external {\r\n        require(ruleSetHash != bytes32(0), \"INVALID_HASH\");\r\n\r\n        // license owner MUST be caller\r\n        if (ruleNFT != address(0)) {\r\n            require(\r\n                IRuleLicense(ruleNFT).ownerOf(tokenId) == msg.sender,\r\n                \"NOT_LICENSE_OWNER\"\r\n            );\r\n        }\r\n\r\n        rules[ruleSetHash] = CombinedRule({\r\n            owner: msg.sender,\r\n            ruleSetHash: ruleSetHash,\r\n            ruleNFT: ruleNFT,\r\n            tokenId: tokenId,\r\n            version: version,\r\n            active: true\r\n        });\r\n\r\n        emit RuleRegistered(\r\n            ruleSetHash,\r\n            msg.sender,\r\n            ruleNFT,\r\n            tokenId,\r\n            version\r\n        );\r\n    }\r\n\r\n    /**\r\n     * @notice Deactivate a ruleSet\r\n     * @dev Only owner\r\n     */\r\n    function deactivateRule(bytes32 ruleSetHash) external {\r\n        CombinedRule storage r = rules[ruleSetHash];\r\n        require(r.active, \"RULE_NOT_ACTIVE\");\r\n        require(r.owner == msg.sender, \"NOT_OWNER\");\r\n\r\n        r.active = false;\r\n        emit RuleDeactivated(ruleSetHash);\r\n    }\r\n\r\n    /**\r\n     * @notice Update owner when rule license NFT transferred\r\n     * @dev Optional but recommended\r\n     */\r\n    function syncOwner(\r\n        bytes32 ruleSetHash\r\n    ) external {\r\n        CombinedRule storage r = rules[ruleSetHash];\r\n        require(r.active, \"RULE_NOT_ACTIVE\");\r\n\r\n        if (r.ruleNFT != address(0)) {\r\n            address newOwner =\r\n                IRuleLicense(r.ruleNFT).ownerOf(r.tokenId);\r\n\r\n            require(newOwner != address(0), \"INVALID_OWNER\");\r\n\r\n            if (newOwner != r.owner) {\r\n                address old = r.owner;\r\n                r.owner = newOwner;\r\n\r\n                emit RuleTransferred(\r\n                    ruleSetHash,\r\n                    old,\r\n                    newOwner\r\n                );\r\n            }\r\n        }\r\n    }\r\n}\r\n"
+    }
+  },
   "_format": "hh3-artifact-1",
   "contractName": "CombinedRuleStorage",
   "sourceName": "contracts/CombinedRuleStorage.sol",
