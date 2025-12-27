@@ -27,20 +27,18 @@ const wallet = new ethers.Wallet(
 );
 
 console.log("Payer:", wallet.address);
-// PayIDModule#PayIDVerifier - 0x320d63373B719Db4CcadD8340BFF7908Aa4F50CD
-// PayIDModule#PayWithPayID - 0x92591803d2008b280e98defA4D096EeF05546bfd
 
 // =====================
 // DEPLOYED CONTRACTS
 // =====================
 const PAYID_VERIFIER =
-  "0x320d63373B719Db4CcadD8340BFF7908Aa4F50CD";
+  "0x5379EBc02A8386D9B9C63074d131Cdd44f7657CD";
 
 const PAY_CONTRACT =
-  "0x92591803d2008b280e98defA4D096EeF05546bfd";
+  "0x1B12cF87E28dF21fF68070803184EB501f3B4a2b";
 
 const USDC =
-  "0x9b379eA3B4dEE91E1B0F2e5c36C0931cCDf227a0";
+  "0x6398ad8134E48c8b85323dFf4Ed8E03bAa79197d";
 
 // =====================
 // LOAD WASM
