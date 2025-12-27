@@ -1,8 +1,8 @@
-import { randomBytes } from "crypto";
 import type { DecisionPayload, DecisionProof } from "./types";
 import { hashContext, hashRuleSet } from "./hash";
 import { signDecision } from "./sign";
 import { ethers } from "ethers";
+import { randomHex } from "../utils/randomHex";
 
 export async function generateDecisionProof(params: {
   payId: string;
@@ -27,7 +27,7 @@ export async function generateDecisionProof(params: {
     ruleSetHash: hashRuleSet(params.ruleConfig),
     issuedAt,
     expiresAt,
-    nonce: `0x${randomBytes(32).toString("hex")}`
+    nonce: randomHex(32)
   };
 
   const signature = await signDecision(

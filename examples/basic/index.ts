@@ -1,10 +1,38 @@
-import { PayID } from "@payid/sdk-core";
-import { ethers } from "ethers";
+import { createPayID } from "payid";
+import { Wallet } from "ethers";
 import fs from "fs";
 import path from "path";
 import { context } from "./context";
 
-// ====== SETUP ======
+// ==================
+// LOAD WASM
+// ==================
+const WASM_PATH = path.join(
+  __dirname,
+  "../rule_engine.wasm"
+);
+
+const wasm = new Uint8Array(
+  fs.readFileSync(WASM_PATH)
+);
+
+// ==================
+// INIT PAYID
+// ==================
+const payid = createPayID({ wasm });
+
+// ==================
+// SIGNER (SERVER)
+// ==================
+const wallet = new Wallet(
+  process.env.PROVER_PRIVATE_KEY ??
+  "0x59c6995e998f97a5a0044966f094538c5f7d6d1b1e5f9d8b52b0c9d9d2f6b3c1"
+);
+
+// ==================
+// LOCAL RULE CONFIG
+// (DEV / DEMO ONLY)
+// ==================
 const ruleConfig = JSON.parse(
   fs.readFileSync(
     path.join(__dirname, "./rule.config.json"),
@@ -12,50 +40,41 @@ const ruleConfig = JSON.parse(
   )
 );
 
-const WASM_PATH = path.join(__dirname, "../rule_engine.wasm");
-
-const payid = new PayID(WASM_PATH);
-
-const wallet = new ethers.Wallet(
-  "0x59c6995e998f97a5a0044966f094538c5f7d6d1b1e5f9d8b52b0c9d9d2f6b3c1"
-);
-
-// const { result, proof } = await payid.evaluateAndProveFromSource({
-//   context,
-//   ruleSource: {
-//     uri: "ipfs://QmXyz...",
-//     hash: "0xabc123..."
-//   },
-//   payId: "pay.id/demo",
-//   owner: wallet.address,
-//   signer: wallet,
-//   chainId: 1,
-//   verifyingContract: "0xPAYID_VERIFIER"
-// });
-
-
+// ==================
+// MAIN
+// ==================
 async function main() {
-  const { result, proof } = await payid.evaluateAndProve({
-    context,
-    ruleConfig,
+  const { result, proof } =
+    await payid.evaluateAndProve({
+      context,
 
-    // identity
-    payId: "pay.id/demo",
-    owner: wallet.address,
+      // ✅ API BARU
+      rule: ruleConfig,
 
-    // signing
-    signer: wallet,
+      // identity
+      payId: "pay.id/demo",
+      owner: wallet.address,
 
-    // chain & verifier
-    chainId: 1,
-    verifyingContract: "0x000000000000000000000000000000000000DEAD",
+      // signing
+      signer: wallet,
 
-    // optional
-    ttlSeconds: 60
-  });
+      // chain & verifier
+      chainId: 1,
+      verifyingContract:
+        "0x000000000000000000000000000000000000DEAD",
+
+      // optional
+      ttlSeconds: 60
+    });
 
   console.log("=== RULE RESULT ===");
   console.log(result);
+
+  if (!proof) {
+    console.log("No proof generated");
+    return;
+  }
+
   console.log("\n=== DECISION PROOF ===");
   console.log({
     payload: proof.payload,

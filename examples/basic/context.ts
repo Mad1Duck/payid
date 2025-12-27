@@ -1,4 +1,4 @@
-import type { RuleContext } from "@payid/sdk-core";
+import type { RuleContext } from "payid-types";
 
 export const context: RuleContext = {
   tx: {

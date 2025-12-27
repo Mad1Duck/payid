@@ -1,9 +1,11 @@
+import type { RuleConfig } from "payid-types";
+
 export interface RuleSource {
-  uri: string;          // ipfs://... | https://...
-  hash?: string;        // optional keccak256 hash
+  uri: string;
+  hash?: string; // hex or base64
 }
 
 export interface ResolvedRule {
-  config: any;
+  config: RuleConfig;
   source: RuleSource;
 }

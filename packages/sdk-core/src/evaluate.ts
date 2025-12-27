@@ -1,10 +1,16 @@
 import type { RuleContext, RuleResult, RuleConfig } from "payid-types";
-import { executeRule } from "payid-rule-engine";
+import { executeRule, preprocessContextV2 } from "payid-rule-engine";
 import { normalizeContext } from "./normalize";
-import { preprocessContextV2 } from "payid-rule-engine";
 
+/**
+ * Evaluate rule using WASM engine.
+ *
+ * Public-safe:
+ * - Accepts Uint8Array (browser / node / edge)
+ * - Internally adapts to Buffer only if needed
+ */
 export async function evaluate(
-  wasmBinary: Buffer,
+  wasmBinary: Uint8Array,
   context: RuleContext,
   ruleConfig: RuleConfig,
   options?: {
@@ -27,17 +33,32 @@ export async function evaluate(
   let result: RuleResult;
 
   try {
-    // ---- NEW: preprocess v2 context if enabled ----
+    // ---- preprocess v2 context (optional) ----
     const preparedContext =
       options?.trustedIssuers
-        ? preprocessContextV2(context, ruleConfig, options.trustedIssuers)
+        ? preprocessContextV2(
+          context,
+          ruleConfig,
+          options.trustedIssuers
+        )
         : context;
 
-    // ---- existing normalization ----
+    // ---- normalize context ----
     const normalized = normalizeContext(preparedContext);
 
-    // ---- execute WASM rule engine ----
-    result = await executeRule(wasmBinary, normalized, ruleConfig);
+    // ---- WASM binary adapter ----
+    // payid-rule-engine still expects Buffer
+    const wasmForEngine =
+      typeof Buffer !== "undefined" && !(wasmBinary instanceof Buffer)
+        ? Buffer.from(wasmBinary)
+        : wasmBinary;
+
+    // ---- execute rule engine ----
+    result = await executeRule(
+      wasmForEngine as any,
+      normalized,
+      ruleConfig
+    );
   } catch (err: any) {
     return {
       decision: "REJECT",
