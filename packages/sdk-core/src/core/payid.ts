@@ -43,10 +43,16 @@ export class PayID implements PayIDClient, PayIDServer {
   async evaluateAndProve(params: {
     context: RuleContext;
     rule: RuleConfig | RuleSource;
+
     payId: string;
-    owner: string;
+
+    payer: string;
+    receiver: string;
+
+    asset: string;
+    amount: bigint;
+
     signer: ethers.Signer;
-    chainId: number;
     verifyingContract: string;
     ttlSeconds?: number;
   }): Promise<{ result: RuleResult; proof: any | null; }> {
@@ -66,12 +72,17 @@ export class PayID implements PayIDClient, PayIDServer {
 
     const proof = await generateDecisionProof({
       payId: params.payId,
-      owner: params.owner,
-      decision: result.decision,
+
+      payer: params.payer,
+      receiver: params.receiver,
+
+      asset: params.asset,
+      amount: params.amount,
+
       context: params.context,
       ruleConfig: config,
+
       signer: params.signer,
-      chainId: params.chainId,
       verifyingContract: params.verifyingContract,
       ttlSeconds: params.ttlSeconds
     });
@@ -79,6 +90,7 @@ export class PayID implements PayIDClient, PayIDServer {
     return { result, proof };
   }
 
+  // ========= ERC-4337 =========
   buildUserOperation(params: {
     proof: any;
     smartAccount: string;
@@ -87,7 +99,7 @@ export class PayID implements PayIDClient, PayIDServer {
     targetContract: string;
     paymasterAndData?: string;
   }) {
-    // browser guard TANPA window
+    // server-only guard
     if (
       typeof globalThis !== "undefined" &&
       "document" in globalThis
@@ -111,3 +123,4 @@ export class PayID implements PayIDClient, PayIDServer {
     });
   }
 }
+

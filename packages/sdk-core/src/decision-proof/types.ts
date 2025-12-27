@@ -1,15 +1,28 @@
 export type DecisionValue = 0 | 1; // 1=ALLOW, 0=REJECT
 
 export interface DecisionPayload {
-  version: "payid.decision.v1";
-  payId: string;
-  owner: string;              // authority address
-  decision: DecisionValue;
-  contextHash: string;        // bytes32
-  ruleSetHash: string;        // bytes32
-  issuedAt: number;           // uint64
-  expiresAt: number;          // uint64
-  nonce: string;              // bytes32
+  // protocol
+  version: string;          // bytes32 (keccak256("2"))
+  payId: string;            // bytes32 (keccak256(payId))
+
+  // parties
+  payer: string;            // address (signer, fund owner)
+  receiver: string;         // address (merchant)
+
+  // payment
+  asset: string;            // address (ERC20) | address(0) for ETH
+  amount: bigint;           // uint256
+
+  // policy binding
+  contextHash: string;      // bytes32
+  ruleSetHash: string;      // bytes32
+
+  // validity
+  issuedAt: bigint;         // uint64
+  expiresAt: bigint;        // uint64
+
+  // replay protection
+  nonce: string;            // bytes32
 }
 
 export interface DecisionProof {

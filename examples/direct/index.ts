@@ -19,7 +19,7 @@ const RPC_URL = "https://rpc.sepolia-api.lisk.com";
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 
 // =====================
-// WALLET (EOA SENDER)
+// WALLET (PAYER)
 // =====================
 if (!process.env.SENDER_PRIVATE_KEY) {
   throw new Error("SENDER_PRIVATE_KEY missing");
@@ -30,16 +30,17 @@ const wallet = new ethers.Wallet(
   provider
 );
 
-console.log("Sender:", wallet.address);
-
+console.log("Payer:", wallet.address);
+// PayIDModule#PayIDVerifier - 0x320d63373B719Db4CcadD8340BFF7908Aa4F50CD
+// PayIDModule#PayWithPayID - 0x92591803d2008b280e98defA4D096EeF05546bfd
 // =====================
 // DEPLOYED CONTRACTS
 // =====================
 const PAYID_VERIFIER =
-  "0xd5ED9d60118d3348342F32CD40FEC50b7B62E40D";
+  "0x320d63373B719Db4CcadD8340BFF7908Aa4F50CD";
 
 const PAY_CONTRACT =
-  "0xE612695B06C05160c58b0a2FACA0CaF8653d611f";
+  "0x92591803d2008b280e98defA4D096EeF05546bfd";
 
 const USDC =
   "0x9b379eA3B4dEE91E1B0F2e5c36C0931cCDf227a0";
@@ -72,46 +73,62 @@ const ruleConfig = JSON.parse(
 // MAIN
 // =====================
 async function main() {
+  const amount = 150_000_000n;
+  const receiver = "0xAdfED322a38D35Db150f92Ae20BDe3EcfCEf6b84";
+
+  // 1️⃣ evaluate merchant rule + sign consent
   const { result, proof } =
     await payid.evaluateAndProve({
-      context,
+      context: {
+        tx: {
+          sender: wallet.address,
+          receiver,
+          asset: "USDC",
+          amount: "150000000",
+          chainId: 4202
+        },
+        payId: {
+          id: "pay.id/lisk-sepolia-demo",
+          owner: wallet.address
+        }
+      },
       rule: ruleConfig,
-
       payId: "pay.id/lisk-sepolia-demo",
-      owner: wallet.address,
+      payer: wallet.address,
+      receiver,
+      asset: USDC,
+      amount,
       signer: wallet,
-
-      chainId: 4202,
-      verifyingContract: PAYID_VERIFIER
+      verifyingContract: PAYID_VERIFIER,
+      ttlSeconds: 60,
     });
 
-  if (result.decision !== "ALLOW" || !proof) {
-    throw new Error("PAY.ID rejected");
+  if (!proof) {
+    throw new Error("PAY.ID rejected by rule");
   }
 
-  console.log("PAY.ID allowed");
+  console.log("PAY.ID consent signed");
 
+  // 2️⃣ ensure allowance
   const usdc = new ethers.Contract(
     USDC,
     usdcAbi,
     wallet
   );
 
-  const amount = 150_000_000n;
-
   if (!usdc) {
     return console.log("usdc empty");
 
   }
 
-  const allowance = await (usdc as any)?.allowance(
+  const allowance = await (usdc as any).allowance(
     wallet.address,
     PAY_CONTRACT
   );
 
   if (allowance < amount) {
     console.log("Approving USDC...");
-    const approveTx = await (usdc as any)?.approve(
+    const approveTx = await (usdc as any).approve(
       PAY_CONTRACT,
       amount
     );
@@ -119,23 +136,22 @@ async function main() {
     console.log("USDC approved");
   }
 
+  // 3️⃣ execute payment (NO PARAM DRIFT)
   const payContract = new ethers.Contract(
     PAY_CONTRACT,
     payAbi.abi,
     wallet
   );
 
-  // const tx = await payContract
-  //   .getFunction("payERC20")
-  //   .send(
-  //     USDC,
-  //     amount,
-  //     proof.payload,
-  //     proof.signature
-  //   );
+  const tx = await payContract
+    .getFunction("payERC20")
+    .send(
+      proof.payload,
+      proof.signature
+    );
 
-  // console.log("⏳ TX hash:", tx.hash);
-  // await tx.wait();
+  console.log("⏳ TX hash:", tx.hash);
+  await tx.wait();
 
   console.log("✅ USDC payment success", proof);
 }

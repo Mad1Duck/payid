@@ -1,0 +1,27 @@
+PAYID VERIFY DEBUG
+==================
+
+Recovered : 0x73F98364f6B62a5683F2C14ae86a23D7288f6106
+Owner     : 0x73F98364f6B62a5683F2C14ae86a23D7288f6106
+Match     : true
+
+Domain:
+{
+  "name": "PAY.ID Decision",
+  "version": "1",
+  "chainId": 4202,
+  "verifyingContract": "0xd5ED9d60118d3348342F32CD40FEC50b7B62E40D"
+}
+
+Payload:
+{
+  "version": "0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6",
+  "payId": "0x35a40ace31d1591ba3557e93430f4fd40a11cb31bfa390db4ffba766166b5313",
+  "owner": "0x73F98364f6B62a5683F2C14ae86a23D7288f6106",
+  "decision": 1,
+  "contextHash": "0x380cc8c95c59cb6469da78a86ce6b0693b9c3f5c02a98b752058af70955893b0",
+  "ruleSetHash": "0x3377fb10f879189a9a90143d7e52ed93c0644726252a8ea081ff32b198393b6d",
+  "issuedAt": 1766854882,
+  "expiresAt": 1766854942,
+  "nonce": "0x8110139911d515a758bbeeb0d5fc0f5ac515ea232f8d8f84912c6515c06e1880"
+}

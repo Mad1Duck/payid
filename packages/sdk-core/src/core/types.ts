@@ -18,10 +18,16 @@ export interface PayIDServer {
   evaluateAndProve(params: {
     context: RuleContext;
     rule: RuleConfig | RuleSource;
+
     payId: string;
-    owner: string;
+
+    payer: string;
+    receiver: string;
+
+    asset: string;
+    amount: bigint;
+
     signer: ethers.Signer;
-    chainId: number;
     verifyingContract: string;
     ttlSeconds?: number;
   }): Promise<{

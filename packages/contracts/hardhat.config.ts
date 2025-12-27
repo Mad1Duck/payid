@@ -62,8 +62,12 @@ export default defineConfig({
       url: "https://rpc.sepolia-api.lisk.com",
       accounts: {
         mnemonic: process.env.MNEMONIC ?? ""
+      },
+      ignition: {
+
       }
       // accounts: [configVariable("DEPLOYER_PRIVATE_KEY")],
     },
+
   },
 });
