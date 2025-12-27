@@ -1,0 +1,39 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-c15f405dd6ed1eae7ccf6c50869411b7cdcd0944",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "userSourceNameMap": {
+    "contracts/MockEthUsdOracle.sol": "project/contracts/MockEthUsdOracle.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/MockEthUsdOracle.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.20;\r\n\r\ncontract MockEthUsdOracle {\r\n    int256 private price;\r\n    uint8 public constant decimals = 8;\r\n\r\n    constructor(int256 initialPrice) {\r\n        price = initialPrice;\r\n    }\r\n\r\n    function latestRoundData()\r\n        external\r\n        view\r\n        returns (\r\n            uint80,\r\n            int256,\r\n            uint256,\r\n            uint256,\r\n            uint80\r\n        )\r\n    {\r\n        return (0, price, block.timestamp, block.timestamp, 0);\r\n    }\r\n\r\n    function setPrice(int256 newPrice) external {\r\n        price = newPrice;\r\n    }\r\n}\r\n"
+      }
+    }
+  }
+}

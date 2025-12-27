@@ -1,0 +1,84 @@
+{
+  "_format": "hh3-artifact-1",
+  "contractName": "MockEthUsdOracle",
+  "sourceName": "contracts/MockEthUsdOracle.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "int256",
+          "name": "initialPrice",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "decimals",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "latestRoundData",
+      "outputs": [
+        {
+          "internalType": "uint80",
+          "name": "",
+          "type": "uint80"
+        },
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint80",
+          "name": "",
+          "type": "uint80"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "int256",
+          "name": "newPrice",
+          "type": "int256"
+        }
+      ],
+      "name": "setPrice",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f5ffd5b50604051610139380380610139833981016040819052602b916031565b5f556047565b5f602082840312156040575f5ffd5b5051919050565b60e6806100535f395ff3fe6080604052348015600e575f5ffd5b5060043610603a575f3560e01c8063313ce56714603e578063f7a3080614605c578063feaf968c14606d575b5f5ffd5b6045600881565b60405160ff90911681526020015b60405180910390f35b606b6067366004609a565b5f55565b005b5f8054604080518381526020810192909252429082018190526060820152608081019190915260a0016053565b5f6020828403121560a9575f5ffd5b503591905056fea26469706673582212208e9015518e685bb59d71da0aa0fc554ab3ecfc0ea59d2f116eb9046395a6904c64736f6c634300081c0033",
+  "deployedBytecode": "0x6080604052348015600e575f5ffd5b5060043610603a575f3560e01c8063313ce56714603e578063f7a3080614605c578063feaf968c14606d575b5f5ffd5b6045600881565b60405160ff90911681526020015b60405180910390f35b606b6067366004609a565b5f55565b005b5f8054604080518381526020810192909252429082018190526060820152608081019190915260a0016053565b5f6020828403121560a9575f5ffd5b503591905056fea26469706673582212208e9015518e685bb59d71da0aa0fc554ab3ecfc0ea59d2f116eb9046395a6904c64736f6c634300081c0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {},
+  "immutableReferences": {},
+  "inputSourceName": "project/contracts/MockEthUsdOracle.sol",
+  "buildInfoId": "solc-0_8_28-c15f405dd6ed1eae7ccf6c50869411b7cdcd0944"
+}
