@@ -70,26 +70,29 @@ async function main() {
   const amount = 150_000_000n;
   const receiver = "0xAdfED322a38D35Db150f92Ae20BDe3EcfCEf6b84";
 
-  // evaluate merchant rule + sign consent
+  const intent = {
+    sender: wallet.address,
+    receiver,
+    asset: "USDC",
+    amount: amount.toString(),
+    chainId: 4202,
+  };
+
+  const context = {
+    tx: intent,
+    payId: {
+      id: "pay.id/lisk-sepolia-demo",
+      owner: wallet.address
+    }
+  };
+
   const { result, proof } =
     await payid.evaluateAndProve({
-      context: {
-        tx: {
-          sender: wallet.address,
-          receiver,
-          asset: "USDC",
-          amount: "150000000",
-          chainId: 4202
-        },
-        payId: {
-          id: "pay.id/lisk-sepolia-demo",
-          owner: wallet.address
-        }
-      },
+      context: context,
       rule: ruleConfig,
       payId: "pay.id/lisk-sepolia-demo",
-      payer: wallet.address,
-      receiver,
+      payer: context.tx.sender,
+      receiver: context.tx.receiver,
       asset: USDC,
       amount,
       signer: wallet,
@@ -98,6 +101,8 @@ async function main() {
     });
 
   if (!proof) {
+    console.log(result);
+
     throw new Error("PAY.ID rejected by rule");
   }
 
@@ -137,6 +142,8 @@ async function main() {
     wallet
   );
 
+  console.log("⏳ start TX hash:");
+
   const tx = await payContract
     .getFunction("payERC20")
     .send(
@@ -144,10 +151,10 @@ async function main() {
       proof.signature
     );
 
-  console.log("⏳ TX hash:", tx.hash);
+  console.log("⏳ TX hash:", tx.hash, tx.toJSON());
   await tx.wait();
 
-  console.log("✅ USDC payment success", proof);
+  console.log("✅ USDC payment success", proof, result);
 }
 
 main().catch(console.error);
