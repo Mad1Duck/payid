@@ -70,98 +70,99 @@ const combined = new ethers.Contract(
 );
 
 
-async function loadRuleFromNFT() {
-  const tokenURI: string = await (ruleNFT as any).tokenURI(
-    RULE_TOKEN_ID
+async function loadRulesFromCombinedRule(
+  combinedRule:
+    | {
+      ruleSetHash: string;
+      owner: string;
+      version: string;
+      rules: {
+        ruleNFT: string;
+        tokenId: string;
+      }[];
+    }
+    | null
+) {
+  if (!combinedRule) {
+    throw new Error("No active combined rule");
+  }
+
+  if (!combinedRule.rules.length) {
+    throw new Error("Combined rule has no rule references");
+  }
+
+  const rules = await Promise.all(
+    combinedRule.rules.map(async (r) => {
+      const ruleNFT = new ethers.Contract(
+        r.ruleNFT,
+        ruleAbi.abi,
+        provider
+      );
+
+      const tokenURI: string = await (ruleNFT as any).tokenURI(
+        BigInt(r.tokenId)
+      );
+
+      const metadataURL = tokenURI.startsWith("ipfs://")
+        ? `https://gateway.pinata.cloud/ipfs/${tokenURI.slice(7)}`
+        : tokenURI;
+
+      console.log(
+        `Fetching rule metadata [${r.ruleNFT} #${r.tokenId}]`,
+        metadataURL
+      );
+
+      const res = await fetch(metadataURL);
+      if (!res.ok) {
+        throw new Error(
+          `Failed to fetch metadata for rule ${r.ruleNFT} #${r.tokenId}`
+        );
+      }
+
+      const metadata: any = await res.json();
+
+      if (!metadata.rule) {
+        throw new Error(
+          `NFT metadata missing rule for ${r.ruleNFT} #${r.tokenId}`
+        );
+      }
+
+      return metadata.rule;
+    })
   );
 
-  if (!tokenURI.startsWith("https://")) {
-    throw new Error("tokenURI must be https://");
-  }
-
-  const metadataCid = tokenURI.replace("ipfs://", "");
-  const metadataURL =
-    `${metadataCid}`;
-
-  console.log("Fetching rule metadata:", metadataURL);
-
-  const res = await fetch(metadataURL);
-  if (!res.ok) {
-    throw new Error("Failed to fetch rule metadata");
-  }
-
-  const metadata: any = await res.json();
-
-  if (!metadata.rule) {
-    throw new Error("NFT metadata missing rule");
-  }
-
-  return metadata.rule;
+  return rules;
 }
 
-async function listActiveRules() {
-  const latestBlock = await provider.getBlockNumber();
 
-  const events = await queryEventsInChunks({
-    contract: combined,
-    eventName: "CombinedRuleRegistered", // ✅ BENAR
-    fromBlock: 0n,
-    toBlock: BigInt(latestBlock),
-    step: 50_000n
-  });
 
-  const seen = new Set<string>();
-  const activeRules = [];
+async function getActiveRuleOfOwner(owner: string) {
+  const ruleSetHash = await (combined as any).activeRuleOf(owner);
 
-  for (const e of events) {
-    if (!(e as any).args) continue;
-
-    const {
-      ruleSetHash,
-      owner,
-      version
-    } = (e as any).args as any;
-
-    const hash = ruleSetHash.toLowerCase();
-    if (seen.has(hash)) continue;
-    seen.add(hash);
-
-    const isActive = await combined.isActive(ruleSetHash);
-    if (!isActive) continue;
-
-    const [resolvedOwner, ruleRefs, resolvedVersion] =
-      await combined.getRuleByHash(ruleSetHash);
-
-    activeRules.push({
-      ruleSetHash,
-      owner: resolvedOwner,
-      version: resolvedVersion.toString(),
-      rules: ruleRefs.map((r: any) => ({
-        ruleNFT: r.ruleNFT,
-        tokenId: r.tokenId.toString()
-      }))
-    });
+  if (ruleSetHash === ethers.ZeroHash) {
+    return null;
   }
 
-  return activeRules;
+  const [resolvedOwner, ruleRefs, version] =
+    await (combined as any).getRuleByHash(ruleSetHash);
+
+  return {
+    ruleSetHash,
+    owner: resolvedOwner,
+    version: version.toString(),
+    rules: ruleRefs.map((r: any) => ({
+      ruleNFT: r.ruleNFT,
+      tokenId: r.tokenId.toString()
+    }))
+  };
 }
 
 
 async function main() {
-  // const ruleConfig = await loadRuleFromNFT();
-  const rules = await listActiveRules();
-
-  console.log("Rule loaded from NFT:");
-  console.log(rules);
-  return;
-
-  /* --------------------------------------------- */
-  /* 3. BUILD CONTEXT                              */
-  /* --------------------------------------------- */
 
   const amount = 150_000_000n;
   const receiver =
-    "0xAdfED322a38D35Db150f92Ae20BDe3EcfCEf6b84";
+    "0x73F98364f6B62a5683F2C14ae86a23D7288f6106";
 
   const intent = {
     sender: wallet.address,
@@ -179,11 +180,26 @@ async function main() {
     }
   };
 
+  const activeRule = await getActiveRuleOfOwner(receiver);
+
+  const rules = await loadRulesFromCombinedRule(activeRule);
+
+  const canonicalRuleSet = canonicalize({
+    version: activeRule?.version ?? "1",
+    logic: "AND",
+    rules
+  });
+
+
   // ruleSetHash
   const { result, proof } =
     await payid.evaluateAndProve({
       context,
-      rule: ruleConfig,
+      rule: {
+        version: activeRule?.version ?? "1",
+        logic: "AND",
+        rules
+      },
       payId: "pay.id/lisk-sepolia-demo",
       payer: context.tx.sender,
       receiver: context.tx.receiver,

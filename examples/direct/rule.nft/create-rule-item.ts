@@ -10,15 +10,20 @@ dotenv.config({
 import { ethers } from "ethers";
 import { keccak256, toUtf8Bytes } from "ethers";
 import { canonicalize } from "../../utils/cannonicalize";
+import { mainPinata } from "./upload-rule-nft-to-pinata";
 
 
-const RPC_URL = "https://rpc.sepolia-api.lisk.com";
-const provider = new ethers.JsonRpcProvider(RPC_URL);
 
 if (!process.env.SENDER_PRIVATE_KEY) {
   throw new Error("SENDER_PRIVATE_KEY missing");
 }
 
+if (!process.env.RPC_URL) {
+  throw new Error("RPC_URL missing");
+}
+
+const RPC_URL = process.env.RPC_URL;
+const provider = new ethers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(
   process.env.SENDER_PRIVATE_KEY,
   provider
@@ -35,8 +40,7 @@ const ruleNFT = new ethers.Contract(
   wallet
 );
 
-const RULE_URI =
-  "https://gateway.pinata.cloud/ipfs/bafkreigxgajtxtga2ewji7eldvqss5mgqscourrwnfaufeughutt46zxxa";
+const { url: RULE_URI } = await mainPinata();
 
 async function main() {
   const canonicalRuleJSON = canonicalize(RULE_OBJECT);

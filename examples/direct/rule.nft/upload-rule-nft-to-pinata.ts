@@ -3,23 +3,13 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { PinataSDK } from "pinata";
+import { envData } from "../../config/config";
 
 dotenv.config({
   path: path.resolve("../../../", ".env"),
 });
 
-const PINATA_JWT = process.env.PINATA_JWT;
-if (!PINATA_JWT) {
-  throw new Error("PINATA_JWT missing");
-}
-const PINATA_URL = process.env.PINATA_URL;
-if (!PINATA_URL) {
-  throw new Error("PINATA_URL missing");
-}
-const PINATA_GATEWAY =
-  "https://gateway.pinata.cloud/ipfs";
-
-console.log(PINATA_JWT, " =====PINATA_JWT=====");
+const { pinata: { jwt: PINATA_JWT, gateway: PINATA_GATEWAY, url: PINATA_URL } } = envData;
 
 const pinata = new PinataSDK({
   pinataJwt: PINATA_JWT,
@@ -68,7 +58,7 @@ function keccak256Hex(input: string): string {
   );
 }
 
-async function main() {
+export async function mainPinata() {
   console.log("📦 Uploading rule NFT via Pinata SDK...\n");
 
   const canonicalRule = canonicalize(RULE_OBJECT);
@@ -136,6 +126,6 @@ async function main() {
   console.log(
     `${PINATA_GATEWAY}/${metadataCid}`
   );
-}
 
-main().catch(console.error);
+  return { url: `${PINATA_GATEWAY}/${metadataCid}`, cid: metadataCid, metadata };
+}
