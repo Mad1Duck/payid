@@ -52,9 +52,6 @@ describe("PayWithPayID ERC20 E2E (FIXED)", async () => {
   }
 
   it("executes ERC20 payment when rule valid", async () => {
-    /* -------------------------------------------------- */
-    /* 1. Deploy contracts                                */
-    /* -------------------------------------------------- */
 
     const usdc = await viem.deployContract(
       "MockUSDC"
@@ -83,10 +80,6 @@ describe("PayWithPayID ERC20 E2E (FIXED)", async () => {
       "PayWithPayID",
       [verifier.address]
     );
-
-    /* -------------------------------------------------- */
-    /* 2. Merchant: create & ACTIVATE rule                */
-    /* -------------------------------------------------- */
 
     const RULE_JSON = JSON.stringify({
       id: "min_amount",
@@ -132,9 +125,6 @@ describe("PayWithPayID ERC20 E2E (FIXED)", async () => {
         value: BigInt(price)
       }
     );
-    /* -------------------------------------------------- */
-    /* 3. Merchant: register combined ruleSet             */
-    /* -------------------------------------------------- */
 
     const ruleSetHash = hashString(
       "combined-rule-v1:min_amount"
@@ -149,10 +139,6 @@ describe("PayWithPayID ERC20 E2E (FIXED)", async () => {
       ],
       { account: merchantWallet.account }
     );
-
-    /* -------------------------------------------------- */
-    /* 4. Payer: mint & approve ERC20                     */
-    /* -------------------------------------------------- */
 
     const amount = parseUnits("150", 6);
 
@@ -171,10 +157,6 @@ describe("PayWithPayID ERC20 E2E (FIXED)", async () => {
 
     const merchantBalanceBefore =
       await usdc.read.balanceOf([merchant]);
-
-    /* -------------------------------------------------- */
-    /* 5. Sign Decision                                   */
-    /* -------------------------------------------------- */
 
     const now = BigInt(Math.floor(Date.now() / 1000));
 
@@ -198,18 +180,10 @@ describe("PayWithPayID ERC20 E2E (FIXED)", async () => {
       signer: payerWallet
     });
 
-    /* -------------------------------------------------- */
-    /* 6. Execute payment                                 */
-    /* -------------------------------------------------- */
-
     await pay.write.payERC20(
       [decision, sig],
       { account: payerWallet.account }
     );
-
-    /* -------------------------------------------------- */
-    /* 7. Assert balances                                 */
-    /* -------------------------------------------------- */
 
     const payerBalanceAfter =
       await usdc.read.balanceOf([payer]);

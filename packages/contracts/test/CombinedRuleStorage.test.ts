@@ -15,32 +15,20 @@ describe("CombinedRuleStorage", async () => {
   }
 
   it("registers and resolves active combined rule (single rule)", async () => {
-    /* --------------------------------------------- */
-    /* 1. Deploy mock oracle                          */
-    /* --------------------------------------------- */
     const oracle = await viem.deployContract(
       "MockEthUsdOracle",
       [2000n * 10n ** 8n]
     );
 
-    /* --------------------------------------------- */
-    /* 2. Deploy RuleItemERC721                       */
-    /* --------------------------------------------- */
     const ruleNFT = await viem.deployContract(
       "RuleItemERC721",
       [merchant, oracle.address]
     );
 
-    /* --------------------------------------------- */
-    /* 3. Deploy CombinedRuleStorage                  */
-    /* --------------------------------------------- */
     const storage = await viem.deployContract(
       "CombinedRuleStorage"
     );
 
-    /* --------------------------------------------- */
-    /* 4. Create & activate rule item                 */
-    /* --------------------------------------------- */
     const RULE_JSON = JSON.stringify({
       id: "min_amount",
       if: {
@@ -65,9 +53,6 @@ describe("CombinedRuleStorage", async () => {
 
     const tokenId = await ruleNFT.read.ruleTokenId([1n]);
 
-    /* --------------------------------------------- */
-    /* 5. Register combined ruleSet (ARRAY FORM)     */
-    /* --------------------------------------------- */
     const ruleSetHash = hashString(
       "combined-rule-v1:min_amount"
     );
@@ -75,24 +60,18 @@ describe("CombinedRuleStorage", async () => {
     await storage.write.registerCombinedRule(
       [
         ruleSetHash,
-        [ruleNFT.address],   // ✅ array
-        [tokenId],           // ✅ array
+        [ruleNFT.address],
+        [tokenId],
         1n
       ],
       { account: merchantWallet.account }
     );
 
-    /* --------------------------------------------- */
-    /* 6. Resolve ruleSet                             */
-    /* --------------------------------------------- */
     const [owner, ruleRefs, version] =
       await storage.read.getRuleByHash([
         ruleSetHash
       ]);
 
-    /* --------------------------------------------- */
-    /* 7. Assertions                                 ️                                */
-    /* --------------------------------------------- */
     assert.equal(
       owner.toLowerCase(),
       merchant.toLowerCase()

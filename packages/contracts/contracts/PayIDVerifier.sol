@@ -7,13 +7,18 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /* ===================== INTERFACES ===================== */
 interface ICombinedRuleStorage {
+    struct RuleRef {
+        address ruleNFT;
+        uint256 tokenId;
+    }
+
     function getRuleByHash(bytes32 ruleSetHash)
         external
         view
         returns (
             address owner,
-            address ruleNFT,
-            uint256 tokenId
+            RuleRef[] memory ruleRefs,
+            uint64 version
         );
 }
 
@@ -139,31 +144,29 @@ contract PayIDVerifier is EIP712 {
         // mark nonce as used
         usedNonce[d.payer][d.nonce] = true;
 
-        /* 3. Resolve active rule */
         (
             address owner,
-            address ruleNFT,
-            uint256 tokenId
+            ICombinedRuleStorage.RuleRef[] memory ruleRefs,
         ) = combinedRuleStorage.getRuleByHash(d.ruleSetHash);
-
-        /* 4. Rule owner MUST be receiver
+        
         require(
             owner == d.receiver,
             "RULE_OWNER_MISMATCH"
         );
 
-        /* 5. Enforce rule license expiry */
-        if (ruleNFT != address(0)) {
-            uint256 expiry =
-                IRuleLicense(ruleNFT).ruleExpiry(tokenId);
+        for (uint256 i = 0; i < ruleRefs.length; i++) {
+            IRuleLicense license =
+                IRuleLicense(ruleRefs[i].ruleNFT);
+
+            uint256 tokenId = ruleRefs[i].tokenId;
 
             require(
-                expiry >= block.timestamp,
+                license.ruleExpiry(tokenId) >= block.timestamp,
                 "RULE_LICENSE_EXPIRED"
             );
 
             require(
-                IRuleLicense(ruleNFT).ownerOf(tokenId) == owner,
+                license.ownerOf(tokenId) == owner,
                 "RULE_LICENSE_OWNER_CHANGED"
             );
         }

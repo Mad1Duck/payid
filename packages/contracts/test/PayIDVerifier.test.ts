@@ -14,26 +14,64 @@ describe("PayIDVerifier", async () => {
   }
 
   it("accepts valid decision", async () => {
+
+    const oracle = await viem.deployContract(
+      "MockEthUsdOracle",
+      [2000n * 10n ** 8n]
+    );
+
+    const ruleNFT = await viem.deployContract(
+      "RuleItemERC721",
+      [merchant, oracle.address]
+    );
+
     const storage = await viem.deployContract(
       "CombinedRuleStorage"
     );
 
-    const address: `0x${string}` = storage.address;
     const verifier = await viem.deployContract(
       "PayIDVerifier",
-      [address]
+      [storage.address]
     );
 
-    const ruleSetHash = hash("rules");
+    const RULE_JSON = JSON.stringify({
+      id: "min_amount",
+      if: {
+        field: "tx.amount",
+        op: ">=",
+        value: "1"
+      }
+    });
 
-    await storage.write.registerRule([
+    const ruleHash = hash(RULE_JSON);
+
+    await ruleNFT.write.createRule(
+      [ruleHash, "ipfs://rule.json"]
+    );
+
+    await ruleNFT.write.activateRule([1n]);
+
+    const [, , , tokenId] =
+      await ruleNFT.read.getRule([1n]);
+
+    /* extend expiry so verifier passes */
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const price =
+      await ruleNFT.read.subscriptionPriceETH();
+
+    await ruleNFT.write.extendRuleExpiry(
+      [tokenId, now + 3600n],
+      { value: price }
+    );
+
+    const ruleSetHash = hash("ruleset-v1");
+
+    await storage.write.registerCombinedRule([
       ruleSetHash,
-      "0x0000000000000000000000000000000000000000",
-      0n,
+      [ruleNFT.address],
+      [tokenId],
       1n
     ]);
-
-    const now = BigInt(Math.floor(Date.now() / 1000));
 
     const decision = {
       version: hash("1"),
@@ -83,6 +121,6 @@ describe("PayIDVerifier", async () => {
   });
 
   it("rejects replayed nonce", async () => {
-    // call requireAllowed twice → revert
+
   });
 });
