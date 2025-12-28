@@ -20,6 +20,7 @@ export interface PayIDServer {
     rule: RuleConfig | RuleSource;
 
     payId: string;
+    ruleAuthority: string;
 
     payer: string;
     receiver: string;

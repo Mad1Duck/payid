@@ -47,6 +47,7 @@ export class PayID implements PayIDClient, PayIDServer {
     payId: string;
 
     payer: string;
+    ruleAuthority: string;
     receiver: string;
 
     asset: string;
@@ -78,7 +79,7 @@ export class PayID implements PayIDClient, PayIDServer {
 
       asset: params.asset,
       amount: params.amount,
-
+      ruleAuthority: params.ruleAuthority,
       context: params.context,
       ruleConfig: config,
 

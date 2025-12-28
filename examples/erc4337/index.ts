@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { context } from "./context";
 import { BundlerClient } from "./bundler";
+import { envData } from "../config/config";
 
 // =====================
 // LOAD WASM
@@ -44,12 +45,14 @@ const ruleConfig = JSON.parse(
 // LISK SEPOLIA CONFIG
 // =====================
 const CHAIN_ID = 4202;
+const { rpcUrl: RPC_URL, contract: { ruleItemERC721: RULE_ITEM_ERC721, mockUSDC: USDC, payIdVerifier: PAYID_VERIFIER, payWithPayId: PAY_CONTRACT, combinedRuleStorage: COMBINED_RULE_STORAGE }, account: { senderPk: SENDER_PRIVATE_KEY, receiverPk: RECIVER_PRIVATE_KEY } } = envData;
 
 const SMART_ACCOUNT = "0x73F98364f6B62a5683F2C14ae86a23D7288f6106";
 const ENTRY_POINT = "0xAdfED322a38D35Db150f92Ae20BDe3EcfCEf6b84";
 
-const PAYID_VERIFIER = "0x68E1c5685380aa677c67EE21D70356b6d040946d";
-const PAY_CONTRACT = "0xEF5CB265407eD989ef3842051D974F83B843016c";
+const amount = 150_000_000n;
+const receiver =
+  "0x73F98364f6B62a5683F2C14ae86a23D7288f6106";
 
 const BUNDLER_RPC =
   "https://bundler.lisk.com/sepolia";
@@ -64,11 +67,15 @@ async function main() {
       rule: ruleConfig, // ✅ dummy rule
 
       payId: "pay.id/lisk-sepolia-demo",
-      owner: ownerWallet.address,
+      payer: ownerWallet.address,
       signer: ownerWallet,
 
-      chainId: CHAIN_ID,
-      verifyingContract: PAYID_VERIFIER
+      amount,
+      asset: USDC,
+      receiver,
+      ttlSeconds: 60,
+      verifyingContract: PAYID_VERIFIER,
+      ruleAuthority: COMBINED_RULE_STORAGE
     });
 
   console.log("=== RULE RESULT ===");

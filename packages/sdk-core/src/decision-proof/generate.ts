@@ -1,6 +1,6 @@
 import type { DecisionPayload, DecisionProof } from "./types";
 import { hashContext, hashRuleSet } from "./hash";
-import { ethers } from "ethers";
+import { ethers, ZeroAddress } from "ethers";
 import { randomHex } from "../utils/randomHex";
 
 const hash = (v: string) =>
@@ -10,6 +10,7 @@ export async function generateDecisionProof(params: {
   payId: string;
 
   payer: string;
+  ruleAuthority: string;
   receiver: string;
 
   asset: string;        // address(0) = ETH
@@ -39,7 +40,7 @@ export async function generateDecisionProof(params: {
 
     contextHash: hashContext(params.context),
     ruleSetHash: hashRuleSet(params.ruleConfig),
-
+    ruleAuthority: params.ruleAuthority ?? ZeroAddress,
     issuedAt: BigInt(now),
     expiresAt: BigInt(expiresAt),
 
@@ -66,7 +67,7 @@ export async function generateDecisionProof(params: {
 
       { name: "contextHash", type: "bytes32" },
       { name: "ruleSetHash", type: "bytes32" },
-
+      { name: "ruleAuthority", type: "address" },
       { name: "issuedAt", type: "uint64" },
       { name: "expiresAt", type: "uint64" },
 

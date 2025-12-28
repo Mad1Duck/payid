@@ -6,7 +6,12 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /* ===================== INTERFACES ===================== */
-interface ICombinedRuleStorage {
+interface IRuleLicense {
+    function ruleExpiry(uint256 tokenId) external view returns (uint256);
+    function ownerOf(uint256 tokenId) external view returns (address);
+}
+
+interface IRuleAuthority {
     struct RuleRef {
         address ruleNFT;
         uint256 tokenId;
@@ -22,11 +27,7 @@ interface ICombinedRuleStorage {
         );
 }
 
-interface IRuleLicense {
-    function ruleExpiry(uint256 tokenId) external view returns (uint256);
-    function ownerOf(uint256 tokenId) external view returns (address);
-}
-
+/* ===================== CONTRACT ===================== */
 contract PayIDVerifier is EIP712 {
     using ECDSA for bytes32;
 
@@ -37,28 +38,19 @@ contract PayIDVerifier is EIP712 {
 
     bytes32 public constant DECISION_TYPEHASH =
         keccak256(
-            "Decision(bytes32 version,bytes32 payId,address payer,address receiver,address asset,uint256 amount,bytes32 contextHash,bytes32 ruleSetHash,uint64 issuedAt,uint64 expiresAt,bytes32 nonce)"
+            "Decision(bytes32 version,bytes32 payId,address payer,address receiver,address asset,uint256 amount,bytes32 contextHash,bytes32 ruleSetHash,address ruleAuthority,uint64 issuedAt,uint64 expiresAt,bytes32 nonce)"
         );
 
     /* ===================== STORAGE ===================== */
 
-    ICombinedRuleStorage public immutable combinedRuleStorage;
-
-    // Nonce replay protection 
+    // replay protection
     mapping(address => mapping(bytes32 => bool)) public usedNonce;
 
     /* ===================== CONSTRUCTOR ===================== */
 
-    constructor(address combinedRuleStorage_)
+    constructor()
         EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION)
-    {
-        require(
-            combinedRuleStorage_ != address(0),
-            "INVALID_RULE_STORAGE"
-        );
-        combinedRuleStorage =
-            ICombinedRuleStorage(combinedRuleStorage_);
-    }
+    {}
 
     /* ===================== STRUCT ===================== */
 
@@ -74,6 +66,8 @@ contract PayIDVerifier is EIP712 {
 
         bytes32 contextHash;
         bytes32 ruleSetHash;
+
+        address ruleAuthority;
 
         uint64 issuedAt;
         uint64 expiresAt;
@@ -98,6 +92,7 @@ contract PayIDVerifier is EIP712 {
                     d.amount,
                     d.contextHash,
                     d.ruleSetHash,
+                    d.ruleAuthority,
                     d.issuedAt,
                     d.expiresAt,
                     d.nonce
@@ -140,35 +135,43 @@ contract PayIDVerifier is EIP712 {
             !usedNonce[d.payer][d.nonce],
             "NONCE_ALREADY_USED"
         );
-
-        // mark nonce as used
         usedNonce[d.payer][d.nonce] = true;
 
-        (
-            address owner,
-            ICombinedRuleStorage.RuleRef[] memory ruleRefs,
-        ) = combinedRuleStorage.getRuleByHash(d.ruleSetHash);
-        
-        require(
-            owner == d.receiver,
-            "RULE_OWNER_MISMATCH"
-        );
-
-        for (uint256 i = 0; i < ruleRefs.length; i++) {
-            IRuleLicense license =
-                IRuleLicense(ruleRefs[i].ruleNFT);
-
-            uint256 tokenId = ruleRefs[i].tokenId;
-
+        /* 3. OPTIONAL rule enforcement */
+        if (d.ruleAuthority != address(0)) {
             require(
-                license.ruleExpiry(tokenId) >= block.timestamp,
-                "RULE_LICENSE_EXPIRED"
+                d.ruleAuthority.code.length > 0,
+                "RULE_AUTHORITY_NOT_CONTRACT"
             );
 
+            (
+                address owner,
+                IRuleAuthority.RuleRef[] memory ruleRefs,
+                /* uint64 version */
+            ) = IRuleAuthority(d.ruleAuthority)
+                    .getRuleByHash(d.ruleSetHash);
+
             require(
-                license.ownerOf(tokenId) == owner,
-                "RULE_LICENSE_OWNER_CHANGED"
+                owner == d.receiver,
+                "RULE_OWNER_MISMATCH"
             );
+
+            for (uint256 i = 0; i < ruleRefs.length; i++) {
+                IRuleLicense license =
+                    IRuleLicense(ruleRefs[i].ruleNFT);
+
+                uint256 tokenId = ruleRefs[i].tokenId;
+
+                require(
+                    license.ruleExpiry(tokenId) >= block.timestamp,
+                    "RULE_LICENSE_EXPIRED"
+                );
+
+                require(
+                    license.ownerOf(tokenId) == owner,
+                    "RULE_LICENSE_OWNER_CHANGED"
+                );
+            }
         }
     }
 }

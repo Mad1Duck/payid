@@ -17,6 +17,8 @@ export interface DecisionPayload {
   contextHash: string;      // bytes32
   ruleSetHash: string;      // bytes32
 
+  ruleAuthority: string;  // address | ZeroAddress
+
   // validity
   issuedAt: bigint;         // uint64
   expiresAt: bigint;        // uint64

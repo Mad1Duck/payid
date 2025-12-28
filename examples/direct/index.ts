@@ -176,6 +176,7 @@ async function main() {
       signer: wallet,
       verifyingContract: PAYID_VERIFIER,
       ttlSeconds: 60,
+      ruleAuthority: COMBINED_RULE_STORAGE
     });
 
   console.log(proof.payload, ruleSetHash);
