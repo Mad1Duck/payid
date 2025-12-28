@@ -1,35 +1,21 @@
-import * as dotenv from "dotenv";
-import path from "path";
 import { ethers } from "ethers";
 import { keccak256, toUtf8Bytes } from "ethers";
+import ruleAbi from "../rule.nft/RuleItemERC721.abi.json";
+import combinedAbi from "./CombinedRuleStorage.abi.json";
+import { canonicalize } from "../../utils/cannonicalize";
+import { envData } from "../../config/config";
+import { mainRule } from "../rule.nft/create-rule-item";
 
-dotenv.config({
-  path: path.resolve("../../../", ".env"),
-});
+const { rpcUrl: RPC_URL, contract: { ruleItemERC721: RULE_ITEM_ERC721, combinedRuleStorage: COMBINED_RULE_STORAGE }, account: { receiverPk: RECIVER_PRIVATE_KEY, } } = envData;
 
-const RPC_URL = "https://rpc.sepolia-api.lisk.com";
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 
-if (!process.env.SENDER_PRIVATE_KEY) {
-  throw new Error("SENDER_PRIVATE_KEY missing");
-}
-
 const wallet = new ethers.Wallet(
-  process.env.SENDER_PRIVATE_KEY,
+  RECIVER_PRIVATE_KEY,
   provider
 );
 
 console.log("Rule Owner:", wallet.address);
-
-const RULE_ITEM_ERC721 =
-  "0x92c9451Acf88a342Ad3937691F8d5586C3e1e289";
-
-const COMBINED_RULE_STORAGE =
-  "0x4F7c0EC1B6870fd0CFAB295D3A4a0BB84dA75Ac7";
-
-import ruleAbi from "../rule.nft/RuleItemERC721.abi.json";
-import combinedAbi from "./CombinedRuleStorage.abi.json";
-import { canonicalize } from "../../utils/cannonicalize";
 
 const ruleNFT = new ethers.Contract(
   RULE_ITEM_ERC721,
@@ -44,12 +30,11 @@ const combined = new ethers.Contract(
 );
 
 const RULE_VERSION = 1n;
-const RULE_TOKEN_ID = 1n;
 
 async function main() {
-  /* ---------------------------------- */
-  /* 1. Load rule JSON from NFT         */
-  /* ---------------------------------- */
+  const { ruleTokenId } = await mainRule();
+
+  const RULE_TOKEN_ID = BigInt(ruleTokenId);
 
   const tokenURI: string = await (ruleNFT as any).tokenURI(
     RULE_TOKEN_ID
@@ -75,10 +60,6 @@ async function main() {
   console.log("Rule loaded from NFT metadata:");
   console.log(metadata.rule);
 
-  /* ---------------------------------- */
-  /* 2. Build canonical combined rule   */
-  /* ---------------------------------- */
-
   const combinedRules = [metadata.rule];
 
   const canonicalCombinedRules = canonicalize({
@@ -95,10 +76,6 @@ async function main() {
   console.log(canonicalCombinedRules);
   console.log("ruleSetHash:", ruleSetHash);
 
-  /* ---------------------------------- */
-  /* 3. Verify NFT ownership            */
-  /* ---------------------------------- */
-
   const owner = await (ruleNFT as any).ownerOf(
     RULE_TOKEN_ID
   );
@@ -110,17 +87,12 @@ async function main() {
   }
 
   console.log("Rule NFT ownership verified");
-
-  /* ---------------------------------- */
-  /* 4. Register combined rule (NEW API)*/
-  /* ---------------------------------- */
-
   console.log("Registering combined rule...");
 
   const tx = await (combined as any).registerCombinedRule(
     ruleSetHash,
-    [RULE_ITEM_ERC721],   // ✅ array
-    [RULE_TOKEN_ID],     // ✅ array
+    [RULE_ITEM_ERC721],
+    [RULE_TOKEN_ID],
     RULE_VERSION
   );
 
@@ -128,10 +100,6 @@ async function main() {
   await tx.wait();
 
   console.log("Combined rule registered");
-
-  /* ---------------------------------- */
-  /* 5. Resolve & verify on-chain       */
-  /* ---------------------------------- */
 
   const [resolvedOwner, ruleRefs, version] =
     await (combined as any).getRuleByHash(ruleSetHash);
@@ -152,6 +120,7 @@ async function main() {
 }
 
 main().catch(console.error);
+
 // ========== RESPONSE ==========
 // Rule Owner: 0x73F98364f6B62a5683F2C14ae86a23D7288f6106
 // Metadata URL: https://gateway.pinata.cloud/ipfs/bafkreigxgajtxtga2ewji7eldvqss5mgqscourrwnfaufeughutt46zxxa

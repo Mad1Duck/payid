@@ -1,13 +1,8 @@
-import * as dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { PinataSDK } from "pinata";
 import { envData } from "../../config/config";
-
-dotenv.config({
-  path: path.resolve("../../../", ".env"),
-});
 
 const { pinata: { jwt: PINATA_JWT, gateway: PINATA_GATEWAY, url: PINATA_URL } } = envData;
 

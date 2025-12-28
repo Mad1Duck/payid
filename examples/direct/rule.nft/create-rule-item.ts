@@ -1,48 +1,29 @@
 import ruleAbi from "./RuleItemERC721.abi.json";
-import * as dotenv from "dotenv";
-import path from "path";
-import RULE_OBJECT from "./rule.json";
-
-dotenv.config({
-  path: path.resolve("../../../", ".env"),
-});
-
 import { ethers } from "ethers";
 import { keccak256, toUtf8Bytes } from "ethers";
 import { canonicalize } from "../../utils/cannonicalize";
 import { mainPinata } from "./upload-rule-nft-to-pinata";
+import { envData } from "../../config/config";
 
+const { rpcUrl: RPC_URL, contract: { ruleItemERC721: RULE_ITEM_ERC721 }, account: { receiverPk: RECIVER_PRIVATE_KEY, } } = envData;
 
-
-if (!process.env.SENDER_PRIVATE_KEY) {
-  throw new Error("SENDER_PRIVATE_KEY missing");
-}
-
-if (!process.env.RPC_URL) {
-  throw new Error("RPC_URL missing");
-}
-
-const RPC_URL = process.env.RPC_URL;
 const provider = new ethers.JsonRpcProvider(RPC_URL);
+
 const wallet = new ethers.Wallet(
-  process.env.SENDER_PRIVATE_KEY,
+  RECIVER_PRIVATE_KEY,
   provider
 );
 
 console.log("Rule Creator:", wallet.address);
-
-const RULE_ITEM_ERC721 =
-  "0x92c9451Acf88a342Ad3937691F8d5586C3e1e289";
-
 const ruleNFT = new ethers.Contract(
   RULE_ITEM_ERC721,
   ruleAbi.abi,
   wallet
 );
 
-const { url: RULE_URI } = await mainPinata();
+const { url: RULE_URI, metadata: RULE_OBJECT } = await mainPinata();
 
-async function main() {
+export async function mainRule() {
   const canonicalRuleJSON = canonicalize(RULE_OBJECT);
 
   const ruleHash = keccak256(
@@ -86,6 +67,6 @@ async function main() {
 
   console.log("🎟 NFT tokenId:", tokenId.toString());
   console.log("🎉 DONE – Rule NFT ready");
-}
 
-main().catch(console.error);
+  return { ruleTokenId: tokenId };
+}
