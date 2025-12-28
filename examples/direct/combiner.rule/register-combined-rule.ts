@@ -152,3 +152,26 @@ async function main() {
 }
 
 main().catch(console.error);
+// ========== RESPONSE ==========
+// Rule Owner: 0x73F98364f6B62a5683F2C14ae86a23D7288f6106
+// Metadata URL: https://gateway.pinata.cloud/ipfs/bafkreigxgajtxtga2ewji7eldvqss5mgqscourrwnfaufeughutt46zxxa
+// Rule loaded from NFT metadata:
+// {
+//   id: "min_amount",
+//   if: {
+//     field: "tx.amount",
+//     op: ">=",
+//     value: "100000000",
+//   },
+// }
+// Canonical combined rule JSON:
+// {"logic":"AND","rules":[{"id":"min_amount","if":{"field":"tx.amount","op":">=","value":"100000000"}}],"version":"1"}
+// ruleSetHash: 0x24d8ed4f9a393c230cae05ab216a692033bbfacc1ba3767f41428061615f7899
+// Rule NFT ownership verified
+// Registering combined rule...
+// registerCombinedRule tx: 0xceaf23fca4364cb19350460fb2cdbdb13e8ed236a5721b075a75921631fa512e
+// Combined rule registered
+// Resolved owner: 0x73F98364f6B62a5683F2C14ae86a23D7288f6106
+// Resolved version: 1
+// Rule[0] NFT: 0x92c9451Acf88a342Ad3937691F8d5586C3e1e289 tokenId: 1
+// DONE - ruleSet active
