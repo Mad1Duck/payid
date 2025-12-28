@@ -63,9 +63,7 @@ export default defineConfig({
       accounts: {
         mnemonic: process.env.MNEMONIC ?? ""
       },
-      ignition: {
-
-      }
+      ignition: {}
       // accounts: [configVariable("DEPLOYER_PRIVATE_KEY")],
     },
 

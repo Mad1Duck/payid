@@ -43,7 +43,7 @@ export class PayID implements PayIDClient, PayIDServer {
   async evaluateAndProve(params: {
     context: RuleContext;
     rule: RuleConfig | RuleSource;
-
+    evaluateAndProve: string;
     payId: string;
 
     payer: string;

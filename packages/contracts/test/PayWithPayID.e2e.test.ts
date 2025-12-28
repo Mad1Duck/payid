@@ -140,11 +140,11 @@ describe("PayWithPayID ERC20 E2E (FIXED)", async () => {
       "combined-rule-v1:min_amount"
     );
 
-    await ruleStorage.write.registerRule(
+    await ruleStorage.write.registerCombinedRule(
       [
         ruleSetHash,
-        ruleNFT.address,
-        tokenId,
+        [ruleNFT.address],
+        [tokenId],
         1n
       ],
       { account: merchantWallet.account }

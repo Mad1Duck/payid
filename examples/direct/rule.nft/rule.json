@@ -1,0 +1,29 @@
+{
+  "name": "PAY.ID Rule – Min Amount",
+  "description": "PAY.ID rule enforcing minimum transaction amount",
+  "image": "https://gateway.pinata.cloud/ipfs/bafkreicblmrmynguw23vmovqq3kvu3zeb5i47bfv7x42s4q3yn44cnyy3e",
+  "attributes": [
+    {
+      "trait_type": "Rule ID",
+      "value": "min_amount"
+    },
+    {
+      "trait_type": "Engine",
+      "value": "PAY.ID"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Transaction Rule"
+    }
+  ],
+  "rule": {
+    "id": "min_amount",
+    "if": {
+      "field": "tx.amount",
+      "op": ">=",
+      "value": "100000000"
+    }
+  },
+  "ruleHash": "0x4660f1a422dd5d085d0794fe3bc0905049d372c0b6afd470cc6339324dbca7b0",
+  "standard": "payid.rule.v1"
+}

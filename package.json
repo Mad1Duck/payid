@@ -17,6 +17,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "pinata": "^2.5.2"
   }
 }
