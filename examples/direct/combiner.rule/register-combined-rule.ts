@@ -5,6 +5,7 @@ import combinedAbi from "./CombinedRuleStorage.abi.json";
 import { canonicalize } from "../../utils/cannonicalize";
 import { envData } from "../../config/config";
 import { mainRule } from "../rule.nft/create-rule-item";
+// import { mainRule } from "../rule.nft/create-rule-item";
 
 const { rpcUrl: RPC_URL, contract: { ruleItemERC721: RULE_ITEM_ERC721, combinedRuleStorage: COMBINED_RULE_STORAGE }, account: { receiverPk: RECIVER_PRIVATE_KEY, } } = envData;
 
@@ -138,7 +139,7 @@ main().catch(console.error);
 // ruleSetHash: 0x24d8ed4f9a393c230cae05ab216a692033bbfacc1ba3767f41428061615f7899
 // Rule NFT ownership verified
 // Registering combined rule...
-// registerCombinedRule tx: 0xceaf23fca4364cb19350460fb2cdbdb13e8ed236a5721b075a75921631fa512e
+// registerCombinedRule tx: 0x3c5cd3091ac21aa13c46e7593a40fc235a7469217fb41ca82f2076f6403ac8a7
 // Combined rule registered
 // Resolved owner: 0x73F98364f6B62a5683F2C14ae86a23D7288f6106
 // Resolved version: 1

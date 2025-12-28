@@ -10,11 +10,15 @@ import usdcAbi from "./usdc.abi.json";
 import ruleAbi from "./rule.nft/RuleItemERC721.abi.json";
 import combinedAbi from "./combiner.rule/CombinedRuleStorage.abi.json";
 
-const { rpcUrl: RPC_URL, contract: { mockUSDC: USDC, payIdVerifier: PAYID_VERIFIER, payWithPayId: PAY_CONTRACT, combinedRuleStorage: COMBINED_RULE_STORAGE }, account: { senderPk: SENDER_PRIVATE_KEY } } = envData;
+const { rpcUrl: RPC_URL, contract: { ruleItemERC721: RULE_ITEM_ERC721, mockUSDC: USDC, payIdVerifier: PAYID_VERIFIER, payWithPayId: PAY_CONTRACT, combinedRuleStorage: COMBINED_RULE_STORAGE }, account: { senderPk: SENDER_PRIVATE_KEY, receiverPk: RECIVER_PRIVATE_KEY } } = envData;
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(
   SENDER_PRIVATE_KEY,
+  provider
+);
+const walletReciver = new ethers.Wallet(
+  RECIVER_PRIVATE_KEY,
   provider
 );
 
@@ -192,6 +196,27 @@ async function main() {
     usdcAbi,
     wallet
   );
+
+  // if forgot to subscribe
+  // const ruleNFT = new ethers.Contract(
+  //   RULE_ITEM_ERC721,
+  //   ruleAbi.abi,
+  //   walletReciver
+  // );
+
+  // const price: bigint = await (ruleNFT as any).subscriptionPriceETH();
+
+  // const now = BigInt(Math.floor(Date.now() / 1000));
+
+  // const txSubscribe = await (ruleNFT as any).extendRuleExpiry(
+  //   1n,
+  //   now + 30n * 24n * 60n * 60n,
+  //   {
+  //     value: price
+  //   }
+  // );
+
+  // await txSubscribe.wait();
 
   const allowance = await (usdc as any).allowance(
     wallet.address,
