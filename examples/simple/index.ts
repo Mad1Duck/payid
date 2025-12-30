@@ -193,7 +193,7 @@ async function main() {
       authorityRule: {
         version: activeRule?.version ?? "1",
         logic: "AND",
-        rules: testRule.rules
+        rules: rules
       },
       payId: "pay.id/lisk-sepolia-demo",
       payer: context.tx.sender,

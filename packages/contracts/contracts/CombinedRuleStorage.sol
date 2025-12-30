@@ -6,27 +6,6 @@ interface IRuleLicense {
     function ruleExpiry(uint256 tokenId) external view returns (uint256);
 }
 
-/**
- * @title CombinedRuleStorage
- * @notice Registry of ACTIVE combined ruleSets (multi-rule NFT composition)
- *
- * DESIGN INVARIANTS:
- * - Each owner may have ONLY ONE active combined rule at any time
- * - Registering a new combined rule automatically deactivates the previous one
- * - A combined rule references a SUBSET of rule NFTs owned by the caller
- * - Each combined rule may reference MULTIPLE rule NFTs (up to MAX_RULES)
- * - Ownership is enforced via ERC-721 rule license NFTs
- * - Rule evaluation logic (AND / OR / thresholds / windows) lives OFF-CHAIN
- * - On-chain state stores ONLY:
- *     - canonical ruleSetHash (bytes32)
- *     - rule NFT references (contract + tokenId)
- *     - owner + active state
- *
- * NON-GOALS:
- * - No rule logic execution on-chain
- * - No JSON / string / condition storage
- * - No per-transaction rule evaluation
- */
 contract CombinedRuleStorage {
     /* ===================== STRUCT ===================== */
 
@@ -37,18 +16,27 @@ contract CombinedRuleStorage {
 
     struct CombinedRule {
         address owner;
-        bytes32 ruleSetHash;   
+        bytes32 ruleSetHash;
         RuleRef[] rules;
         uint64 version;
         bool active;
     }
 
+    enum RuleDirection {
+        INBOUND,
+        OUTBOUND
+    }
+
     /* ===================== STORAGE ===================== */
 
     uint256 public constant MAX_RULES = 10;
+
     mapping(bytes32 => CombinedRule) private rules;
 
     mapping(address => bytes32) public activeRuleOf;
+
+    mapping(address => mapping(RuleDirection => bytes32))
+        public activeRuleOfByDirection;
 
     bytes32[] private allRuleSetHashes;
     mapping(bytes32 => bool) private exists;
@@ -61,14 +49,19 @@ contract CombinedRuleStorage {
         uint64 version
     );
 
-    event CombinedRuleDeactivated(
-        bytes32 indexed ruleSetHash
-    );
+    event CombinedRuleDeactivated(bytes32 indexed ruleSetHash);
 
     event CombinedRuleOwnershipSynced(
         bytes32 indexed ruleSetHash,
         address indexed oldOwner,
         address indexed newOwner
+    );
+
+    event CombinedRuleRegisteredWithDirection(
+        bytes32 indexed ruleSetHash,
+        address indexed owner,
+        RuleDirection indexed direction,
+        uint64 version
     );
 
     /* ===================== VIEW ===================== */
@@ -94,6 +87,14 @@ contract CombinedRuleStorage {
         require(ruleSetHash != bytes32(0), "NO_ACTIVE_RULE");
     }
 
+    function getActiveRuleOfByDirection(
+        address owner,
+        RuleDirection direction
+    ) external view returns (bytes32 ruleSetHash) {
+        ruleSetHash = activeRuleOfByDirection[owner][direction];
+        require(ruleSetHash != bytes32(0), "NO_ACTIVE_RULE_FOR_DIRECTION");
+    }
+
     function getRuleByHash(
         bytes32 ruleSetHash
     )
@@ -113,34 +114,64 @@ contract CombinedRuleStorage {
 
     /* ===================== MUTATION ===================== */
 
-    /**
-     * @notice Register & activate a new combined rule
-     *
-     * @param ruleSetHash canonical hash of combined rule JSON
-     * @param ruleNFTs list of rule NFT contracts
-     * @param tokenIds list of rule NFT tokenIds
-     * @param version combined rule version
-     *
-     * REQUIREMENTS:
-     * - ruleNFTs.length == tokenIds.length
-     * - caller must own ALL rule NFTs
-     * - deactivates previous combined rule of caller
-     */
     function registerCombinedRule(
         bytes32 ruleSetHash,
         address[] calldata ruleNFTs,
         uint256[] calldata tokenIds,
         uint64 version
     ) external {
+        _registerInternal(
+            ruleSetHash,
+            ruleNFTs,
+            tokenIds,
+            version,
+            true,
+            RuleDirection.OUTBOUND
+        );
+    }
+
+    function registerCombinedRuleForDirection(
+        bytes32 ruleSetHash,
+        RuleDirection direction,
+        address[] calldata ruleNFTs,
+        uint256[] calldata tokenIds,
+        uint64 version
+    ) external {
+        _registerInternal(
+            ruleSetHash,
+            ruleNFTs,
+            tokenIds,
+            version,
+            false,
+            direction
+        );
+    }
+
+    function _registerInternal(
+        bytes32 ruleSetHash,
+        address[] calldata ruleNFTs,
+        uint256[] calldata tokenIds,
+        uint64 version,
+        bool legacy,
+        RuleDirection direction
+    ) internal {
         require(ruleSetHash != bytes32(0), "INVALID_HASH");
         require(ruleNFTs.length > 0, "EMPTY_RULE_SET");
         require(ruleNFTs.length <= MAX_RULES, "MAX_10_RULES");
         require(ruleNFTs.length == tokenIds.length, "ARRAY_LENGTH_MISMATCH");
 
-        bytes32 prev = activeRuleOf[msg.sender];
-        if (prev != bytes32(0)) {
-            rules[prev].active = false;
-            emit CombinedRuleDeactivated(prev);
+        if (legacy) {
+            bytes32 prev = activeRuleOf[msg.sender];
+            if (prev != bytes32(0)) {
+                rules[prev].active = false;
+                emit CombinedRuleDeactivated(prev);
+            }
+        } else {
+            bytes32 prev = activeRuleOfByDirection[msg.sender][direction];
+            if (prev != bytes32(0)) {
+                rules[prev].active = false;
+                emit CombinedRuleDeactivated(prev);
+            }
         }
 
         if (!exists[ruleSetHash]) {
@@ -170,16 +201,21 @@ contract CombinedRuleStorage {
         r.version = version;
         r.active = true;
 
-        activeRuleOf[msg.sender] = ruleSetHash;
-
-        emit CombinedRuleRegistered(ruleSetHash, msg.sender, version);
+        if (legacy) {
+            activeRuleOf[msg.sender] = ruleSetHash;
+            emit CombinedRuleRegistered(ruleSetHash, msg.sender, version);
+        } else {
+            activeRuleOfByDirection[msg.sender][direction] = ruleSetHash;
+            emit CombinedRuleRegisteredWithDirection(
+                ruleSetHash,
+                msg.sender,
+                direction,
+                version
+            );
+        }
     }
 
-
-    /**
-     * @notice Deactivate caller's active combined rule
-     */
-    function deactivateMyCombinedRule() external {
+        function deactivateMyCombinedRule() external {
         bytes32 hash = activeRuleOf[msg.sender];
         require(hash != bytes32(0), "NO_ACTIVE_RULE");
 
