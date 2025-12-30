@@ -22,8 +22,6 @@ export interface PayIDServer {
     evaluationRule?: RuleConfig,        // rule evaluasi (off-chain)
 
     payId: string;
-    ruleAuthority: string;
-
     payer: string;
     receiver: string;
 
@@ -31,6 +29,7 @@ export interface PayIDServer {
     amount: bigint;
 
     signer: ethers.Signer;
+    verifyingContract: string;
     ruleRegistryContract: string;
     ttlSeconds?: number;
   }): Promise<{

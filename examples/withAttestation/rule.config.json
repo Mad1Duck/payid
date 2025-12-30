@@ -1,0 +1,23 @@
+{
+  "version": "1",
+  "logic": "AND",
+  "requires": ["state.spentToday", "oracle.country"],
+  "rules": [
+    {
+      "id": "limit_and_geo",
+      "if": {
+        "field": "state.spentToday",
+        "op": "<=",
+        "value": "5000000"
+      }
+    },
+    {
+      "id": "geo_check",
+      "if": {
+        "field": "oracle.country",
+        "op": "in",
+        "value": ["ID"]
+      }
+    }
+  ]
+}

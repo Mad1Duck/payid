@@ -217,13 +217,13 @@ export class PayID implements PayIDClient, PayIDServer {
     payId: string;
 
     payer: string;
-    ruleAuthority: string;
     receiver: string;
 
     asset: string;
     amount: bigint;
 
     signer: ethers.Signer;
+    verifyingContract: string;
     ruleRegistryContract: string;
     ttlSeconds?: number;
   }): Promise<{ result: RuleResult; proof: any | null; }> {
@@ -256,11 +256,11 @@ export class PayID implements PayIDClient, PayIDServer {
 
       asset: params.asset,
       amount: params.amount,
-      ruleAuthority: params.ruleAuthority,
       context: params.context,
       ruleConfig: authorityConfig,
 
       signer: params.signer,
+      verifyingContract: params.verifyingContract,
       ruleRegistryContract: params.ruleRegistryContract,
       ttlSeconds: params.ttlSeconds
     });
@@ -352,39 +352,3 @@ export class PayID implements PayIDClient, PayIDServer {
     });
   }
 }
-
-
-// const context: ContextV2 = {
-//   tx: {
-//     asset: "USDC",
-//     amount: "1000000",
-//     chainId: 1
-//   },
-
-//   env: {
-//     timestamp: 1730000000,
-//     proof: { ... } // signed attestation
-//   },
-
-//   state: {
-//     spentToday: "2500000",
-//     period: "DAY",
-//     proof: { ... }
-//   },
-
-//   risk: {
-//     score: 72,
-//     category: "MEDIUM",
-//     proof: {
-//       issuer: "0xRiskIssuer",
-//       issuedAt: ...,
-//       expiresAt: ...,
-//       signature: "...",
-//       modelHash: "0xModelHash"
-//     }
-//   }
-// };
-
-// await evaluate(wasm, context, ruleConfig, {
-//   trustedIssuers
-// });

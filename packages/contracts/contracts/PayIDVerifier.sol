@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-/* ===================== IMPORTS ===================== */
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-/* ===================== INTERFACES ===================== */
 interface IRuleLicense {
     function ruleExpiry(uint256 tokenId) external view returns (uint256);
     function ownerOf(uint256 tokenId) external view returns (address);
@@ -38,7 +36,7 @@ contract PayIDVerifier is EIP712 {
 
     bytes32 public constant DECISION_TYPEHASH =
         keccak256(
-            "Decision(bytes32 version,bytes32 payId,address payer,address receiver,address asset,uint256 amount,bytes32 contextHash,bytes32 ruleSetHash,address ruleAuthority,uint64 issuedAt,uint64 expiresAt,bytes32 nonce)"
+            "Decision(bytes32 version,bytes32 payId,address payer,address receiver,address asset,uint256 amount,bytes32 contextHash,bytes32 ruleSetHash,address ruleAuthority,uint64 issuedAt,uint64 expiresAt,bytes32 nonce,bool requiresAttestation)"
         );
 
     /* ===================== STORAGE ===================== */
@@ -73,6 +71,7 @@ contract PayIDVerifier is EIP712 {
         uint64 expiresAt;
 
         bytes32 nonce;
+        bool requiresAttestation;
     }
 
     /* ===================== HASHING ===================== */
@@ -95,7 +94,8 @@ contract PayIDVerifier is EIP712 {
                     d.ruleAuthority,
                     d.issuedAt,
                     d.expiresAt,
-                    d.nonce
+                    d.nonce,
+                    d.requiresAttestation
                 )
             )
         );

@@ -3,6 +3,22 @@
   "logic": "AND",
   "rules": [
     {
+      "id": "token_allowlist",
+      "if": {
+        "field": "tx.asset",
+        "op": "in",
+        "value": ["USDT", "USDC"]
+      }
+    },
+    {
+      "id": "token_blocklist",
+      "if": {
+        "field": "tx.asset",
+        "op": "not_in",
+        "value": ["ETH"]
+      }
+    },
+    {
       "id": "min_amount",
       "if": {
         "field": "tx.amount",
@@ -11,11 +27,43 @@
       }
     },
     {
-      "id": "token_allowlist",
+      "id": "max_amount",
       "if": {
-        "field": "tx.asset",
-        "op": "in",
-        "value": ["USDT", "USDC"]
+        "field": "tx.amount",
+        "op": "<=",
+        "value": "200000000"
+      }
+    },
+    {
+      "id": "operational_hours",
+      "if": {
+        "field": "env.timestamp",
+        "op": "between",
+        "value": [9, 17]
+      }
+    },
+    {
+      "id": "no_night_spend",
+      "if": {
+        "field": "env.timestamp",
+        "op": "not_between",
+        "value": [22, 18]
+      }
+    },
+    {
+      "id": "daily_limit",
+      "if": {
+        "field": "state.spentTodayPlusTx",
+        "op": "<=",
+        "value": "500000000"
+      }
+    },
+    {
+      "id": "monthly_limit",
+      "if": {
+        "field": "state.spentThisMonthPlusTx",
+        "op": "<=",
+        "value": "10000000000"
       }
     }
   ]

@@ -1,8 +1,7 @@
-import { ethers, keccak256, toUtf8Bytes } from "ethers";
+import { ethers } from "ethers";
 import fs from "fs";
-import { createPayID } from "payid";
 import path from "path";
-import { canonicalize } from "../utils/cannonicalize";
+import { createPayID } from "payid";
 import { envData } from "../config/config";
 
 import payAbi from "./abi.json";
@@ -10,18 +9,14 @@ import usdcAbi from "./usdc.abi.json";
 import ruleAbi from "./rule.nft/RuleItemERC721.abi.json";
 import combinedAbi from "./combiner.rule/CombinedRuleStorage.abi.json";
 import { qrPayloadData } from "./qr";
-import { decodeRulesPolicy } from "payid/sessionPolicy";
+import { decodeSessionPolicy } from "payid/sessionPolicy";
 import { combineRules } from "payid/rule";
-
-const { rpcUrl: RPC_URL, contract: { ruleItemERC721: RULE_ITEM_ERC721, mockUSDC: USDC, payIdVerifier: PAYID_VERIFIER, payWithPayId: PAY_CONTRACT, combinedRuleStorage: COMBINED_RULE_STORAGE }, account: { senderPk: SENDER_PRIVATE_KEY, receiverPk: RECIVER_PRIVATE_KEY } } = envData;
+import testRule from "./rule.config.json";
+const { rpcUrl: RPC_URL, contract: { mockUSDC: USDC, payIdVerifier: PAYID_VERIFIER, payWithPayId: PAY_CONTRACT, combinedRuleStorage: COMBINED_RULE_STORAGE }, account: { senderPk: SENDER_PRIVATE_KEY, } } = envData;
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(
   SENDER_PRIVATE_KEY,
-  provider
-);
-const walletReciver = new ethers.Wallet(
-  RECIVER_PRIVATE_KEY,
   provider
 );
 
@@ -33,7 +28,7 @@ const wasm = new Uint8Array(
   )
 );
 
-const payid = createPayID({ wasm });
+const payid = createPayID({ wasm, debugTrace: false });
 
 const combined = new ethers.Contract(
   COMBINED_RULE_STORAGE,
@@ -132,12 +127,12 @@ async function main() {
 
   const qrPayload = JSON.parse(qrString);
 
-  const qrRules = decodeRulesPolicy(
+  const qrRules = decodeSessionPolicy(
     qrPayload,
     Math.floor(Date.now() / 1000)
   );
 
-  const amount = 150_000n;
+  const amount = 150_000_000n;
   const receiver =
     "0x73F98364f6B62a5683F2C14ae86a23D7288f6106";
 
@@ -149,11 +144,25 @@ async function main() {
     chainId: 4202,
   };
 
+  const now = new Date();
+  const hour = now.getHours();
+
+  const spentThisMonth = 12_000_000n;
+  const txAmount = BigInt(intent.amount);
+
   const context = {
     tx: intent,
     payId: {
       id: "pay.id/lisk-sepolia-demo",
       owner: receiver
+    },
+    env: {
+      timestamp: hour
+    },
+
+    state: {
+      spentTodayPlusTx: (amount + txAmount).toString(),
+      spentThisMonthPlusTx: (spentThisMonth + txAmount).toString()
     }
   };
 
@@ -167,7 +176,7 @@ async function main() {
       logic: "AND",
       rules: rules
     },
-    qrRules
+    qrRules.rules
   );
 
   // const canonicalRuleSet = canonicalize({
@@ -180,22 +189,28 @@ async function main() {
   const { result, proof } =
     await payid.evaluateAndProve({
       context,
-      rule: finalRule,
+      // evaluationRule: finalRule,
+      authorityRule: {
+        version: activeRule?.version ?? "1",
+        logic: "AND",
+        rules: testRule.rules
+      },
       payId: "pay.id/lisk-sepolia-demo",
       payer: context.tx.sender,
       receiver: context.tx.receiver,
       asset: USDC,
       amount,
       signer: wallet,
-      verifyingContract: PAYID_VERIFIER,
       ttlSeconds: 60,
-      ruleAuthority: COMBINED_RULE_STORAGE
+      verifyingContract: PAYID_VERIFIER,
+      ruleRegistryContract: COMBINED_RULE_STORAGE,
     });
 
-  console.log("mockUSDC: ", USDC, "payIdVerifier: ", PAYID_VERIFIER, "payWithPayId: ", PAY_CONTRACT, "combinedRuleStorage: ", COMBINED_RULE_STORAGE);
 
 
-  // return;
+  console.log(JSON.stringify({ result }, proof));
+
+  return;
 
   if (!proof) {
     console.log(result);

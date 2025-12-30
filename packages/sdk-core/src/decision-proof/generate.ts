@@ -10,7 +10,6 @@ export async function generateDecisionProof(params: {
   payId: string;
 
   payer: string;
-  ruleAuthority: string;
   receiver: string;
 
   asset: string;        // address(0) = ETH
@@ -21,12 +20,17 @@ export async function generateDecisionProof(params: {
 
   signer: ethers.Signer;
   ruleRegistryContract: string;
+  verifyingContract: string;
   ttlSeconds?: number;
 }): Promise<DecisionProof> {
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = now + (params.ttlSeconds ?? 60);
 
   const network = await params.signer.provider!.getNetwork();
+
+  const requiresAttestation =
+    Array.isArray(params.ruleConfig?.requires) &&
+    params.ruleConfig.requires.length > 0;
 
   const payload: DecisionPayload = {
     version: hash("2"),
@@ -40,18 +44,19 @@ export async function generateDecisionProof(params: {
 
     contextHash: hashContext(params.context),
     ruleSetHash: hashRuleSet(params.ruleConfig),
-    ruleAuthority: params.ruleAuthority ?? ZeroAddress,
+    ruleAuthority: params.ruleRegistryContract ?? ZeroAddress,
     issuedAt: BigInt(now),
     expiresAt: BigInt(expiresAt),
 
     nonce: randomHex(32),
+    requiresAttestation
   };
 
   const domain = {
     name: "PAY.ID Decision",
     version: "2",
     chainId: Number(network.chainId),
-    ruleRegistryContract: params.ruleRegistryContract,
+    verifyingContract: params.verifyingContract,
   };
 
   const types = {
@@ -72,6 +77,7 @@ export async function generateDecisionProof(params: {
       { name: "expiresAt", type: "uint64" },
 
       { name: "nonce", type: "bytes32" },
+      { name: "requiresAttestation", type: "bool" },
     ],
   };
 

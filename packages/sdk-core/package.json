@@ -17,6 +17,14 @@
     "./rule": {
       "import": "./dist/rule/index.js",
       "types": "./dist/rule/index.d.ts"
+    },
+    "./issuer": {
+      "import": "./dist/issuer/index.js",
+      "types": "./dist/issuer/index.d.ts"
+    },
+    "./context": {
+      "import": "./dist/context/index.js",
+      "types": "./dist/context/index.d.ts"
     }
   },
   "dependencies": {
@@ -29,7 +37,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
-    "build2": "tsup src/index.ts src/sessionPolicy/index.ts src/rule/index.ts --format esm --dts --clean"
+    "build2": "tsup src/index.ts src/sessionPolicy/index.ts src/rule/index.ts src/issuer/index.ts src/context/index.ts --format esm --dts --clean"
   },
   "devDependencies": {
     "@types/bun": "latest",

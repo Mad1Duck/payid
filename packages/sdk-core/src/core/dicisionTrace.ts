@@ -1,18 +1,56 @@
 import type { RuleConfig, RuleContext, RuleTraceEntry } from "payid-types";
 
+function toBigIntSafe(v: any): bigint | null {
+  try {
+    if (typeof v === "bigint") return v;
+    if (typeof v === "number" && Number.isFinite(v)) {
+      return BigInt(Math.trunc(v));
+    }
+    if (typeof v === "string" && v !== "") {
+      return BigInt(v);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function getValueByPath(obj: any, path: string) {
   return path.split(".").reduce((o, k) => o?.[k], obj);
 }
 
-function evaluateCondition(actual: any, op: string, expected: any): boolean {
+function evaluateCondition(
+  actual: any,
+  op: string,
+  expected: any
+): boolean {
   switch (op) {
-    case ">=": return BigInt(actual) >= BigInt(expected);
-    case "<=": return BigInt(actual) <= BigInt(expected);
-    case ">": return BigInt(actual) > BigInt(expected);
-    case "<": return BigInt(actual) < BigInt(expected);
-    case "==": return actual == expected;
-    case "in": return Array.isArray(expected) && expected.includes(actual);
-    default: return false;
+    case ">=":
+    case "<=":
+    case ">":
+    case "<": {
+      const a = toBigIntSafe(actual);
+      const b = toBigIntSafe(expected);
+      if (a === null || b === null) return false;
+
+      if (op === ">=") return a >= b;
+      if (op === "<=") return a <= b;
+      if (op === ">") return a > b;
+      if (op === "<") return a < b;
+      return false;
+    }
+
+    case "==":
+      return actual == expected;
+
+    case "in":
+      return Array.isArray(expected) && expected.includes(actual);
+
+    case "not_in":
+      return Array.isArray(expected) && !expected.includes(actual);
+
+    default:
+      return false;
   }
 }
 
@@ -31,7 +69,9 @@ export function buildDecisionTrace(
       op: cond.op,
       expected: cond.value,
       actual,
-      result: pass ? "PASS" : "FAIL"
+      result: actual === undefined
+        ? "FAIL"
+        : pass ? "PASS" : "FAIL"
     };
   });
 }

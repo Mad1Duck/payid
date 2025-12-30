@@ -1,10 +1,10 @@
 
 import type { Wallet } from "ethers";
 import type { ContextV1, ContextV2 } from "payid-types";
-import { issueEnvContext } from "../Issuer/issueEnvContext";
-import { issueStateContext } from "../Issuer/issueStateContext";
-import { issueOracleContext } from "../Issuer/issueOracleContext";
-import { issueRiskContext } from "../Issuer/issueRiskContext";
+import { issueEnvContext } from "../issuer/issueEnvContext";
+import { issueStateContext } from "../issuer/issueStateContext";
+import { issueOracleContext } from "../issuer/issueOracleContext";
+import { issueRiskContext } from "../issuer/issueRiskContext";
 
 /**
  * Build an attested Context V2 object from a base execution context
