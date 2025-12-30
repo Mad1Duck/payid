@@ -5,16 +5,31 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/types.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./sessionPolicy": {
+      "import": "./dist/sessionPolicy/index.js",
+      "types": "./dist/sessionPolicy/index.d.ts"
+    },
+    "./rule": {
+      "import": "./dist/rule/index.js",
+      "types": "./dist/rule/index.d.ts"
+    }
+  },
   "dependencies": {
     "ethers": "^6.16.0",
     "payid-rule-engine": "^0.1.1",
-    "payid-types": "^0.1.1"
+    "payid-types": "^0.1.3"
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean"
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "build2": "tsup src/index.ts src/sessionPolicy/index.ts src/rule/index.ts --format esm --dts --clean"
   },
   "devDependencies": {
     "@types/bun": "latest",

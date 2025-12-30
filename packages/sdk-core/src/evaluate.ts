@@ -1,6 +1,7 @@
-import type { RuleContext, RuleResult, RuleConfig } from "payid-types";
+import type { RuleContext, RuleResult, RuleConfig, RuleResultDebug } from "payid-types";
 import { executeRule, preprocessContextV2 } from "payid-rule-engine";
 import { normalizeContext } from "./normalize";
+import { buildDecisionTrace } from "./core/dicisionTrace";
 
 /**
  * Evaluate rule using WASM engine.
@@ -15,8 +16,9 @@ export async function evaluate(
   ruleConfig: RuleConfig,
   options?: {
     trustedIssuers?: Set<string>;
+    debug?: boolean;
   }
-): Promise<RuleResult> {
+): Promise<RuleResult | RuleResultDebug> {
   // ---- basic validation (v1 behavior) ----
   if (!context || typeof context !== "object") {
     throw new Error("evaluate(): context is required");
@@ -47,13 +49,11 @@ export async function evaluate(
     const normalized = normalizeContext(preparedContext);
 
     // ---- WASM binary adapter ----
-    // payid-rule-engine still expects Buffer
     const wasmForEngine =
       typeof Buffer !== "undefined" && !(wasmBinary instanceof Buffer)
         ? Buffer.from(wasmBinary)
         : wasmBinary;
 
-    // ---- execute rule engine ----
     result = await executeRule(
       wasmForEngine as any,
       normalized,
@@ -67,7 +67,6 @@ export async function evaluate(
     };
   }
 
-  // ---- output validation ----
   if (result.decision !== "ALLOW" && result.decision !== "REJECT") {
     return {
       decision: "REJECT",
@@ -76,9 +75,20 @@ export async function evaluate(
     };
   }
 
-  return {
+  const baseResult: RuleResult = {
     decision: result.decision,
     code: result.code || "UNKNOWN",
     reason: result.reason
   };
+
+  if (options?.debug) {
+    return {
+      ...baseResult,
+      debug: {
+        trace: buildDecisionTrace(context, ruleConfig)
+      }
+    };
+  }
+
+  return baseResult;
 }

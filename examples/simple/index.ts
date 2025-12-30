@@ -9,6 +9,9 @@ import payAbi from "./abi.json";
 import usdcAbi from "./usdc.abi.json";
 import ruleAbi from "./rule.nft/RuleItemERC721.abi.json";
 import combinedAbi from "./combiner.rule/CombinedRuleStorage.abi.json";
+import { qrPayloadData } from "./qr";
+import { decodeRulesPolicy } from "payid/sessionPolicy";
+import { combineRules } from "payid/rule";
 
 const { rpcUrl: RPC_URL, contract: { ruleItemERC721: RULE_ITEM_ERC721, mockUSDC: USDC, payIdVerifier: PAYID_VERIFIER, payWithPayId: PAY_CONTRACT, combinedRuleStorage: COMBINED_RULE_STORAGE }, account: { senderPk: SENDER_PRIVATE_KEY, receiverPk: RECIVER_PRIVATE_KEY } } = envData;
 
@@ -125,7 +128,16 @@ async function getActiveRuleOfOwner(owner: string) {
 
 async function main() {
 
-  const amount = 150_000_000n;
+  const qrString = JSON.stringify(await qrPayloadData());
+
+  const qrPayload = JSON.parse(qrString);
+
+  const qrRules = decodeRulesPolicy(
+    qrPayload,
+    Math.floor(Date.now() / 1000)
+  );
+
+  const amount = 150_000n;
   const receiver =
     "0x73F98364f6B62a5683F2C14ae86a23D7288f6106";
 
@@ -149,25 +161,26 @@ async function main() {
 
   const rules = await loadRulesFromCombinedRule(activeRule);
 
-  const canonicalRuleSet = canonicalize({
-    version: activeRule?.version ?? "1",
-    logic: "AND",
-    rules
-  });
-
-  const ruleSetHash = keccak256(
-    toUtf8Bytes(canonicalRuleSet)
+  const finalRule = combineRules(
+    {
+      version: activeRule?.version ?? "1",
+      logic: "AND",
+      rules: rules
+    },
+    qrRules
   );
+
+  // const canonicalRuleSet = canonicalize({
+  //   version: activeRule?.version ?? "1",
+  //   logic: "AND",
+  //   rules
+  // });
 
   // ruleSetHash
   const { result, proof } =
     await payid.evaluateAndProve({
       context,
-      rule: {
-        version: activeRule?.version ?? "1",
-        logic: "AND",
-        rules
-      },
+      rule: finalRule,
       payId: "pay.id/lisk-sepolia-demo",
       payer: context.tx.sender,
       receiver: context.tx.receiver,
@@ -179,7 +192,6 @@ async function main() {
       ruleAuthority: COMBINED_RULE_STORAGE
     });
 
-  console.log(proof.payload, ruleSetHash);
   console.log("mockUSDC: ", USDC, "payIdVerifier: ", PAYID_VERIFIER, "payWithPayId: ", PAY_CONTRACT, "combinedRuleStorage: ", COMBINED_RULE_STORAGE);
 
 

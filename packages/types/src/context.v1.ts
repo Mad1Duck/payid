@@ -10,6 +10,12 @@ export interface RuleContext {
     id: string;
     owner: string;
   };
+  intent?: {
+    type: "QR" | "DIRECT" | "API";
+    expiresAt?: number;
+    nonce?: string;
+    issuer?: string;
+  };
 }
 export interface TxContext {
   sender: string;

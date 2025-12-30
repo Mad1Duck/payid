@@ -1,7 +1,8 @@
 import type {
   RuleContext,
   RuleResult,
-  RuleConfig
+  RuleConfig,
+  RuleTraceEntry
 } from "payid-types";
 import type { RuleSource } from "../resolver/types";
 import type { UserOperation } from "../erc4337/types";
@@ -17,7 +18,8 @@ export interface PayIDClient {
 export interface PayIDServer {
   evaluateAndProve(params: {
     context: RuleContext;
-    rule: RuleConfig | RuleSource;
+    authorityRule: RuleConfig,       // rule berdaulat (on-chain)
+    evaluationRule?: RuleConfig,        // rule evaluasi (off-chain)
 
     payId: string;
     ruleAuthority: string;
@@ -29,7 +31,7 @@ export interface PayIDServer {
     amount: bigint;
 
     signer: ethers.Signer;
-    verifyingContract: string;
+    ruleRegistryContract: string;
     ttlSeconds?: number;
   }): Promise<{
     result: RuleResult;
@@ -44,4 +46,9 @@ export interface PayIDServer {
     targetContract: string;
     paymasterAndData?: string;
   }): UserOperation;
+}
+export interface RuleResultDebug extends RuleResult {
+  debug: {
+    trace: RuleTraceEntry[];
+  };
 }

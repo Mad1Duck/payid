@@ -20,7 +20,7 @@ export async function generateDecisionProof(params: {
   ruleConfig: any;
 
   signer: ethers.Signer;
-  verifyingContract: string;
+  ruleRegistryContract: string;
   ttlSeconds?: number;
 }): Promise<DecisionProof> {
   const now = Math.floor(Date.now() / 1000);
@@ -51,7 +51,7 @@ export async function generateDecisionProof(params: {
     name: "PAY.ID Decision",
     version: "2",
     chainId: Number(network.chainId),
-    verifyingContract: params.verifyingContract,
+    ruleRegistryContract: params.ruleRegistryContract,
   };
 
   const types = {
