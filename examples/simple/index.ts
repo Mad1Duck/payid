@@ -207,9 +207,6 @@ async function main() {
     });
 
 
-
-  console.log(JSON.stringify({ result }, proof));
-
   return;
 
   if (!proof) {
@@ -269,11 +266,15 @@ async function main() {
 
   console.log("⏳ Sending transaction...");
 
+  if (!proof) {
+    throw new Error("proof is empty");
+  }
+
   const tx = await payContract
     .getFunction("payERC20")
     .send(
-      proof.payload,
-      proof.signature
+      proof?.payload,
+      proof?.signature
     );
 
   console.log("TX hash:", tx.hash);
