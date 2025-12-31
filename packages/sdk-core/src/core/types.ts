@@ -51,3 +51,10 @@ export interface RuleResultDebug extends RuleResult {
     trace: RuleTraceEntry[];
   };
 }
+export interface ClientIntentProof {
+  type: "CLIENT_INTENT_PROOF";
+  contextHash: string;
+  ruleHash: string;
+  signer: string;
+  signature: string;
+}

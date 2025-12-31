@@ -213,7 +213,6 @@ export class PayID implements PayIDClient, PayIDServer {
     context: RuleContext;
     authorityRule: RuleConfig,       // rule berdaulat (on-chain)
     evaluationRule?: RuleConfig,        // rule evaluasi (off-chain)
-    evaluateAndProve: string;
     payId: string;
 
     payer: string;
@@ -223,9 +222,9 @@ export class PayID implements PayIDClient, PayIDServer {
     amount: bigint;
 
     signer: ethers.Signer;
-    verifyingContract: string;
-    ruleRegistryContract: string;
     ttlSeconds?: number;
+    verifyingContract: string; // ini contract address verifier
+    ruleRegistryContract: string; // ini contract address combined rule
   }): Promise<{ result: RuleResult; proof: any | null; }> {
     const authorityConfig = isRuleSource(params.authorityRule)
       ? (await resolveRule(params.authorityRule)).config

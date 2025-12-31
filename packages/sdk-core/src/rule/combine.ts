@@ -1,4 +1,5 @@
 // rule/combineRules.ts
+import type { RuleConfig } from "payid-types";
 import { canonicalizeRuleSet } from "./canonicalize";
 
 /**
@@ -41,15 +42,11 @@ import { canonicalizeRuleSet } from "./canonicalize";
  *   evaluation.
  */
 export function combineRules(
-  defaultRuleSet: {
-    version: string;
-    logic: "AND";
-    rules: any[];
-  },
+  defaultRuleSet: RuleConfig,
   sessionRule: any[]
 ) {
   return canonicalizeRuleSet({
-    version: defaultRuleSet.version,
+    version: defaultRuleSet.version ?? "1",
     logic: "AND",
     rules: [
       ...defaultRuleSet.rules,

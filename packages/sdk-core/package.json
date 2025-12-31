@@ -25,6 +25,14 @@
     "./context": {
       "import": "./dist/context/index.js",
       "types": "./dist/context/index.d.ts"
+    },
+    "./server": {
+      "import": "./dist/core/client/index.js",
+      "types": "./dist/core/client/index.d.ts"
+    },
+    "./client": {
+      "import": "./dist/core/server/index.js",
+      "types": "./dist/core/server/index.d.ts"
     }
   },
   "dependencies": {
@@ -37,7 +45,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
-    "build2": "tsup src/index.ts src/sessionPolicy/index.ts src/rule/index.ts src/issuer/index.ts src/context/index.ts --format esm --dts --clean"
+    "build2": "tsup src/index.ts src/sessionPolicy/index.ts src/rule/index.ts src/issuer/index.ts src/context/index.ts src/core/client/index.ts src/core/server/index.ts --format esm --dts --clean"
   },
   "devDependencies": {
     "@types/bun": "latest",
