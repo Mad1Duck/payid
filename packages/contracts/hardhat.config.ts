@@ -6,10 +6,6 @@ dotenv.config();
 
 export default defineConfig({
   plugins: [hardhatToolboxViemPlugin],
-
-  // =====================
-  // SOLIDITY
-  // =====================
   solidity: {
     profiles: {
       default: {
@@ -33,9 +29,6 @@ export default defineConfig({
     },
   },
 
-  // =====================
-  // NETWORKS (VIEM STYLE)
-  // =====================
   networks: {
     hardhatMainnet: {
       type: "edr-simulated",
@@ -55,7 +48,6 @@ export default defineConfig({
       // accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
     },
 
-    // ⭐ LISK SEPOLIA 
     liskSepolia: {
       type: "http",
       chainId: 4202,

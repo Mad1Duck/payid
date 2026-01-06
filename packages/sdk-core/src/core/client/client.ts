@@ -1,4 +1,3 @@
-// payid/client.ts
 import type { RuleConfig, RuleContext, RuleResult, RuleResultDebug } from "payid-types";
 import { evaluate } from "../../evaluate";
 import { combineRules } from "../../rule/combine";

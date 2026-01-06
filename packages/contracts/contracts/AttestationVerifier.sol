@@ -35,10 +35,15 @@ contract AttestationVerifier is EIP712 {
         _;
     }
 
-    constructor(address[] memory initialIssuers)
-        EIP712("PayID Attestation", "1")
+    constructor(
+        string memory name,
+        string memory version,
+        address[] memory initialIssuers
+    )
+        EIP712(name, version)
     {
         owner = msg.sender;
+
         for (uint256 i = 0; i < initialIssuers.length; i++) {
             trustedIssuers[initialIssuers[i]] = true;
         }
@@ -95,10 +100,8 @@ contract AttestationVerifier is EIP712 {
         usedPayloads[payloadHash] = true;
     }
 
-    /* =============================================================
-                      BATCH VERIFIER (GAS OPTIMIZED)
-       ============================================================= */
-
+    /* ========================BATCH VERIFIER (GAS OPTIMIZED)========================
+                      
     /**
      * @notice Verify multiple attestations in a single call.
      *

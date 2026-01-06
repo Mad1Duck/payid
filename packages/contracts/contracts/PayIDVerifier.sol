@@ -41,13 +41,16 @@ contract PayIDVerifier is EIP712 {
 
     /* ===================== STORAGE ===================== */
 
-    // replay protection
+    // replay protection make cant use other verifier
     mapping(address => mapping(bytes32 => bool)) public usedNonce;
 
     /* ===================== CONSTRUCTOR ===================== */
 
-    constructor()
-        EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION)
+    constructor(
+        string memory signingDomain,
+        string memory signatureVersion
+    )
+        EIP712(signingDomain, signatureVersion)
     {}
 
     /* ===================== STRUCT ===================== */
@@ -124,20 +127,20 @@ contract PayIDVerifier is EIP712 {
         Decision calldata d,
         bytes calldata sig
     ) external {
-        /* 1. Cryptographic proof */
+        // cryptographic proof
         require(
             verifyDecision(d, sig),
             "PAYID: INVALID_PROOF"
         );
 
-        /* 2. Nonce replay protection */
+        // nonce replay protection
         require(
             !usedNonce[d.payer][d.nonce],
             "NONCE_ALREADY_USED"
         );
         usedNonce[d.payer][d.nonce] = true;
 
-        /* 3. OPTIONAL rule enforcement */
+        //   OPTIONAL rule enforcement from combined contract
         if (d.ruleAuthority != address(0)) {
             require(
                 d.ruleAuthority.code.length > 0,
@@ -147,7 +150,6 @@ contract PayIDVerifier is EIP712 {
             (
                 address owner,
                 IRuleAuthority.RuleRef[] memory ruleRefs,
-                /* uint64 version */
             ) = IRuleAuthority(d.ruleAuthority)
                     .getRuleByHash(d.ruleSetHash);
 

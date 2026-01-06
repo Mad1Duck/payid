@@ -1,10 +1,5 @@
 import { keccak256 } from "ethers";
 
-/**
- * NOTE:
- * Untuk v1, JSON stringify yang sudah distabilkan
- * (keys sorted). WAJIB untuk golden tests.
- */
 function stableStringify(obj: any): string {
   if (Array.isArray(obj)) {
     return `[${obj.map(stableStringify).join(",")}]`;

@@ -26,11 +26,11 @@
       "import": "./dist/context/index.js",
       "types": "./dist/context/index.d.ts"
     },
-    "./server": {
+    "./client": {
       "import": "./dist/core/client/index.js",
       "types": "./dist/core/client/index.d.ts"
     },
-    "./client": {
+    "./server": {
       "import": "./dist/core/server/index.js",
       "types": "./dist/core/server/index.d.ts"
     }

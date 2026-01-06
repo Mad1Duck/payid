@@ -7,8 +7,6 @@ interface IRuleLicense {
 }
 
 contract CombinedRuleStorage {
-    /* ===================== STRUCT ===================== */
-
     struct RuleRef {
         address ruleNFT;
         uint256 tokenId;
@@ -237,7 +235,7 @@ contract CombinedRuleStorage {
             IRuleLicense(r.rules[0].ruleNFT)
                 .ownerOf(r.rules[0].tokenId);
 
-        // verify all rule NFTs share same owner
+        // verify all rule NFTs
         for (uint256 i = 1; i < r.rules.length; i++) {
             require(
                 IRuleLicense(r.rules[i].ruleNFT)

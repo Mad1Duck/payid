@@ -1,5 +1,6 @@
 export type DecisionValue = 0 | 1; // 1=ALLOW, 0=REJECT
 
+// can check inside verifier contract
 export interface DecisionPayload {
   // protocol
   version: string;          // bytes32 (keccak256("2"))

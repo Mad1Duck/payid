@@ -8,7 +8,6 @@ import { buildDecisionTrace } from "./core/dicisionTrace";
  *
  * Public-safe:
  * - Accepts Uint8Array (browser / node / edge)
- * - Internally adapts to Buffer only if needed
  */
 export async function evaluate(
   wasmBinary: Uint8Array,
@@ -19,7 +18,6 @@ export async function evaluate(
     debug?: boolean;
   }
 ): Promise<RuleResult | RuleResultDebug> {
-  // ---- basic validation (v1 behavior) ----
   if (!context || typeof context !== "object") {
     throw new Error("evaluate(): context is required");
   }
@@ -35,7 +33,6 @@ export async function evaluate(
   let result: RuleResult;
 
   try {
-    // ---- preprocess v2 context (optional) ----
     const preparedContext =
       options?.trustedIssuers
         ? preprocessContextV2(
@@ -45,10 +42,8 @@ export async function evaluate(
         )
         : context;
 
-    // ---- normalize context ----
     const normalized = normalizeContext(preparedContext);
 
-    // ---- WASM binary adapter ----
     const wasmForEngine =
       typeof Buffer !== "undefined" && !(wasmBinary instanceof Buffer)
         ? Buffer.from(wasmBinary)

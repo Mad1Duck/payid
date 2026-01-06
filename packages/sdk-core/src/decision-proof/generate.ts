@@ -87,7 +87,6 @@ export async function generateDecisionProof(params: {
     payload
   );
 
-  // optional local safety check
   const recovered = ethers.verifyTypedData(
     domain,
     types,

@@ -16,7 +16,6 @@ function isRuleSource(
   );
 }
 
-// payid/server.ts
 export class PayIDServer {
   constructor(
     private readonly wasm: Uint8Array,

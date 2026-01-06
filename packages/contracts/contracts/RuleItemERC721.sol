@@ -28,16 +28,13 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     uint8   public constant MAX_SLOT = 3;
     uint256 public constant SUB_DURATION = 30 days;
 
-    // ~$0.35 ≈ Rp 5.000
+    // $0.35 ≈ Rp 5.000 still hardcode
     uint256 public subscriptionUsdCents = 35;
 
     AggregatorV3Interface public ethUsdFeed;
 
-    /* ===================== IDS ===================== */
     uint256 public nextRuleId;
     uint256 public nextTokenId;
-
-    /* ===================== STRUCT ===================== */
     address public immutable deployer;
 
     struct RuleDefinition {
@@ -48,7 +45,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         uint256 parentRuleId; // 0 if root
         uint16  version;
 
-        bool deprecated;      // true if replaced
+        bool deprecated;      // true if replaced with other 
         uint256 tokenId;      // NFT only for ACTIVE version
     }
 
@@ -88,16 +85,21 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
 
     /* ===================== CONSTRUCTOR ===================== */
     constructor(
+        string memory name,
+        string memory symbol,
         address admin,
         address oracle
-    ) ERC721("PayID Rule Item", "PRULE") {
+    )
+        ERC721(name, symbol)
+    {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
+
         ethUsdFeed = AggregatorV3Interface(oracle);
         deployer = msg.sender;
-
     }
+
 
 
     /* ===================================================== */
@@ -204,7 +206,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
 
         rootRuleOf[ruleId] = root;
 
-        // mark old version
         parent.deprecated = true;
         emit RuleDeprecated(parentRuleId);
 
@@ -318,10 +319,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
 
         ruleExpiry[tokenId] = newExpiry;
     }
-
-    /* ===================================================== */
-    /* ================= ERC721 HOOK ======================= */
-    /* ===================================================== */
 
     function _update(
         address to,
