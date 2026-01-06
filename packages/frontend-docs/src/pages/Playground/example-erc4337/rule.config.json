@@ -1,0 +1,22 @@
+{
+  "version": "1",
+  "logic": "AND",
+  "rules": [
+    {
+      "id": "min_amount",
+      "if": {
+        "field": "tx.amount",
+        "op": ">=",
+        "value": "100000000"
+      }
+    },
+    {
+      "id": "token_allowlist",
+      "if": {
+        "field": "tx.asset",
+        "op": "in",
+        "value": ["USDT", "USDC"]
+      }
+    }
+  ]
+}
