@@ -1,10 +1,10 @@
 {
   "name": "payid-attestation",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": false,
   "type": "module",
   "scripts": {
-    "build": "bun build src/verify.ts --outdir dist --target node"
+    "build": "tsup src/verify.ts --format esm --dts --clean"
   },
   "devDependencies": {
     "@types/bun": "latest"
