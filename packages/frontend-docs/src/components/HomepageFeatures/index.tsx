@@ -35,7 +35,7 @@ export default function HomePage() {
               </Button>
 
               <Button variant="outline" size="lg" asChild>
-                <Link to="/docs/10-playground">Try Playground</Link>
+                <Link to="/playground">Try Playground</Link>
               </Button>
             </div>
           </motion.div>
