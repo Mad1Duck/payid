@@ -2,6 +2,10 @@
   "name": "contracts",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "deploy:local": "bun hardhat ignition deploy ignition/modules/PayID.ts --network hardhatMainnet",
+    "deploy:sepolia:lisk": "bun hardhat ignition deploy ignition/modules/PayID.ts --network liskSepolia --deployment-id lisk-sepolia-v1"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.6",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.1",
