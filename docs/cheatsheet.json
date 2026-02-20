@@ -1,0 +1,196 @@
+{
+  "_doc": "PAY.ID Rule Engine v4 — Complete Cheatsheet",
+
+  "operators": {
+    "numeric": [">=", "<=", ">", "<", "==", "!="],
+    "set": ["in", "not_in"],
+    "range": ["between", "not_between"],
+    "modulo": ["mod_eq", "mod_ne"],
+    "string": ["contains", "not_contains", "starts_with", "ends_with"],
+    "regex": ["regex", "not_regex"],
+    "exist": ["exists", "not_exists"]
+  },
+
+  "transforms": {
+    "numeric": ["div:N", "mod:N", "abs"],
+    "datetime": ["hour", "day", "date", "month"],
+    "string": ["len", "lower", "upper"]
+  },
+
+  "formats": ["A (single if)", "B (multi conditions)", "C (nested rules)"],
+
+  "examples": {
+    "01_simple_amount": {
+      "id": "min_amount",
+      "if": { "field": "tx.amount", "op": ">=", "value": "5000000" },
+      "message": "Minimal 5 USDC dong 🙄"
+    },
+
+    "02_amount_in_usdc_unit": {
+      "_comment": "Pakai transform div:1000000 — amount dalam USDC bukan microUSDC",
+      "id": "min_5_usdc",
+      "if": { "field": "tx.amount|div:1000000", "op": ">=", "value": 5 },
+      "message": "Minimal 5 USDC, kamu cuma kirim {tx.amount|div:1000000} USDC 💀"
+    },
+
+    "03_business_hours": {
+      "_comment": "Jam kerja 09:00–17:00 UTC — pakai transform hour",
+      "id": "business_hours",
+      "if": { "field": "env.timestamp|hour", "op": "between", "value": [9, 17] },
+      "message": "Jam {env.timestamp|hour}:00 UTC belum/sudah tutup, balik jam 9 pagi 🌙"
+    },
+
+    "04_weekday_only": {
+      "_comment": "Hari kerja saja (1=Senin … 5=Jumat), 0=Minggu 6=Sabtu",
+      "id": "weekday_only",
+      "if": { "field": "env.timestamp|day", "op": "in", "value": [1, 2, 3, 4, 5] },
+      "message": "Hari ini libur, bayar Senin–Jumat aja 🏖️"
+    },
+
+    "05_not_friday_13": {
+      "_comment": "Blokir Jumat tanggal 13",
+      "id": "no_friday_13",
+      "logic": "AND",
+      "conditions": [
+        { "field": "env.timestamp|day", "op": "!=", "value": 5 },
+        { "field": "env.timestamp|date", "op": "!=", "value": 13 }
+      ],
+      "message": "Hari sial! Jumat tanggal 13 transfer ditolak 🔮"
+    },
+
+    "06_no_cursed_amount": {
+      "_comment": "Blokir amount kelipatan 666",
+      "id": "no_cursed",
+      "if": { "field": "tx.amount|mod:666000000", "op": "!=", "value": 0 },
+      "message": "666 USDC? Duit setan, ditolak 👹"
+    },
+
+    "07_cross_field": {
+      "_comment": "Amount tidak boleh melebihi state.dailyLimit dari context",
+      "id": "under_daily_limit",
+      "if": { "field": "tx.amount", "op": "<=", "value": "$state.dailyLimit" },
+      "message": "Transfer {tx.amount|div:1000000} USDC melebihi limit harian {state.dailyLimit|div:1000000} USDC 🚫"
+    },
+
+    "08_payid_format": {
+      "_comment": "Validasi format payId: harus diawali pay.id/",
+      "id": "valid_payid",
+      "if": { "field": "payId.id", "op": "regex", "value": "^pay\\.id\\/" },
+      "message": "Format payId tidak valid: {payId.id}"
+    },
+
+    "09_country_case_insensitive": {
+      "_comment": "Cek country case-insensitive pakai transform lower",
+      "id": "id_only",
+      "if": { "field": "oracle.country|lower", "op": "==", "value": "id" },
+      "message": "Merchant ini hanya nerima dari 🇮🇩 Indonesia"
+    },
+
+    "10_payid_max_length": {
+      "_comment": "PayID tidak boleh lebih dari 50 karakter",
+      "id": "payid_length",
+      "if": { "field": "payId.id|len", "op": "<=", "value": 50 },
+      "message": "PayID '{payId.id}' terlalu panjang ({payId.id|len} karakter, max 50)"
+    },
+
+    "11_field_exists": {
+      "_comment": "Wajib ada oracle.kycLevel sebelum bisa bayar",
+      "id": "kyc_exists",
+      "if": { "field": "oracle.kycLevel", "op": "exists" },
+      "message": "KYC belum ada, verifikasi dulu sebelum transfer 🕵️"
+    },
+
+    "12_nested_or": {
+      "_comment": "Lolos kalau VIP (>1000 USDC + KYC3) ATAU normal (5-500 USDC + ID)",
+      "id": "payment_gate",
+      "logic": "OR",
+      "message": "Tidak lolos jalur apapun. Amount: {tx.amount|div:1000000} USDC, negara: {oracle.country}",
+      "rules": [
+        {
+          "id": "vip_path",
+          "logic": "AND",
+          "conditions": [
+            { "field": "tx.amount|div:1000000", "op": ">=", "value": 1000 },
+            { "field": "oracle.kycLevel", "op": ">=", "value": "3" },
+            { "field": "risk.score", "op": "<=", "value": 30 }
+          ],
+          "message": "Jalur VIP gagal: butuh ≥1000 USDC + KYC lv3 + risk ≤30 (risk kamu: {risk.score})"
+        },
+        {
+          "id": "normal_path",
+          "logic": "AND",
+          "conditions": [
+            { "field": "tx.amount|div:1000000", "op": "between", "value": [5, 500] },
+            { "field": "oracle.country|lower", "op": "==", "value": "id" },
+            { "field": "oracle.kycLevel", "op": ">=", "value": "1" },
+            { "field": "risk.score", "op": "<=", "value": 70 }
+          ],
+          "message": "Jalur normal gagal: 5-500 USDC dari ID dengan KYC (risk kamu: {risk.score})"
+        }
+      ]
+    },
+
+    "13_full_funny_config": {
+      "version": "4",
+      "logic": "AND",
+      "rules": [
+        {
+          "id": "no_cursed",
+          "if": { "field": "tx.amount|mod:666000000", "op": "!=", "value": 0 },
+          "message": "666 USDC? Duit setan, pergi 👹"
+        },
+        {
+          "id": "no_nice",
+          "if": { "field": "tx.amount|div:1000000", "op": "!=", "value": 69 },
+          "message": "Nice (69 USDC) tapi tetap ditolak 😏"
+        },
+        {
+          "id": "stablecoin_only",
+          "if": { "field": "tx.asset|upper", "op": "in", "value": ["USDC", "USDT"] },
+          "message": "{tx.asset} tidak diterima, pakai USDC/USDT 🤷"
+        },
+        {
+          "id": "kyc_must_exist",
+          "if": { "field": "oracle.kycLevel", "op": "exists" },
+          "message": "Verifikasi KYC dulu dong 🕵️"
+        },
+        {
+          "id": "business_hours",
+          "if": { "field": "env.timestamp|hour", "op": "between", "value": [8, 21] },
+          "message": "Jam {env.timestamp|hour}:00 sudah tutup, buka jam 8 pagi 😴"
+        },
+        {
+          "id": "weekday_only",
+          "if": { "field": "env.timestamp|day", "op": "in", "value": [1, 2, 3, 4, 5] },
+          "message": "Libur! Bayar pas hari kerja aja 🏖️"
+        },
+        {
+          "id": "payment_gate",
+          "logic": "OR",
+          "message": "Ditolak semua jalur. Amount {tx.amount|div:1000000} USDC, risk {risk.score}",
+          "rules": [
+            {
+              "id": "vip",
+              "logic": "AND",
+              "conditions": [
+                { "field": "tx.amount|div:1000000", "op": ">=", "value": 1000 },
+                { "field": "oracle.kycLevel", "op": ">=", "value": "2" }
+              ],
+              "message": "Jalur VIP butuh ≥1000 USDC dan KYC level 2"
+            },
+            {
+              "id": "normal",
+              "logic": "AND",
+              "conditions": [
+                { "field": "tx.amount|div:1000000", "op": "between", "value": [5, 500] },
+                { "field": "oracle.country|lower", "op": "==", "value": "id" },
+                { "field": "risk.score", "op": "<=", "value": 70 }
+              ],
+              "message": "Jalur normal: 5-500 USDC dari 🇮🇩, risk ≤70 (kamu: {risk.score})"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
