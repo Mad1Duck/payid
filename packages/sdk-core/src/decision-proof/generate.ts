@@ -12,7 +12,7 @@ export async function generateDecisionProof(params: {
   payer: string;
   receiver: string;
 
-  asset: string;        // address(0) = ETH
+  asset: string;
   amount: bigint;
 
   context: any;
@@ -22,11 +22,18 @@ export async function generateDecisionProof(params: {
   ruleAuthority: string;
   verifyingContract: string;
   ttlSeconds?: number;
+
+  // FIX: tambah chainId opsional — skip getNetwork() RPC call
+  // Kalau tidak diisi, fallback ke getNetwork() (behaviour lama)
+  chainId?: number;
 }): Promise<DecisionProof> {
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = now + (params.ttlSeconds ?? 60);
 
-  const network = await params.signer.provider!.getNetwork();
+  // FIX: pakai chainId dari params kalau ada, baru fallback ke RPC
+  // getNetwork() di sini yang bikin hang kalau RPC lambat
+  const chainId = params.chainId
+    ?? Number((await params.signer.provider!.getNetwork()).chainId);
 
   const requiresAttestation =
     Array.isArray(params.ruleConfig?.requires) &&
@@ -57,7 +64,7 @@ export async function generateDecisionProof(params: {
   const domain = {
     name: "PAY.ID Decision",
     version: "2",
-    chainId: Number(network.chainId),
+    chainId,   // FIX: langsung pakai, tidak perlu await lagi
     verifyingContract: params.verifyingContract,
   };
 

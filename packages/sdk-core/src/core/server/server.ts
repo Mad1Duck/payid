@@ -102,6 +102,7 @@ export class PayIDServer {
       signer: this.signer,
       verifyingContract: params.verifyingContract,
       ruleAuthority: params.ruleAuthority,
+      chainId: (params.context as any)?.tx?.chainId,
       ttlSeconds: params.ttlSeconds
     });
 

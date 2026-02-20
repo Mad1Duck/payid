@@ -106,6 +106,7 @@ export class PayID implements PayIDClient, PayIDServer {
       signer: params.signer,
       verifyingContract: params.verifyingContract,
       ruleAuthority: params.ruleAuthority,
+      chainId: (params.context as any)?.tx?.chainId,
       ttlSeconds: params.ttlSeconds
     });
 

@@ -10,9 +10,10 @@
 
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
+import { keccak256, toUtf8Bytes } from "ethers";
 import { PinataSDK } from "pinata";
 import { envData } from "../../config/config";
+import { RULE_OBJECT } from "./currentRule";
 
 const {
   pinata: { jwt: PINATA_JWT, url: PINATA_URL, gateway: PINATA_GATEWAY },
@@ -27,14 +28,14 @@ const IMAGE_PATH = path.join(__dirname, "./rule.jpg");
 const CACHE_JSON_PATH = path.join(__dirname, "./rule.json");
 
 // ─── Definisi rule ────────────────────────────────────────────────────────────
-const RULE_OBJECT = {
-  id: "min_amount",
-  if: {
-    field: "tx.amount",
-    op: ">=",
-    value: "100000000",   // 100 USDC (6 decimals)
-  },
-};
+// const RULE_OBJECT = {
+//   id: "min_amount",
+//   if: {
+//     field: "tx.amount",
+//     op: ">=",
+//     value: "100000000",   // 100 USDC (6 decimals)
+//   },
+// };
 
 const NFT_NAME = "PAY.ID Rule - Min Amount";
 const NFT_DESCRIPTION = "PAY.ID rule enforcing minimum transaction amount of 100 USDC";
@@ -52,12 +53,6 @@ function canonicalize(obj: any): string {
   return JSON.stringify(obj);
 }
 
-function keccak256Hex(input: string): string {
-  return (
-    "0x" + crypto.createHash("sha3-256").update(input).digest("hex")
-  );
-}
-
 // ─── Cache check ──────────────────────────────────────────────────────────────
 
 function loadCache(): { url: string; cid: string; metadata: any; } | null {
@@ -65,8 +60,9 @@ function loadCache(): { url: string; cid: string; metadata: any; } | null {
 
   try {
     const cached = JSON.parse(fs.readFileSync(CACHE_JSON_PATH, "utf-8"));
-    const currentHash = keccak256Hex(canonicalize(RULE_OBJECT));
-
+    const currentHash = keccak256(
+      toUtf8Bytes(canonicalize(RULE_OBJECT))
+    );
     // Cache valid kalau ruleHash sama dan ada url/cid
     if (
       cached.ruleHash === currentHash &&
@@ -90,7 +86,7 @@ function loadCache(): { url: string; cid: string; metadata: any; } | null {
 
 export async function mainPinata() {
   const canonicalRule = canonicalize(RULE_OBJECT);
-  const ruleHash = keccak256Hex(canonicalRule);
+  const ruleHash = keccak256(toUtf8Bytes(canonicalRule));
 
   // ── Check cache dulu ──────────────────────────────────────────────────────
   const cached = loadCache();

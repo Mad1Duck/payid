@@ -1,11 +1,11 @@
 {
-  "name": "PAY.ID Rule – Min Amount",
+  "name": "PAY.ID Rule - Min Amount",
   "description": "PAY.ID rule enforcing minimum transaction amount of 100 USDC",
   "image": "https://gateway.pinata.cloud/ipfs/bafkreicblmrmynguw23vmovqq3kvu3zeb5i47bfv7x42s4q3yn44cnyy3e",
   "attributes": [
     {
       "trait_type": "Rule ID",
-      "value": "min_amount"
+      "value": "vip_path"
     },
     {
       "trait_type": "Engine",
@@ -17,15 +17,19 @@
     }
   ],
   "rule": {
-    "id": "min_amount",
-    "if": {
-      "field": "tx.amount",
-      "op": ">=",
-      "value": "100000000"
-    }
+    "id": "vip_path",
+    "logic": "AND",
+    "conditions": [
+      {
+        "field": "tx.amount",
+        "op": ">=",
+        "value": "1000000000"
+      }
+    ],
+    "message": "Jalur VIP: amount minimal 1000 USDC + KYC level 2"
   },
-  "ruleHash": "0x4660f1a422dd5d085d0794fe3bc0905049d372c0b6afd470cc6339324dbca7b0",
+  "ruleHash": "0x6b73a3798d91d9092d16d0ec0b968170428312f8bf96aac69c1f5b4506247610",
   "standard": "payid.rule.v1",
-  "_ipfsCid": "bafkreih6rwbldbaohwgv6xchomomvx5vnac3mptekqchve6m5tcnyc3r3y",
-  "_ipfsUrl": "https://gateway.pinata.cloud/ipfs/bafkreih6rwbldbaohwgv6xchomomvx5vnac3mptekqchve6m5tcnyc3r3y"
+  "_ipfsCid": "bafkreif3qg6ejkoyuazm5727cu2obfcbnfyhvsud3dzn6oebaoicl2ln5m",
+  "_ipfsUrl": "https://gateway.pinata.cloud/ipfs/bafkreif3qg6ejkoyuazm5727cu2obfcbnfyhvsud3dzn6oebaoicl2ln5m"
 }

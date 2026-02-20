@@ -11,7 +11,7 @@
  * Run:
  *  bun run setup:create-rule
  */
-import { ethers, keccak256, toUtf8Bytes } from "ethers";
+import { ethers, keccak256, NonceManager, toUtf8Bytes } from "ethers";
 import { canonicalize } from "../../utils/cannonicalize";
 import { mainPinata } from "./upload-rule-nft-to-pinata";
 import ruleAbi from "../../shared/PayIDModule#RuleItemERC721.json";
@@ -24,8 +24,10 @@ const {
 } = envData;
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
-const wallet = new ethers.Wallet(RECEIVER_PRIVATE_KEY, provider);
-console.log("Using wallet:", wallet.address);
+const wallet = new NonceManager(
+  new ethers.Wallet(RECEIVER_PRIVATE_KEY, provider)
+);
+console.log("Using wallet:", await wallet.getAddress());
 
 const ruleNFT = new ethers.Contract(
   RULE_ITEM_ERC721,
@@ -47,7 +49,7 @@ export async function mainRule() {
      1. Subscribe jika belum
   ---------------------------------- */
   const isSubscribed: boolean =
-    await ruleNFT.getFunction("hasSubscription")(wallet.address);
+    await ruleNFT.getFunction("hasSubscription")(await wallet.getAddress());
 
   if (!isSubscribed) {
     console.log("No active subscription → subscribing...");
@@ -149,16 +151,3 @@ export async function mainRule() {
   console.log("DONE — Rule NFT Ready");
   return { ruleId, tokenId };
 }
-
-mainRule()
-  .then((res) => {
-    console.log("\nResult:", {
-      ruleId: res.ruleId.toString(),
-      tokenId: res.tokenId.toString(),
-    });
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error("\nSetup failed:", err?.shortMessage ?? err?.reason ?? err?.message ?? err);
-    process.exit(1);
-  });
