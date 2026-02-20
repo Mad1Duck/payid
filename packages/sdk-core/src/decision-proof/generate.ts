@@ -19,7 +19,7 @@ export async function generateDecisionProof(params: {
   ruleConfig: any;
 
   signer: ethers.Signer;
-  ruleRegistryContract: string;
+  ruleAuthority: string;
   verifyingContract: string;
   ttlSeconds?: number;
 }): Promise<DecisionProof> {
@@ -44,7 +44,9 @@ export async function generateDecisionProof(params: {
 
     contextHash: hashContext(params.context),
     ruleSetHash: hashRuleSet(params.ruleConfig),
-    ruleAuthority: params.ruleRegistryContract ?? ZeroAddress,
+
+    ruleAuthority: params.ruleAuthority ?? ZeroAddress,
+
     issuedAt: BigInt(now),
     expiresAt: BigInt(expiresAt),
 
@@ -63,36 +65,23 @@ export async function generateDecisionProof(params: {
     Decision: [
       { name: "version", type: "bytes32" },
       { name: "payId", type: "bytes32" },
-
       { name: "payer", type: "address" },
       { name: "receiver", type: "address" },
-
       { name: "asset", type: "address" },
       { name: "amount", type: "uint256" },
-
       { name: "contextHash", type: "bytes32" },
       { name: "ruleSetHash", type: "bytes32" },
       { name: "ruleAuthority", type: "address" },
       { name: "issuedAt", type: "uint64" },
       { name: "expiresAt", type: "uint64" },
-
       { name: "nonce", type: "bytes32" },
       { name: "requiresAttestation", type: "bool" },
     ],
   };
 
-  const signature = await params.signer.signTypedData(
-    domain,
-    types,
-    payload
-  );
+  const signature = await params.signer.signTypedData(domain, types, payload);
 
-  const recovered = ethers.verifyTypedData(
-    domain,
-    types,
-    payload,
-    signature
-  );
+  const recovered = ethers.verifyTypedData(domain, types, payload, signature);
 
   if (recovered.toLowerCase() !== params.payer.toLowerCase()) {
     throw new Error("SIGNATURE_MISMATCH");
