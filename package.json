@@ -7,7 +7,16 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "bun run --filter ./packages/* build"
+    "build": "bun run --filter ./packages/* build",
+    "client": "bun run examples/simple/client.ts",
+    "server": "bun run examples/simple/server.ts",
+    "setup:upload": "bun run examples/simple/rule.nft/upload-rule-nft-to-pinata.ts",
+    "setup:create-rule": "bun run examples/simple/rule.nft/create-rule-item.ts",
+    "setup:register": "bun run examples/simple/combiner.rule/register-combined-rule.ts",
+    "setup:debug": "bun run examples/simple/payment.ts",
+    "fix:whitelist": "bun run examples/simple/whitelist-authority.ts",
+    "fix:expiry": "bun run examples/simple/fix-rule-expiry.ts",
+    "fix:usdc": "bun run examples/simple/mint-usdc.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

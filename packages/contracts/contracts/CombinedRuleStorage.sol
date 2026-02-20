@@ -4,6 +4,20 @@ pragma solidity ^0.8.20;
 interface IRuleLicense {
     function ownerOf(uint256 tokenId) external view returns (address);
     function ruleExpiry(uint256 tokenId) external view returns (uint256);
+    function ruleTokenId(uint256 ruleId) external view returns (uint256);
+    function tokenRule(uint256 tokenId) external view returns (uint256);
+    function getRule(uint256 ruleId)
+        external
+        view
+        returns (
+            bytes32,
+            string memory,
+            address,
+            uint256,
+            uint16,
+            bool,
+            bool
+        );
 }
 
 contract CombinedRuleStorage {
@@ -26,7 +40,7 @@ contract CombinedRuleStorage {
     }
 
     /* ===================== STORAGE ===================== */
-
+    mapping(address => mapping(uint256 => bool)) public usedRuleNFT;
     uint256 public constant MAX_RULES = 10;
 
     mapping(bytes32 => CombinedRule) private rules;
@@ -63,6 +77,35 @@ contract CombinedRuleStorage {
     );
 
     /* ===================== VIEW ===================== */
+
+    function _validateRuleNFT(
+        address ruleNFT,
+        uint256 tokenId,
+        address caller
+    ) internal view {
+
+        require(ruleNFT.code.length > 0, "INVALID_RULE_NFT_CONTRACT");
+
+        IRuleLicense nft = IRuleLicense(ruleNFT);
+
+        // ownership
+        require(
+            nft.ownerOf(tokenId) == caller,
+            "NOT_RULE_NFT_OWNER"
+        );
+
+        // expiry
+        uint256 expiry = nft.ruleExpiry(tokenId);
+        require(expiry == 0 || expiry >= block.timestamp, "RULE_EXPIRED");
+
+        // active + not deprecated
+        uint256 ruleId = nft.tokenRule(tokenId);
+        (, , , , , bool deprecated, bool active) =
+            nft.getRule(ruleId);
+
+        require(!deprecated, "RULE_DEPRECATED");
+        require(active, "RULE_NOT_ACTIVE");
+    }
 
     function isActive(bytes32 ruleSetHash) external view returns (bool) {
         return rules[ruleSetHash].active;
@@ -145,6 +188,18 @@ contract CombinedRuleStorage {
         );
     }
 
+    function _unlock(bytes32 hash) internal {
+        RuleRef[] storage refs = rules[hash].rules;
+
+        for (uint256 i = 0; i < refs.length; i++) {
+            usedRuleNFT[
+                refs[i].ruleNFT
+            ][
+                refs[i].tokenId
+            ] = false;
+        }
+    }
+
     function _registerInternal(
         bytes32 ruleSetHash,
         address[] calldata ruleNFTs,
@@ -182,8 +237,15 @@ contract CombinedRuleStorage {
 
         for (uint256 i = 0; i < ruleNFTs.length; i++) {
             require(
-                IRuleLicense(ruleNFTs[i]).ownerOf(tokenIds[i]) == msg.sender,
-                "NOT_RULE_NFT_OWNER"
+                !usedRuleNFT[ruleNFTs[i]][tokenIds[i]],
+                "RULE_NFT_ALREADY_USED"
+            );
+
+            usedRuleNFT[ruleNFTs[i]][tokenIds[i]] = true;
+            _validateRuleNFT(
+                ruleNFTs[i],
+                tokenIds[i],
+                msg.sender
             );
 
             r.rules.push(
@@ -220,6 +282,8 @@ contract CombinedRuleStorage {
         rules[hash].active = false;
         activeRuleOf[msg.sender] = bytes32(0);
 
+        _unlock(hash);
+
         emit CombinedRuleDeactivated(hash);
     }
 
@@ -230,6 +294,7 @@ contract CombinedRuleStorage {
     function syncOwner(bytes32 ruleSetHash) external {
         CombinedRule storage r = rules[ruleSetHash];
         require(r.active, "RULE_NOT_ACTIVE");
+        require(r.rules.length > 0, "EMPTY_RULES");
 
         address newOwner =
             IRuleLicense(r.rules[0].ruleNFT)

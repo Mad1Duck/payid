@@ -1,63 +1,171 @@
 /**
- * SETUP — Step 1b: Buat & mint Rule NFT on-chain
+ * SETUP — Step 1b: Create & Mint Rule NFT
  *
- * Dijalankan oleh RECEIVER/MERCHANT setelah upload ke Pinata.
- * Flow: createRule() → activateRule() → dapat tokenId
+ * Flow:
+ *  1. Subscribe (jika belum) — HARUS sebelum createRule
+ *  2. Upload metadata to IPFS
+ *  3. createRule()
+ *  4. activateRule()
+ *  5. get tokenId
  *
- * Run: bun run setup/rule.nft/create-rule-item.ts
+ * Run:
+ *  bun run setup:create-rule
  */
-
 import { ethers, keccak256, toUtf8Bytes } from "ethers";
 import { canonicalize } from "../../utils/cannonicalize";
 import { mainPinata } from "./upload-rule-nft-to-pinata";
-import ruleAbi from "./RuleItemERC721.abi.json";
+import ruleAbi from "../../shared/PayIDModule#RuleItemERC721.json";
 import { envData } from "../../config/config";
 
 const {
   rpcUrl: RPC_URL,
   contract: { ruleItemERC721: RULE_ITEM_ERC721 },
-  account: { receiverPk: RECEIVER_PRIVATE_KEY },
+  account: { reciverPk: RECEIVER_PRIVATE_KEY },
 } = envData;
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(RECEIVER_PRIVATE_KEY, provider);
+console.log("Using wallet:", wallet.address);
 
-console.log("Rule Creator (Receiver):", wallet.address);
-
-const ruleNFT = new ethers.Contract(RULE_ITEM_ERC721, ruleAbi.abi, wallet);
+const ruleNFT = new ethers.Contract(
+  RULE_ITEM_ERC721,
+  ruleAbi.abi,
+  wallet
+);
 
 export async function mainRule() {
-  // Step 1: Upload metadata ke IPFS
-  const { url: tokenURI, metadata: ruleMetadata } = await mainPinata();
 
-  // Hitung hash dari rule config untuk verifikasi on-chain
-  const canonicalRuleJSON = canonicalize(ruleMetadata.rule);
-  const ruleHash = keccak256(toUtf8Bytes(canonicalRuleJSON));
+  /* ----------------------------------
+     0. Check contract deployed
+  ---------------------------------- */
+  const code = await provider.getCode(RULE_ITEM_ERC721);
+  if (code === "0x") {
+    throw new Error("RuleItemERC721 not deployed on this network");
+  }
 
-  console.log("\nCanonical rule:", canonicalRuleJSON);
-  console.log("Rule hash     :", ruleHash);
+  /* ----------------------------------
+     1. Subscribe jika belum
+     FIX: cek hasSubscription() bukan logicalRuleCount.
+     
+     Bug sebelumnya: if (used >= 1n) subscribe
+     → pada run pertama used = 0, jadi subscribe di-SKIP
+     → activateRule() set ruleExpiry[tokenId] = subscriptionExpiry = 0
+     → PayIDVerifier cek: ruleExpiry >= block.timestamp → 0 >= now → REVERT
+     → error: "RULE_LICENSE_EXPIRED" (atau "missing revert data")
+  ---------------------------------- */
+  const isSubscribed: boolean =
+    await ruleNFT.getFunction("hasSubscription")(wallet.address);
 
-  // Step 2: Register rule on-chain
-  console.log("\n📝 Creating rule on-chain...");
-  const txCreate = await ruleNFT.getFunction("createRule").send(ruleHash, tokenURI);
-  console.log("createRule tx:", txCreate.hash);
-  await txCreate.wait();
+  if (!isSubscribed) {
+    console.log("No active subscription → subscribing...");
 
-  const nextRuleId: bigint = await ruleNFT.getFunction("nextRuleId")();
-  const ruleId = nextRuleId - 1n;   // nextRuleId sudah increment, mundur satu
+    const price: bigint =
+      await ruleNFT.getFunction("subscriptionPriceETH")();
+
+    console.log("  Price:", ethers.formatEther(price), "ETH");
+
+    const txSub = await ruleNFT
+      .getFunction("subscribe")
+      .send({ value: price });
+
+    await txSub.wait();
+    console.log("Subscribed");
+  } else {
+    console.log("Already subscribed");
+  }
+
+  /* ----------------------------------
+     2. Upload to IPFS
+  ---------------------------------- */
+  console.log("Uploading to IPFS...");
+  const { url: tokenURI, metadata } = await mainPinata();
+
+  const canonicalRule = canonicalize(metadata.rule);
+  const ruleHash = keccak256(toUtf8Bytes(canonicalRule));
+
+  console.log("Rule hash:", ruleHash);
+  console.log("Token URI:", tokenURI);
+
+  /* ----------------------------------
+     3. Create Rule
+  ---------------------------------- */
+  console.log("Creating rule...");
+
+  const txCreate = await ruleNFT
+    .getFunction("createRule")
+    .send(ruleHash, tokenURI);
+
+  const receipt = await txCreate.wait();
+  if (!receipt) throw new Error("Create tx failed");
+
+  /* ----------------------------------
+     4. Get ruleId from event
+  ---------------------------------- */
+  let ruleId: bigint | null = null;
+
+  for (const log of receipt.logs) {
+    try {
+      const parsed = ruleNFT.interface.parseLog(log);
+      if (parsed?.name === "RuleCreated") {
+        ruleId = parsed.args.ruleId;
+        break;
+      }
+    } catch {
+      // ignore non-matching logs
+    }
+  }
+
+  if (ruleId === null) {
+    throw new Error("RuleCreated event not found in receipt");
+  }
+
   console.log("Rule ID:", ruleId.toString());
 
-  // Step 3: Activate (mint NFT ke wallet receiver)
-  console.log("\n🎟 Activating rule (minting NFT)...");
-  const txActivate = await ruleNFT.getFunction("activateRule").send(ruleId);
-  console.log("activateRule tx:", txActivate.hash);
+  /* ----------------------------------
+     5. Activate Rule (Mint NFT)
+     ruleExpiry[tokenId] = subscriptionExpiry[msg.sender]
+     Sekarang bisa karena subscriptionExpiry > 0 setelah subscribe
+  ---------------------------------- */
+  console.log("Activating rule...");
+
+  const txActivate = await ruleNFT
+    .getFunction("activateRule")
+    .send(ruleId);
+
   await txActivate.wait();
 
-  const [, , , tokenId] = await ruleNFT.getFunction("getRule")(ruleId);
-  console.log("NFT tokenId:", tokenId.toString());
-  console.log("✅ Rule NFT ready — tokenId:", tokenId.toString());
+  /* ----------------------------------
+     6. Get tokenId & verify expiry
+  ---------------------------------- */
+  const tokenId: bigint =
+    await ruleNFT.getFunction("ruleTokenId")(ruleId);
 
-  return { ruleTokenId: tokenId as bigint };
+  const expiry: bigint =
+    await ruleNFT.getFunction("ruleExpiry")(tokenId);
+
+  const now = BigInt(Math.floor(Date.now() / 1000));
+
+  console.log("NFT Token ID:", tokenId.toString());
+  console.log("Rule expiry :", new Date(Number(expiry) * 1000).toISOString());
+  console.log("Days left   :", ((expiry - now) / 86400n).toString());
+
+  if (expiry <= now) {
+    throw new Error("Rule expiry is in the past — subscribe may have failed");
+  }
+
+  console.log("DONE — Rule NFT Ready");
+  return { ruleId, tokenId };
 }
 
-mainRule().catch(console.error);
+mainRule()
+  .then((res) => {
+    console.log("\nResult:", {
+      ruleId: res.ruleId.toString(),
+      tokenId: res.tokenId.toString(),
+    });
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error("\nSetup failed:", err?.shortMessage ?? err?.reason ?? err?.message ?? err);
+    process.exit(1);
+  });

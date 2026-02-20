@@ -17,6 +17,19 @@ interface AggregatorV3Interface {
 interface IRuleLicense {
     function ruleExpiry(uint256 tokenId) external view returns (uint256);
     function ownerOf(uint256 tokenId) external view returns (address);
+    function ruleTokenId(uint256 ruleId) external view returns (uint256);
+    function getRule(uint256 ruleId)
+        external
+        view
+        returns (
+            bytes32,
+            string memory,
+            address,
+            uint256,
+            uint16,
+            bool,
+            bool
+        );
 }
 
 contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
@@ -208,10 +221,9 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         if (oldActive != 0) {
             uint256 oldToken = rules[oldActive].tokenId;
             if (oldToken != 0) {
-                // FIX: mark as pending burn before calling _burn
-                // so _update knows this is an authorized internal burn
                 _pendingBurn[oldToken] = true;
                 _burn(oldToken);
+                delete tokenRule[oldToken];
             }
             rules[oldActive].tokenId  = 0;
             rules[oldActive].deprecated = true;
@@ -247,6 +259,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         // FIX: mark as pending burn before calling _burn
         _pendingBurn[tokenId] = true;
         _burn(tokenId);
+        delete tokenRule[tokenId];
 
         if (activeRuleOf[root] == ruleId) {
             activeRuleOf[root] = 0;

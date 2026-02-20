@@ -1,0 +1,39 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-de594cf69637c3e20af57f4424aa0d23c669f6e5",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "userSourceNameMap": {
+    "contracts/MockEAS.sol": "project/contracts/MockEAS.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/MockEAS.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.20;\r\n\r\n/**\r\n * @title MockEAS\r\n * @notice Mock EAS untuk testnet yang tidak punya EAS deployed (Lisk Sepolia, dll)\r\n *\r\n * HANYA UNTUK TESTING — jangan deploy ke mainnet.\r\n * Semua attestation dianggap valid selama tidak direvoke.\r\n *\r\n * Di production, gunakan EAS contract asli:\r\n *   Ethereum Mainnet  : 0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587\r\n *   Base              : 0x4200000000000000000000000000000000000021\r\n *   Optimism          : 0x4200000000000000000000000000000000000020\r\n *   Arbitrar One      : 0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458\r\n *   Sepolia           : 0xC2679fBD37d54388Ce493F1DB75320D236e1815e\r\n */\r\ncontract MockEAS {\r\n\r\n    struct Attestation {\r\n        bytes32 uid;\r\n        bytes32 schema;\r\n        uint64  time;\r\n        uint64  expirationTime;\r\n        uint64  revocationTime;\r\n        bytes32 refUID;\r\n        address attester;\r\n        address recipient;\r\n        bool    revocable;\r\n        bytes   data;\r\n    }\r\n\r\n    mapping(bytes32 => Attestation) private _attestations;\r\n\r\n    event Attested(\r\n        address indexed recipient,\r\n        address indexed attester,\r\n        bytes32 uid,\r\n        bytes32 indexed schema\r\n    );\r\n\r\n    event Revoked(\r\n        address indexed recipient,\r\n        address indexed attester,\r\n        bytes32 uid,\r\n        bytes32 indexed schema\r\n    );\r\n\r\n    /**\r\n     * @notice Buat attestation baru (untuk testing)\r\n     * @param recipient   Address yang di-attest (payer)\r\n     * @param schema      Schema UID yang digunakan\r\n     * @param attester    Address yang memberi attestation\r\n     * @param expiry      Unix timestamp expiry (0 = tidak expire)\r\n     * @param data        Arbitrary attestation data\r\n     */\r\n    function attest(\r\n        address recipient,\r\n        bytes32 schema,\r\n        address attester,\r\n        uint64  expiry,\r\n        bytes   calldata data\r\n    ) external returns (bytes32 uid) {\r\n        uid = keccak256(\r\n            abi.encodePacked(recipient, schema, attester, block.timestamp, data)\r\n        );\r\n\r\n        _attestations[uid] = Attestation({\r\n            uid:            uid,\r\n            schema:         schema,\r\n            time:           uint64(block.timestamp),\r\n            expirationTime: expiry,\r\n            revocationTime: 0,\r\n            refUID:         bytes32(0),\r\n            attester:       attester,\r\n            recipient:      recipient,\r\n            revocable:      true,\r\n            data:           data\r\n        });\r\n\r\n        emit Attested(recipient, attester, uid, schema);\r\n    }\r\n\r\n    /**\r\n     * @notice Revoke attestation (untuk testing)\r\n     */\r\n    function revoke(bytes32 uid) external {\r\n        Attestation storage att = _attestations[uid];\r\n        require(att.uid != bytes32(0), \"NOT_FOUND\");\r\n        require(att.attester == msg.sender, \"NOT_ATTESTER\");\r\n\r\n        att.revocationTime = uint64(block.timestamp);\r\n        emit Revoked(att.recipient, att.attester, uid, att.schema);\r\n    }\r\n\r\n    function getAttestation(bytes32 uid)\r\n        external\r\n        view\r\n        returns (Attestation memory)\r\n    {\r\n        return _attestations[uid];\r\n    }\r\n\r\n    function isAttestationValid(bytes32 uid)\r\n        external\r\n        view\r\n        returns (bool)\r\n    {\r\n        Attestation storage att = _attestations[uid];\r\n        if (att.uid == bytes32(0)) return false;\r\n        if (att.revocationTime != 0) return false;\r\n        if (att.expirationTime != 0 && att.expirationTime <= block.timestamp) return false;\r\n        return true;\r\n    }\r\n}\r\n"
+      }
+    }
+  }
+}

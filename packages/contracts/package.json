@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "deploy:local": "bun hardhat ignition deploy ignition/modules/PayID.ts --network hardhatMainnet",
-    "deploy:sepolia:lisk": "bun hardhat ignition deploy ignition/modules/PayID.ts --network liskSepolia --deployment-id lisk-sepolia-v1"
+    "deploy:local": "bun hardhat ignition deploy ignition/modules/PayID.ts --network localhost",
+    "deploy:sepolia:lisk": "bun hardhat ignition deploy ignition/modules/PayID.ts --network liskSepolia --deployment-id lisk-sepolia-v1",
+    "hardhat:compile": "bun hardhat compile",
+    "hardhat:run": "bun hardhat node",
+    "hardhat:clean": "bun hardhat clean"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.6",

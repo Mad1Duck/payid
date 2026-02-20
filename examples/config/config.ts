@@ -6,7 +6,13 @@ export const envData = {
 
   account: {
     senderPk: requireEnv("SENDER_PRIVATE_KEY"),
-    receiverPk: requireEnv("RECIVER_PRIVATE_KEY"),
+    senderAddress: requireEnv("SENDER_ADDRESS"),
+    reciverPk: requireEnv("RECIVER_PRIVATE_KEY"),
+    reciverAddress: requireEnv("RECIVER_ADDRESS"),
+    adminPk: requireEnv("ADMIN_PRIVATE_KEY"),
+    adminAddress: requireEnv("ADMIN_ADDRESS"),
+    issuerPk: requireEnv("ISSUER_PRIVATE_KEY"),
+    issuerAddress: requireEnv("ISSUER_ADDRESS"),
   },
 
   pinata: {

@@ -29,10 +29,10 @@ import fs from "fs";
 import path from "path";
 import { createPayID, context as contextModule } from "payid";
 import { envData } from "../config/config";
-import PayWithPayIDAbi from "../clients/abi.json";
-import usdcAbi from "../clients/usdc.abi.json";
-import ruleNFTAbi from "../clients/rule.config.json";
-import combinedAbi from "../clients/CombinedRuleStorage.abi.json";
+import PayWithPayIDAbi from "../shared/PayIDModule#PayWithPayID.json";
+import usdcAbi from "../shared/PayIDModule#MockUSDC.json";
+import ruleNFTAbi from "../shared/PayIDModule#RuleItemERC721.json";
+import combinedAbi from "../shared/PayIDModule#CombinedRuleStorage.json";
 
 const {
   rpcUrl: RPC_URL,
@@ -44,7 +44,7 @@ const {
   },
   account: {
     senderPk: SENDER_PRIVATE_KEY,
-    receiverPk: RECEIVER_PRIVATE_KEY,
+    reciverPk: RECIVER_PRIVATE_KEY,
   },
 } = envData;
 
@@ -55,10 +55,10 @@ const payerWallet = new ethers.Wallet(SENDER_PRIVATE_KEY, provider);
 
 // Issuer wallets — di production gunakan HSM/KMS, bukan plain wallet
 // Satu wallet bisa dipakai untuk beberapa domain, atau satu wallet per domain
-const ENV_ISSUER = new ethers.Wallet(RECEIVER_PRIVATE_KEY, provider);
-const STATE_ISSUER = new ethers.Wallet(RECEIVER_PRIVATE_KEY, provider);
-const ORACLE_ISSUER = new ethers.Wallet(RECEIVER_PRIVATE_KEY, provider);
-const RISK_ISSUER = new ethers.Wallet(RECEIVER_PRIVATE_KEY, provider);
+const ENV_ISSUER = new ethers.Wallet(RECIVER_PRIVATE_KEY, provider);
+const STATE_ISSUER = new ethers.Wallet(RECIVER_PRIVATE_KEY, provider);
+const ORACLE_ISSUER = new ethers.Wallet(RECIVER_PRIVATE_KEY, provider);
+const RISK_ISSUER = new ethers.Wallet(RECIVER_PRIVATE_KEY, provider);
 
 console.log("Server issuer :", ENV_ISSUER.address);
 console.log("Payer         :", payerWallet.address);
@@ -246,7 +246,7 @@ async function main() {
   // ── 4. Approve ERC20 ─────────────────────────────────────────────────────────
   console.log("\n[4/5] Checking USDC allowance...");
 
-  const usdc = new ethers.Contract(USDC, usdcAbi, payerWallet);
+  const usdc = new ethers.Contract(USDC, usdcAbi.abi, payerWallet);
   const allowance: bigint =
     await usdc.getFunction("allowance")(payerWallet.address, PAY_CONTRACT);
 

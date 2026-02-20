@@ -27,10 +27,10 @@ import fs from "fs";
 import path from "path";
 import { createPayID } from "payid";
 import { envData } from "../config/config";
-import PayWithPayIDAbi from "../clients/abi.json";
-import usdcAbi from "../clients/usdc.abi.json";
-import ruleNFTAbi from "../clients/rule.config.json";
-import combinedAbi from "../clients/CombinedRuleStorage.abi.json";
+import PayWithPayIDAbi from "../shared/PayIDModule#PayWithPayID.json";
+import usdcAbi from "../shared/PayIDModule#MockUSDC.json";
+import ruleNFTAbi from "../shared/PayIDModule#RuleItemERC721.json";
+import combinedAbi from "../shared/PayIDModule#CombinedRuleStorage.json";
 
 const {
   rpcUrl: RPC_URL,
@@ -40,7 +40,7 @@ const {
     payWithPayId: PAY_CONTRACT,
     combinedRuleStorage: COMBINED_RULE_STORAGE,
   },
-  account: { senderPk: SENDER_PRIVATE_KEY },
+  account: { senderPk: SENDER_PRIVATE_KEY, reciverAddress },
 } = envData;
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
@@ -72,6 +72,8 @@ async function getActiveRuleSet(receiver: string) {
 
   const ruleSetHash: string =
     await combined.getFunction("activeRuleOf")(receiver);
+
+  console.log(ruleSetHash, "🚨 Rule Hash");
 
   if (ruleSetHash === ethers.ZeroHash) {
     throw new Error(`Receiver tidak punya active rule set: ${receiver}`);
@@ -120,7 +122,7 @@ async function loadRuleConfigs(rules: { ruleNFT: string; tokenId: string; }[]) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const RECEIVER = "0x73F98364f6B62a5683F2C14ae86a23D7288f6106";
+  const RECEIVER = reciverAddress;
   const AMOUNT = 150_000_000n;  // 150 USDC (6 decimals)
 
   // ── 1. Load rule set ─────────────────────────────────────────────────────────
@@ -198,7 +200,7 @@ async function main() {
   // ── 4. Approve ERC20 ─────────────────────────────────────────────────────────
   console.log("\n[4/5] Checking USDC allowance...");
 
-  const usdc = new ethers.Contract(USDC, usdcAbi, payerWallet);
+  const usdc = new ethers.Contract(USDC, usdcAbi.abi, payerWallet);
   const allowance: bigint =
     await usdc.getFunction("allowance")(payerWallet.address, PAY_CONTRACT);
 
