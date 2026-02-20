@@ -28,7 +28,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     uint8   public constant MAX_SLOT = 3;
     uint256 public constant SUB_DURATION = 30 days;
 
-    // $0.35 ≈ Rp 5.000 still hardcode
+    // $0.35 ≈ Rp 5.000
     uint256 public subscriptionUsdCents = 35;
 
     AggregatorV3Interface public ethUsdFeed;
@@ -39,27 +39,27 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
 
     struct RuleDefinition {
         bytes32 ruleHash;
-        string uri;
+        string  uri;
         address creator;
-
-        uint256 parentRuleId; // 0 if root
+        uint256 parentRuleId;   // 0 if root
         uint16  version;
-
-        bool deprecated;      // true if replaced with other 
-        uint256 tokenId;      // NFT only for ACTIVE version
+        bool    deprecated;     // true if replaced
+        uint256 tokenId;        // NFT only for ACTIVE version
     }
 
     /* ===================== STORAGE ===================== */
-    mapping(uint256 => RuleDefinition) public rules;      // ruleId => rule
-    mapping(uint256 => uint256) public tokenRule;         // tokenId => ruleId
+    mapping(uint256 => RuleDefinition) public rules;        // ruleId   => rule
+    mapping(uint256 => uint256)        public tokenRule;    // tokenId  => ruleId
+    mapping(uint256 => uint256)        public rootRuleOf;   // ruleId   => rootRuleId
+    mapping(uint256 => uint256)        public activeRuleOf; // rootRuleId => active ruleId
+    mapping(address => uint8)          public logicalRuleCount; // ROOT rules per user
+    mapping(address => uint256)        public subscriptionExpiry;
+    mapping(uint256 => uint256)        public ruleExpiry;   // tokenId  => expiry
+    mapping(uint256 => uint256)        public ruleTokenId;
 
-    mapping(uint256 => uint256) public rootRuleOf;        // ruleId => rootRuleId
-    mapping(uint256 => uint256) public activeRuleOf;      // rootRuleId => active ruleId
-
-    mapping(address => uint8)   public logicalRuleCount;  // ROOT rules per user
-    mapping(address => uint256) public subscriptionExpiry;
-    mapping(uint256 => uint256) public ruleExpiry;        // tokenId => expiry
-    mapping(uint256 => uint256) public ruleTokenId;
+    // FIX: track tokens authorized for internal burn
+    // to distinguish internal burns from external transfer attempts
+    mapping(uint256 => bool) private _pendingBurn;
 
     /* ===================== EVENTS ===================== */
     event RuleCreated(
@@ -68,20 +68,9 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         uint256 indexed parentRuleId,
         uint16 version
     );
-
-    event RuleActivated(
-        uint256 indexed ruleId,
-        uint256 indexed tokenId
-    );
-
-    event RuleDeprecated(
-        uint256 indexed ruleId
-    );
-
-    event Subscribed(
-        address indexed user,
-        uint256 expiry
-    );
+    event RuleActivated(uint256 indexed ruleId, uint256 indexed tokenId);
+    event RuleDeprecated(uint256 indexed ruleId);
+    event Subscribed(address indexed user, uint256 expiry);
 
     /* ===================== CONSTRUCTOR ===================== */
     constructor(
@@ -89,18 +78,14 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         string memory symbol,
         address admin,
         address oracle
-    )
-        ERC721(name, symbol)
-    {
+    ) ERC721(name, symbol) {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
 
         ethUsdFeed = AggregatorV3Interface(oracle);
-        deployer = msg.sender;
+        deployer   = msg.sender;
     }
-
-
 
     /* ===================================================== */
     /* ================= SUBSCRIPTION ====================== */
@@ -110,21 +95,9 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         return subscriptionExpiry[user] >= block.timestamp;
     }
 
-    // function subscriptionPriceETH() public view returns (uint256) {
-    //     (, int256 price,,,) = ethUsdFeed.latestRoundData();
-    //     require(price > 0, "INVALID_ORACLE_PRICE");
-
-    //     uint256 usdValue = subscriptionUsdCents * 1e16; // cents → 18 decimals
-    //     uint256 ethUsd =
-    //         uint256(price) * (10 ** (18 - ethUsdFeed.decimals()));
-
-    //     return (usdValue * 1e18) / ethUsd;
-    // }
-    
     function subscriptionPriceETH() public pure returns (uint256) {
         return 0.0001 ether;
     }
-
 
     function subscribe() external payable whenNotPaused {
         uint256 price = subscriptionPriceETH();
@@ -136,12 +109,12 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
                 ? block.timestamp + SUB_DURATION
                 : expiry + SUB_DURATION;
 
+        (bool ok, ) = deployer.call{value: price}("");
+        require(ok, "DEPLOYER_TRANSFER_FAILED");
+
         if (msg.value > price) {
             payable(msg.sender).transfer(msg.value - price);
         }
-
-         (bool ok, ) = deployer.call{value: msg.value}("");
-        require(ok, "DEPLOYER_TRANSFER_FAILED");
 
         emit Subscribed(msg.sender, subscriptionExpiry[msg.sender]);
     }
@@ -163,13 +136,13 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         ruleId = ++nextRuleId;
 
         rules[ruleId] = RuleDefinition({
-            ruleHash: ruleHash,
-            uri: uri,
-            creator: msg.sender,
+            ruleHash:     ruleHash,
+            uri:          uri,
+            creator:      msg.sender,
             parentRuleId: 0,
-            version: 1,
-            deprecated: false,
-            tokenId: 0
+            version:      1,
+            deprecated:   false,
+            tokenId:      0
         });
 
         rootRuleOf[ruleId] = ruleId;
@@ -178,7 +151,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         emit RuleCreated(ruleId, ruleId, 0, 1);
     }
 
-    /// Create NEW VERSION of a rule (slot-aware)
+    /// Create NEW VERSION of a rule
     function createRuleVersion(
         uint256 parentRuleId,
         bytes32 newHash,
@@ -195,13 +168,13 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         ruleId = ++nextRuleId;
 
         rules[ruleId] = RuleDefinition({
-            ruleHash: newHash,
-            uri: newUri,
-            creator: msg.sender,
+            ruleHash:     newHash,
+            uri:          newUri,
+            creator:      msg.sender,
             parentRuleId: parentRuleId,
-            version: parent.version + 1,
-            deprecated: false,
-            tokenId: 0
+            version:      parent.version + 1,
+            deprecated:   false,
+            tokenId:      0
         });
 
         rootRuleOf[ruleId] = root;
@@ -209,20 +182,14 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         parent.deprecated = true;
         emit RuleDeprecated(parentRuleId);
 
-        emit RuleCreated(
-            ruleId,
-            root,
-            parentRuleId,
-            rules[ruleId].version
-        );
+        emit RuleCreated(ruleId, root, parentRuleId, rules[ruleId].version);
     }
 
     /* ===================================================== */
     /* =========== SLOT-AWARE VERSION ACTIVATION =========== */
     /* ===================================================== */
 
-    /// Activate a rule version
-    /// Automatically deactivates previous version (if any)
+    /// Activate a rule version — auto-deactivates previous version
     function activateRule(uint256 ruleId)
         external
         whenNotPaused
@@ -234,27 +201,30 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         require(!r.deprecated, "RULE_DEPRECATED");
         require(r.tokenId == 0, "ALREADY_ACTIVE");
 
-        uint256 root = rootRuleOf[ruleId];
+        uint256 root     = rootRuleOf[ruleId];
         uint256 oldActive = activeRuleOf[root];
 
         // Deactivate previous version (burn its NFT)
         if (oldActive != 0) {
             uint256 oldToken = rules[oldActive].tokenId;
             if (oldToken != 0) {
+                // FIX: mark as pending burn before calling _burn
+                // so _update knows this is an authorized internal burn
+                _pendingBurn[oldToken] = true;
                 _burn(oldToken);
             }
-            rules[oldActive].tokenId = 0;
+            rules[oldActive].tokenId  = 0;
             rules[oldActive].deprecated = true;
             emit RuleDeprecated(oldActive);
         }
 
         // Activate new version
         tokenId = ++nextTokenId;
-        r.tokenId = tokenId;
-        tokenRule[tokenId] = ruleId;
-        activeRuleOf[root] = ruleId;
-        ruleExpiry[tokenId] = subscriptionExpiry[msg.sender];
-        ruleTokenId[ruleId] = tokenId;
+        r.tokenId            = tokenId;
+        tokenRule[tokenId]   = ruleId;
+        activeRuleOf[root]   = ruleId;
+        ruleExpiry[tokenId]  = subscriptionExpiry[msg.sender];
+        ruleTokenId[ruleId]  = tokenId;
 
         _mint(msg.sender, tokenId);
         _setTokenURI(tokenId, r.uri);
@@ -272,11 +242,12 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         require(ruleExpiry[tokenId] < block.timestamp, "NOT_EXPIRED");
 
         uint256 ruleId = tokenRule[tokenId];
-        uint256 root = rootRuleOf[ruleId];
+        uint256 root   = rootRuleOf[ruleId];
 
+        // FIX: mark as pending burn before calling _burn
+        _pendingBurn[tokenId] = true;
         _burn(tokenId);
 
-        // clear active pointer
         if (activeRuleOf[root] == ruleId) {
             activeRuleOf[root] = 0;
         }
@@ -284,22 +255,13 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         rules[ruleId].tokenId = 0;
     }
 
-    /**
-     * @notice Extend / set rule license expiry
-     * @dev Only current rule owner can extend
-     */
+    /// Extend rule license expiry
     function extendRuleExpiry(
         uint256 tokenId,
         uint256 newExpiry
     ) external payable {
-        require(
-            ownerOf(tokenId) == msg.sender,
-            "NOT_RULE_OWNER"
-        );
-        require(
-            newExpiry > ruleExpiry[tokenId],
-            "EXPIRY_NOT_EXTENDED"
-        );
+        require(ownerOf(tokenId) == msg.sender, "NOT_RULE_OWNER");
+        require(newExpiry > ruleExpiry[tokenId], "EXPIRY_NOT_EXTENDED");
 
         uint256 price = subscriptionPriceETH();
         require(msg.value >= price, "INSUFFICIENT_PAYMENT");
@@ -310,15 +272,18 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
                 ? block.timestamp + SUB_DURATION
                 : expiry + SUB_DURATION;
 
+        // FIX: transfer exact price, refund excess — sama seperti subscribe()
+        (bool ok, ) = deployer.call{value: price}("");
+        require(ok, "DEPLOYER_TRANSFER_FAILED");
+
         if (msg.value > price) {
             payable(msg.sender).transfer(msg.value - price);
         }
 
-        (bool ok, ) = deployer.call{value: msg.value}("");
-        require(ok, "DEPLOYER_TRANSFER_FAILED");
-
         ruleExpiry[tokenId] = newExpiry;
     }
+
+    /* ===================== _update OVERRIDE ===================== */
 
     function _update(
         address to,
@@ -326,10 +291,17 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         address auth
     ) internal override whenNotPaused returns (address from) {
         from = super._update(to, tokenId, auth);
-        require(to != address(0), "BURN_ONLY_VIA_EXPIRY");
-        if (to != address(0)) {
-            ruleExpiry[tokenId] = subscriptionExpiry[to];
+
+        if (to == address(0)) {
+            // FIX: ini adalah burn — hanya boleh dari internal (_pendingBurn)
+            // Bug sebelumnya: require(to != address(0)) justru BLOCK semua burn
+            require(_pendingBurn[tokenId], "BURN_ONLY_VIA_EXPIRY_OR_ACTIVATION");
+            _pendingBurn[tokenId] = false; // reset flag
+            return from;
         }
+
+        // Transfer: update expiry berdasarkan subscription owner baru
+        ruleExpiry[tokenId] = subscriptionExpiry[to];
     }
 
     /* ===================================================== */
@@ -344,31 +316,21 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
             string memory uri,
             address creator,
             uint256 rootRuleId,
-            uint16 version,
-            bool deprecated,
-            bool active
+            uint16  version,
+            bool    deprecated,
+            bool    active
         )
     {
         RuleDefinition memory r = rules[ruleId];
         require(r.ruleHash != bytes32(0), "RULE_NOT_EXIST");
 
-        uint256 root = rootRuleOf[ruleId];
-        bool isActive = activeRuleOf[root] == ruleId;
+        uint256 root    = rootRuleOf[ruleId];
+        bool    isActive = activeRuleOf[root] == ruleId;
 
-        return (
-            r.ruleHash,
-            r.uri,
-            r.creator,
-            root,
-            r.version,
-            r.deprecated,
-            isActive
-        );
+        return (r.ruleHash, r.uri, r.creator, root, r.version, r.deprecated, isActive);
     }
 
-    /* ===================================================== */
-    /* ================= OVERRIDES ========================= */
-    /* ===================================================== */
+    /* ===================== OVERRIDES ===================== */
 
     function tokenURI(uint256 tokenId)
         public

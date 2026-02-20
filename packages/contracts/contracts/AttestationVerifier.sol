@@ -1,128 +1,243 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+/**
+ * @title AttestationVerifier (EAS-based)
+ * @notice Verifies attestations via Ethereum Attestation Service (EAS)
+ *         Fully serverless — no trusted issuer server needed.
+ *         Client hanya perlu query EAS UID dan pass ke sini.
+ *
+ * EAS Deployments:
+ *   Ethereum Mainnet : 0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587
+ *   Base             : 0x4200000000000000000000000000000000000021
+ *   Optimism         : 0x4200000000000000000000000000000000000020
+ *   Arbitrum One     : 0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458
+ *   Sepolia (testnet): 0xC2679fBD37d54388Ce493F1DB75320D236e1815e
+ */
 
-contract AttestationVerifier is EIP712 {
-    using ECDSA for bytes32;
+/* ===================== EAS INTERFACE ===================== */
 
-    error UntrustedIssuer();
-    error InvalidIssuedAt();
-    error InvalidExpiry();
-    error AttestationExpired();
-    error InvalidSignature();
-    error ReplayAttestation();
-
+interface IEAS {
     struct Attestation {
-        address issuer;
-        uint64 issuedAt;
-        uint64 expiresAt;
-        bytes signature;
+        bytes32 uid;
+        bytes32 schema;
+        uint64  time;
+        uint64  expirationTime;
+        uint64  revocationTime;
+        bytes32 refUID;
+        address attester;
+        address recipient;
+        bool    revocable;
+        bytes   data;
     }
-    bytes32 public constant ATTESTATION_TYPEHASH =
-        keccak256(
-            "Attestation(address issuer,uint64 issuedAt,uint64 expiresAt,bytes32 payloadHash)"
-        );
 
-    mapping(address => bool) public trustedIssuers;
-    mapping(bytes32 => bool) public usedPayloads;
+    function getAttestation(bytes32 uid)
+        external
+        view
+        returns (Attestation memory);
+
+    function isAttestationValid(bytes32 uid)
+        external
+        view
+        returns (bool);
+}
+
+/* ===================== CONTRACT ===================== */
+
+contract AttestationVerifier {
+
+    /* ===================== ERRORS ===================== */
+    error UntrustedAttester();
+    error WrongSchema();
+    error AttestationExpired();
+    error AttestationRevoked();
+    error AttestationNotForPayer();
+    error AttestationNotFound();
+    error ReplayAttestation();
+    error LengthMismatch();
+    error NotOwner();
+    error ZeroAddress();
+
+    /* ===================== STORAGE ===================== */
+
+    IEAS    public immutable eas;
+
+    // Schemas yang diizinkan (kamu define schema di EAS registry)
+    mapping(bytes32 => bool) public trustedSchemas;
+
+    // Attesters yang diizinkan (Worldcoin, Gitcoin, KYC provider, dll)
+    mapping(address => bool) public trustedAttesters;
+
+    // Replay protection untuk one-time attestation
+    mapping(bytes32 => bool) public usedAttestations;
 
     address public owner;
 
+    /* ===================== EVENTS ===================== */
+    event SchemaUpdated(bytes32 indexed schemaUID, bool trusted);
+    event AttesterUpdated(address indexed attester, bool trusted);
+    event OwnershipTransferred(address indexed prev, address indexed next);
+
+    /* ===================== MODIFIER ===================== */
     modifier onlyOwner() {
-        require(msg.sender == owner, "NOT_OWNER");
+        if (msg.sender != owner) revert NotOwner();
         _;
     }
 
+    /* ===================== CONSTRUCTOR ===================== */
+
+    /**
+     * @param easAddress       EAS contract address sesuai chain
+     * @param initialSchemas   List schema UID yang diizinkan
+     * @param initialAttesters List attester yang diizinkan (Worldcoin, Gitcoin, dll)
+     */
     constructor(
-        string memory name,
-        string memory version,
-        address[] memory initialIssuers
-    )
-        EIP712(name, version)
-    {
+        address          easAddress,
+        bytes32[] memory initialSchemas,
+        address[] memory initialAttesters
+    ) {
+        if (easAddress == address(0)) revert ZeroAddress();
+
+        eas   = IEAS(easAddress);
         owner = msg.sender;
 
-        for (uint256 i = 0; i < initialIssuers.length; i++) {
-            trustedIssuers[initialIssuers[i]] = true;
+        for (uint256 i = 0; i < initialSchemas.length; ) {
+            trustedSchemas[initialSchemas[i]] = true;
+            emit SchemaUpdated(initialSchemas[i], true);
+            unchecked { ++i; }
+        }
+
+        for (uint256 i = 0; i < initialAttesters.length; ) {
+            trustedAttesters[initialAttesters[i]] = true;
+            emit AttesterUpdated(initialAttesters[i], true);
+            unchecked { ++i; }
         }
     }
 
-    function setTrustedIssuer(address issuer, bool trusted)
+    /* ===================== ADMIN ===================== */
+
+    function setTrustedSchema(bytes32 schemaUID, bool trusted)
         external
         onlyOwner
     {
-        trustedIssuers[issuer] = trusted;
+        trustedSchemas[schemaUID] = trusted;
+        emit SchemaUpdated(schemaUID, trusted);
     }
 
-    function _verifyTypedAttestation(
-        bytes32 payloadHash,
-        Attestation calldata att
-    ) internal view {
-        if (!trustedIssuers[att.issuer]) revert UntrustedIssuer();
-
-        if (att.issuedAt > block.timestamp) revert InvalidIssuedAt();
-        if (att.expiresAt <= att.issuedAt) revert InvalidExpiry();
-        if (block.timestamp > att.expiresAt) revert AttestationExpired();
-
-        bytes32 structHash = keccak256(
-            abi.encode(
-                ATTESTATION_TYPEHASH,
-                att.issuer,
-                att.issuedAt,
-                att.expiresAt,
-                payloadHash
-            )
-        );
-
-        bytes32 digest = _hashTypedDataV4(structHash);
-        address recovered = ECDSA.recover(digest, att.signature);
-
-        if (recovered != att.issuer) revert InvalidSignature();
+    function setTrustedAttester(address attester, bool trusted)
+        external
+        onlyOwner
+    {
+        if (attester == address(0)) revert ZeroAddress();
+        trustedAttesters[attester] = trusted;
+        emit AttesterUpdated(attester, trusted);
     }
 
-    function verifyTypedAttestation(
-        bytes32 payloadHash,
-        Attestation calldata att
-    ) external view {
-        _verifyTypedAttestation(payloadHash, att);
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) revert ZeroAddress();
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
     }
 
-    function verifyTypedAttestationOnce(
-        bytes32 payloadHash,
-        Attestation calldata att
-    ) external {
-        if (usedPayloads[payloadHash]) revert ReplayAttestation();
+    /* ===================== INTERNAL VERIFY ===================== */
 
-        _verifyTypedAttestation(payloadHash, att);
-
-        usedPayloads[payloadHash] = true;
-    }
-
-    /* ========================BATCH VERIFIER (GAS OPTIMIZED)========================
-                      
     /**
-     * @notice Verify multiple attestations in a single call.
-     *
-     * Gas optimized:
-     * - Single domain separator
-     * - No storage writes
-     * - Early revert on first failure
+     * @notice Core verification — dipanggil oleh semua public verify functions
+     * @param attestationUID  UID dari EAS attestation (didapat client dari EAS SDK)
+     * @param payer           Address yang harus jadi recipient attestation
      */
-    function verifyTypedAttestationBatch(
-        bytes32[] calldata payloadHashes,
-        Attestation[] calldata atts
+    function _verifyEASAttestation(
+        bytes32 attestationUID,
+        address payer
+    ) internal view {
+        // 1. Fetch attestation dari EAS contract (on-chain, no server)
+        IEAS.Attestation memory att = eas.getAttestation(attestationUID);
+
+        // 2. Attestation harus exist
+        if (att.uid == bytes32(0)) revert AttestationNotFound();
+
+        // 3. Schema harus trusted
+        if (!trustedSchemas[att.schema]) revert WrongSchema();
+
+        // 4. Attester harus trusted (Worldcoin, Gitcoin, KYC provider)
+        if (!trustedAttesters[att.attester]) revert UntrustedAttester();
+
+        // 5. Recipient harus payer — attestation untuk orang yang bayar
+        if (att.recipient != payer) revert AttestationNotForPayer();
+
+        // 6. Belum expired (0 = tidak ada expiry)
+        if (
+            att.expirationTime != 0 &&
+            att.expirationTime <= block.timestamp
+        ) revert AttestationExpired();
+
+        // 7. Belum direvoke
+        if (att.revocationTime != 0) revert AttestationRevoked();
+
+        // 8. Double-check via EAS isAttestationValid
+        if (!eas.isAttestationValid(attestationUID)) revert AttestationRevoked();
+    }
+
+    /* ===================== PUBLIC VERIFY ===================== */
+
+    /**
+     * @notice Verify single EAS attestation (reusable)
+     * @param attestationUID  EAS attestation UID
+     * @param payer           Harus match dengan att.recipient
+     */
+    function verifyAttestation(
+        bytes32 attestationUID,
+        address payer
     ) external view {
-        uint256 len = payloadHashes.length;
-        require(len == atts.length, "LENGTH_MISMATCH");
+        _verifyEASAttestation(attestationUID, payer);
+    }
 
+    /**
+     * @notice Verify attestation dan mark sebagai used (one-time use)
+     * @dev Cocok untuk high-value atau compliance use case
+     */
+    function verifyAttestationOnce(
+        bytes32 attestationUID,
+        address payer
+    ) external {
+        if (usedAttestations[attestationUID]) revert ReplayAttestation();
+        _verifyEASAttestation(attestationUID, payer);
+        usedAttestations[attestationUID] = true;
+    }
+
+    /**
+     * @notice Verify multiple attestations sekaligus (gas optimized)
+     * @dev Cocok untuk payer yang perlu multiple attestations
+     *      contoh: KYC attestation + AML attestation + Accredited Investor attestation
+     *
+     * @param attestationUIDs  Array EAS attestation UIDs
+     * @param payer            Semua attestation harus untuk payer yang sama
+     */
+    function verifyAttestationBatch(
+        bytes32[] calldata attestationUIDs,
+        address            payer
+    ) external view {
+        uint256 len = attestationUIDs.length;
         for (uint256 i = 0; i < len; ) {
-            _verifyTypedAttestation(payloadHashes[i], atts[i]);
+            _verifyEASAttestation(attestationUIDs[i], payer);
+            unchecked { ++i; }
+        }
+    }
 
-            unchecked {
-                ++i;
-            }
+    /* ===================== VIEW HELPERS ===================== */
+
+    /**
+     * @notice Cek apakah payer punya valid attestation untuk schema tertentu
+     *         Berguna untuk client-side pre-check sebelum build transaction
+     */
+    function hasValidAttestation(
+        bytes32 attestationUID,
+        address payer
+    ) external view returns (bool) {
+        try this.verifyAttestation(attestationUID, payer) {
+            return true;
+        } catch {
+            return false;
         }
     }
 }
