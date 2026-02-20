@@ -19,7 +19,7 @@ export async function runWasmRule(
 
   const ctxBuf = Buffer.from(JSON.stringify(context));
   const cfgBuf = Buffer.from(JSON.stringify(config));
-  const OUT_SIZE = 2048;
+  const OUT_SIZE = 4096;
 
   const ctxPtr = alloc(ctxBuf.length);
   const cfgPtr = alloc(cfgBuf.length);
