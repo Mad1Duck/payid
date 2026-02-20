@@ -45,13 +45,6 @@ export async function mainRule() {
 
   /* ----------------------------------
      1. Subscribe jika belum
-     FIX: cek hasSubscription() bukan logicalRuleCount.
-     
-     Bug sebelumnya: if (used >= 1n) subscribe
-     → pada run pertama used = 0, jadi subscribe di-SKIP
-     → activateRule() set ruleExpiry[tokenId] = subscriptionExpiry = 0
-     → PayIDVerifier cek: ruleExpiry >= block.timestamp → 0 >= now → REVERT
-     → error: "RULE_LICENSE_EXPIRED" (atau "missing revert data")
   ---------------------------------- */
   const isSubscribed: boolean =
     await ruleNFT.getFunction("hasSubscription")(wallet.address);

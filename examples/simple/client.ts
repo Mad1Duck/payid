@@ -214,7 +214,6 @@ async function main() {
   }
 
   // ── 5. Send payment ──────────────────────────────────────────────────────────
-  // FIX: contract baru butuh 3 parameter: (Decision, sig, bytes32[] attestationUIDs)
   // attestationUIDs = [] karena rule ini tidak pakai requiresAttestation
   // Kalau rule butuh KYC EAS attestation, gunakan EASClient.getValidUIDs()
   console.log("\n[5/5] Sending payERC20...");

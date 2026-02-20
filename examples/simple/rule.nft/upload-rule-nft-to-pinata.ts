@@ -27,7 +27,6 @@ const IMAGE_PATH = path.join(__dirname, "./rule.jpg");
 const CACHE_JSON_PATH = path.join(__dirname, "./rule.json");
 
 // ─── Definisi rule ────────────────────────────────────────────────────────────
-// Edit bagian ini untuk mengubah rule yang di-upload
 const RULE_OBJECT = {
   id: "min_amount",
   if: {
@@ -37,7 +36,7 @@ const RULE_OBJECT = {
   },
 };
 
-const NFT_NAME = "PAY.ID Rule – Min Amount";
+const NFT_NAME = "PAY.ID Rule - Min Amount";
 const NFT_DESCRIPTION = "PAY.ID rule enforcing minimum transaction amount of 100 USDC";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -158,8 +157,6 @@ export async function mainPinata() {
 }
 
 // ─── Run langsung (bun run setup:upload) ─────────────────────────────────────
-// FIX: pakai import.meta.main agar tidak auto-run saat file ini di-import
-// oleh create-rule-item.ts
 if (import.meta.main) {
   mainPinata()
     .then(() => process.exit(0))
