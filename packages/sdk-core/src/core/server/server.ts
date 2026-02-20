@@ -4,7 +4,7 @@ import type { DecisionProof } from "../../decision-proof/types";
 import type { UserOperation } from "../../erc4337/types";
 import { evaluate } from "../../evaluate";
 import { generateDecisionProof } from "../../decision-proof/generate";
-import { buildPayCallData } from "../../erc4337/build";
+import { buildPayERC20CallData } from "../../erc4337/build";
 import { buildUserOperation } from "../../erc4337/userop";
 import type { RuleSource } from "../../resolver/types";
 import { resolveRule } from "../../resolver/resolver";
@@ -120,8 +120,13 @@ export class PayIDServer {
     gas: any;
     targetContract: string;
     paymasterAndData?: string;
+    attestationUIDs?: string[];
   }): UserOperation {
-    const callData = buildPayCallData(params.targetContract, params.proof);
+    const callData = buildPayERC20CallData(
+      params.targetContract,
+      params.proof,
+      params.attestationUIDs ?? []
+    );
 
     return buildUserOperation({
       sender: params.smartAccount,

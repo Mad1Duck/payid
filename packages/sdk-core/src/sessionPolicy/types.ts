@@ -1,14 +1,11 @@
-// sessinPolicy/types.ts
+import type { RuleConfig } from "payid-types";
+
 export interface PayIDSessionPolicyPayloadV1 {
   version: "payid.session.policy.v1" | string;
 
   receiver: string;
 
-  rule: {
-    version: string;
-    logic: "AND" | "OR";
-    rules: any[];
-  };
+  rule: RuleConfig;
 
   expiresAt: number;
   nonce: string;

@@ -1,5 +1,6 @@
 // sessionPolicy/createSessionPolicyPayload.ts
 import { ethers } from "ethers";
+import type { RuleConfig } from "payid-types";
 import { canonicalizeRuleSet } from "../rule/canonicalize";
 import { randomHex } from "../utils/randomHex";
 import type { PayIDSessionPolicyPayloadV1 } from "./types";
@@ -56,11 +57,7 @@ import type { PayIDSessionPolicyPayloadV1 } from "./types";
  */
 export async function createSessionPolicyPayload(params: {
   receiver: string;
-  rule: {
-    version: string;
-    logic: "AND";
-    rules: any[];
-  };
+  rule: RuleConfig;
   expiresAt: number;
   signer: ethers.Signer;
 }): Promise<PayIDSessionPolicyPayloadV1> {

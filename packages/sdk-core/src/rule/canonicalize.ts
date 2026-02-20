@@ -1,53 +1,20 @@
+import type { AnyRule } from "payid-types";
+
 /**
  * Canonicalize a rule set into a deterministic, order-independent form.
  *
- * Canonicalization ensures that semantically identical rule sets
- * always produce the same structural representation, regardless of:
- * - Rule insertion order
- * - Object key order
- * - Nested object layout
- *
- * This function is CRITICAL for:
- * - Rule hashing (`ruleSetHash`)
- * - Policy signing (QR / session / intent)
- * - Consistent off-chain evaluation
- *
- * ## Canonicalization rules
- *
- * - Rules are normalized individually.
- * - Rule entries are sorted lexicographically by `id`.
- * - All nested objects are recursively sorted by key.
- * - Arrays preserve their original order unless explicitly sorted.
- *
- * ## Security model
- *
- * - Canonicalization MUST be applied BEFORE hashing or signing.
- * - Canonicalization MUST NOT be applied during verification
- *   (the verified payload must match exactly what was signed).
- *
- * ## Invariants
- *
- * - Canonicalization does NOT change rule semantics.
- * - Canonicalization does NOT weaken rule constraints.
- * - Canonicalization is a pure, deterministic operation.
- *
- * @param ruleSet
- *   A rule configuration object containing:
- *   - `version`: rule schema version
- *   - `logic`: logical operator ("AND" | "OR")
- *   - `rules`: list of rule definitions
- *
- * @returns
- *   A canonicalized rule configuration suitable for hashing,
- *   signing, and deterministic evaluation.
+ * Supports all three v4 rule formats:
+ *   - Format A: { id, if, message? }
+ *   - Format B: { id, logic, conditions[], message? }
+ *   - Format C: { id, logic, rules[], message? }
  */
 export function canonicalizeRuleSet(ruleSet: {
-  version: string;
+  version?: string;
   logic: "AND" | "OR";
   rules: any[];
 }) {
   return {
-    version: ruleSet.version,
+    version: ruleSet.version ?? "1",
     logic: ruleSet.logic,
     rules: ruleSet.rules
       .map(rule => canonicalizeRule(rule))
@@ -56,56 +23,52 @@ export function canonicalizeRuleSet(ruleSet: {
 }
 
 /**
- * Canonicalize a single rule definition.
- *
- * - Normalizes the rule identifier.
- * - Canonicalizes the conditional expression (`if`) recursively.
- *
- * @param rule
- *   A single rule object.
- *
- * @returns
- *   A canonicalized rule representation.
+ * Canonicalize a single rule — handles all three v4 formats.
  */
-function canonicalizeRule(rule: any) {
+function canonicalizeRule(rule: any): AnyRule {
+  const base = { id: rule.id, ...(rule.message ? { message: rule.message } : {}) };
+
+  // Format C: nested rules
+  if ("rules" in rule && Array.isArray(rule.rules)) {
+    return {
+      ...base,
+      logic: rule.logic,
+      rules: rule.rules
+        .map((r: any) => canonicalizeRule(r))
+        .sort((a: any, b: any) => a.id.localeCompare(b.id))
+    } as any;
+  }
+
+  // Format B: multi-condition
+  if ("conditions" in rule && Array.isArray(rule.conditions)) {
+    return {
+      ...base,
+      logic: rule.logic,
+      conditions: rule.conditions.map((c: any) => canonicalizeObject(c))
+    } as any;
+  }
+
+  // Format A: simple if
   return {
-    id: rule.id,
+    ...base,
     if: canonicalizeObject(rule.if)
-  };
+  } as any;
 }
 
 /**
- * Recursively canonicalize an arbitrary object.
- *
- * - Object keys are sorted lexicographically.
- * - Nested objects are canonicalized depth-first.
- * - Primitive values are returned as-is.
- *
- * @param obj
- *   Any JSON-compatible value.
- *
- * @returns
- *   A canonicalized representation of the input.
+ * Recursively canonicalize an arbitrary object (sort keys, handle special types).
  */
 function canonicalizeObject(obj: any): any {
   if (obj === undefined) {
     throw new Error("Undefined value not allowed in canonical object");
   }
 
-  if (
-    typeof obj === "function" ||
-    typeof obj === "symbol"
-  ) {
+  if (typeof obj === "function" || typeof obj === "symbol") {
     throw new Error("Non-JSON value not allowed in canonical object");
   }
 
-  if (obj instanceof Date) {
-    return obj.toISOString();
-  }
-
-  if (typeof obj === "bigint") {
-    return obj.toString();
-  }
+  if (obj instanceof Date) return obj.toISOString();
+  if (typeof obj === "bigint") return obj.toString();
 
   if (Array.isArray(obj)) {
     return obj.map(canonicalizeObject);
@@ -122,4 +85,3 @@ function canonicalizeObject(obj: any): any {
 
   return obj;
 }
-

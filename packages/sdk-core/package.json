@@ -38,7 +38,7 @@
   "dependencies": {
     "ethers": "^6.16.0",
     "payid-rule-engine": "^0.1.7",
-    "payid-types": "^0.1.7"
+    "payid-types": "^0.1.9"
   },
   "files": [
     "dist"
