@@ -87,6 +87,7 @@ export interface PayIDServer {
     gas: any;
     targetContract: string;
     paymasterAndData?: string;
+    attestationUIDs?: string[];
   }): UserOperation;
 }
 

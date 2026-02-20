@@ -5,7 +5,7 @@
   "attributes": [
     {
       "trait_type": "Rule ID",
-      "value": "vip_path"
+      "value": "no_cursed"
     },
     {
       "trait_type": "Engine",
@@ -17,19 +17,17 @@
     }
   ],
   "rule": {
-    "id": "vip_path",
-    "logic": "AND",
-    "conditions": [
-      {
-        "field": "tx.amount",
-        "op": ">=",
-        "value": "1000000000"
-      }
-    ],
-    "message": "Jalur VIP: amount minimal 1000 USDC + KYC level 2"
+    "_comment": "Blokir amount kelipatan 666",
+    "id": "no_cursed",
+    "if": {
+      "field": "tx.amount|mod:666000000",
+      "op": "!=",
+      "value": 0
+    },
+    "message": "666 USDC? Duit setan, ditolak 👹"
   },
-  "ruleHash": "0x6b73a3798d91d9092d16d0ec0b968170428312f8bf96aac69c1f5b4506247610",
+  "ruleHash": "0x6909889cefea9d7f15345010e131ee45887b93d1389c203df3883bfe709114e3",
   "standard": "payid.rule.v1",
-  "_ipfsCid": "bafkreif3qg6ejkoyuazm5727cu2obfcbnfyhvsud3dzn6oebaoicl2ln5m",
-  "_ipfsUrl": "https://gateway.pinata.cloud/ipfs/bafkreif3qg6ejkoyuazm5727cu2obfcbnfyhvsud3dzn6oebaoicl2ln5m"
+  "_ipfsCid": "bafkreiczzli2drwqkx2wyjqw7nkugdiyrdi6omabgt5tpzamlgx6l3egri",
+  "_ipfsUrl": "https://gateway.pinata.cloud/ipfs/bafkreiczzli2drwqkx2wyjqw7nkugdiyrdi6omabgt5tpzamlgx6l3egri"
 }

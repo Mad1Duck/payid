@@ -1,8 +1,6 @@
 export const RULE_OBJECT = {
-  id: "vip_path",
-  logic: "AND",
-  conditions: [
-    { field: "tx.amount", op: ">=", value: "1000000000" },
-  ],
-  message: "Jalur VIP: amount minimal 1000 USDC + KYC level 2",
+  "_comment": "Blokir amount kelipatan 666",
+  "id": "no_cursed",
+  "if": { "field": "tx.amount|mod:666000000", "op": "!=", "value": 0 },
+  "message": "666 USDC? Duit setan, ditolak 👹"
 };

@@ -10,7 +10,11 @@ export async function loadWasm(
     wasi_snapshot_preview1: wasi.wasiImport
   });
 
-  wasi.start(instance);
+  // rule_engine.wasm adalah reactor module — bukan command module.
+  // Node.js punya wasi.initialize(), tapi Bun belum support.
+  // Solusi: panggil _initialize export langsung dari WASM instance (portable).
+  const _init = instance.exports._initialize as (() => void) | undefined;
+  if (_init) _init();
 
   return instance;
 }

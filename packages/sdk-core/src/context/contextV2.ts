@@ -1,4 +1,3 @@
-
 import type { Wallet } from "ethers";
 import type { ContextV1, ContextV2 } from "payid-types";
 import { issueEnvContext } from "../issuer/issueEnvContext";

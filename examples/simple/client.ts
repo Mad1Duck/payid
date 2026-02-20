@@ -175,6 +175,9 @@ async function main() {
   // Payer sign sendiri menggunakan wallet mereka
   console.log("\n[3/5] Evaluating rule & generating proof...");
 
+  console.log(authorityRule, "=====authorityRule=====");
+
+
   const { result, proof } = await payid.evaluateAndProve({
     context,
     authorityRule,
