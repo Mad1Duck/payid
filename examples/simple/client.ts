@@ -142,14 +142,14 @@ async function main() {
 
   console.log("\n[3/5] Evaluating rule & generating proof...");
 
-  console.log("\n[DEBUG] Testing WASM directly...");
-  const { runWasmRule } = await import("payid-rule-engine");
-  const testResult = await runWasmRule(
-    wasm as any,
-    context as any,
-    authorityRule
-  );
-  console.log("[DEBUG] WASM result:", testResult);
+  // console.log("\n[DEBUG] Testing WASM directly...");
+  // const { runWasmRule } = await import("payid-rule-engine");
+  // const testResult = await runWasmRule(
+  //   wasm as any,
+  //   context as any,
+  //   authorityRule
+  // );
+  // console.log("[DEBUG] WASM result:", testResult);
   console.log(authorityRule, "=====authorityRule=====");
 
   // ── Get actual domain from contract BEFORE signing ────────────────────────
