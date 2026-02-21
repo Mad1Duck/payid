@@ -163,13 +163,14 @@ async function main() {
     env: {
       // Client isi timestamp sendiri (jam lokal)
       // Jika rule butuh timestamp yang verified, gunakan server/index.ts
-      timestamp: new Date().getHours(),
+      timestamp: Math.floor(Date.now() / 1000),
     },
     state: {
       spentTodayPlusTx: (spentToday + AMOUNT).toString(),
       spentThisMonthPlusTx: (spentThisMonth + AMOUNT).toString(),
+      dailyLimit: "500000000",
     },
-  };
+  } as any;;
 
   // ── 3. Evaluate + generate Decision Proof ────────────────────────────────────
   // Payer sign sendiri menggunakan wallet mereka

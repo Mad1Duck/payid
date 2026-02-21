@@ -1,4 +1,6 @@
-import { WASI } from "wasi";
+// sandbox.ts — WASI-free version
+// Lihat wasm.ts untuk penjelasan mengapa WASI dihapus
+
 import type { RuleContext, RuleResult } from "payid-types";
 import { loadWasm } from "./wasm";
 
@@ -7,12 +9,12 @@ export async function runWasmRule(
   context: RuleContext,
   config: any
 ): Promise<RuleResult> {
-  const wasi = new WASI({ version: "preview1" });
-  const instance = await loadWasm(wasmBinary, wasi);
+  // loadWasm tidak lagi butuh WASI instance
+  const instance = await loadWasm(wasmBinary);
 
   const memory = instance.exports.memory as WebAssembly.Memory;
   const alloc = instance.exports.alloc as (size: number) => number;
-  const free = instance.exports.free as (ptr: number, size: number) => void;
+  const free_ = instance.exports.free as (ptr: number, size: number) => void;
   const evaluate = instance.exports.evaluate as (
     a: number, b: number, c: number, d: number, e: number, f: number
   ) => number;
@@ -35,7 +37,7 @@ export async function runWasmRule(
       outPtr, OUT_SIZE
     );
 
-    if (rc < 0) throw new Error(`WASM failed rc=${rc}`);
+    if (rc < 0) throw new Error(`WASM evaluate failed rc=${rc}`);
 
     const out = Buffer.from(
       new Uint8Array(memory.buffer).slice(outPtr, outPtr + rc)
@@ -43,8 +45,8 @@ export async function runWasmRule(
 
     return JSON.parse(out.toString("utf8"));
   } finally {
-    free(ctxPtr, ctxBuf.length);
-    free(cfgPtr, cfgBuf.length);
-    free(outPtr, OUT_SIZE);
+    free_(ctxPtr, ctxBuf.length);
+    free_(cfgPtr, cfgBuf.length);
+    free_(outPtr, OUT_SIZE);
   }
 }
