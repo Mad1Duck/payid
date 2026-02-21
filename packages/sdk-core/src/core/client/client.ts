@@ -44,15 +44,13 @@ function isRuleSource(rule: RuleConfig | RuleSource): rule is RuleSource {
  * })
  * ```
  */
+
 export class PayIDClient {
   constructor(
     private readonly wasm: Uint8Array,
     private readonly debugTrace?: boolean,
   ) { }
 
-  /**
-   * Pure rule evaluation — client-safe, no signing, no server
-   */
   async evaluate(
     context: RuleContext,
     rule: RuleConfig | RuleSource
@@ -60,30 +58,25 @@ export class PayIDClient {
     const config = isRuleSource(rule)
       ? (await resolveRule(rule)).config
       : rule;
-
     return evaluate(this.wasm, context, config, { debug: this.debugTrace });
   }
 
-  /**
-   * Evaluate + generate EIP-712 Decision Proof.
-   * Payer sign sendiri menggunakan wallet mereka — tidak butuh server.
-   */
   async evaluateAndProve(params: {
     context: RuleContext;
     authorityRule: RuleConfig | RuleSource;
     evaluationRule?: RuleConfig;
     sessionPolicy?: PayIDSessionPolicyPayloadV1;
-
     payId: string;
     payer: string;
     receiver: string;
     asset: string;
     amount: bigint;
-
     signer: ethers.Signer;
     verifyingContract: string;
     ruleAuthority: string;
     ttlSeconds?: number;
+    chainId: number;
+    blockTimestamp: number;
   }): Promise<{
     result: RuleResult;
     proof: DecisionProof | null;
@@ -92,10 +85,6 @@ export class PayIDClient {
       ? (await resolveRule(params.authorityRule)).config
       : params.authorityRule;
 
-    // Menentukan rule untuk evaluasi:
-    // 1. evaluationRule jika ada (explicit override)
-    // 2. sessionPolicy jika ada (QR / ephemeral)
-    // 3. authorityRule (default)
     const evalConfig =
       params.evaluationRule ??
       (params.sessionPolicy
@@ -130,8 +119,9 @@ export class PayIDClient {
       signer: params.signer,
       verifyingContract: params.verifyingContract,
       ruleAuthority: params.ruleAuthority,
-      chainId: (params.context as any)?.tx?.chainId,
-      ttlSeconds: params.ttlSeconds
+      chainId: params.chainId ?? (params.context as any)?.tx?.chainId,
+      ttlSeconds: params.ttlSeconds,
+      blockTimestamp: params.blockTimestamp,
     });
 
     return { result, proof };

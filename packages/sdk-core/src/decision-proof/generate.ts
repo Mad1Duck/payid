@@ -8,30 +8,23 @@ const hash = (v: string) =>
 
 export async function generateDecisionProof(params: {
   payId: string;
-
   payer: string;
   receiver: string;
-
   asset: string;
   amount: bigint;
-
   context: any;
   ruleConfig: any;
-
   signer: ethers.Signer;
   ruleAuthority: string;
   verifyingContract: string;
   ttlSeconds?: number;
-
-  // FIX: tambah chainId opsional — skip getNetwork() RPC call
-  // Kalau tidak diisi, fallback ke getNetwork() (behaviour lama)
   chainId?: number;
+  blockTimestamp?: number;
 }): Promise<DecisionProof> {
-  const now = Math.floor(Date.now() / 1000);
-  const expiresAt = now + (params.ttlSeconds ?? 60);
+  const now = params.blockTimestamp ?? Math.floor(Date.now() / 1000);
+  const issuedAt = now - 30;
+  const expiresAt = now + (params.ttlSeconds ?? 300);
 
-  // FIX: pakai chainId dari params kalau ada, baru fallback ke RPC
-  // getNetwork() di sini yang bikin hang kalau RPC lambat
   const chainId = params.chainId
     ?? Number((await params.signer.provider!.getNetwork()).chainId);
 
@@ -42,21 +35,15 @@ export async function generateDecisionProof(params: {
   const payload: DecisionPayload = {
     version: hash("2"),
     payId: hash(params.payId),
-
     payer: params.payer,
     receiver: params.receiver,
-
     asset: params.asset,
     amount: params.amount,
-
     contextHash: hashContext(params.context),
     ruleSetHash: hashRuleSet(params.ruleConfig),
-
     ruleAuthority: params.ruleAuthority ?? ZeroAddress,
-
-    issuedAt: BigInt(now),
+    issuedAt: BigInt(issuedAt),
     expiresAt: BigInt(expiresAt),
-
     nonce: randomHex(32),
     requiresAttestation
   };
@@ -64,7 +51,7 @@ export async function generateDecisionProof(params: {
   const domain = {
     name: "PAY.ID Decision",
     version: "2",
-    chainId,   // FIX: langsung pakai, tidak perlu await lagi
+    chainId,
     verifyingContract: params.verifyingContract,
   };
 
@@ -87,7 +74,6 @@ export async function generateDecisionProof(params: {
   };
 
   const signature = await params.signer.signTypedData(domain, types, payload);
-
   const recovered = ethers.verifyTypedData(domain, types, payload, signature);
 
   if (recovered.toLowerCase() !== params.payer.toLowerCase()) {

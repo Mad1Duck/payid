@@ -1,18 +1,8 @@
-// wasm.ts — WASI-free loader
-// 
-// WASM rule engine v4 tidak butuh WASI sama sekali (tidak ada file I/O, 
-// tidak ada stdout/stderr, tidak ada proc_exit). Bun punya known issues 
-// dengan WASI preview1 yang bisa menyebabkan hang.
-//
-// Solusi: pass minimal stub yang satisfy wasi_snapshot_preview1 interface,
-// cukup untuk Rust allocator init tanpa dependency ke WASI runtime.
-
-export async function loadWasm(
-  binary: Buffer,
-): Promise<WebAssembly.Instance> {
-
+export async function loadWasm(binary: Buffer): Promise<WebAssembly.Instance> {
   const module = await WebAssembly.compile(binary);
 
+  // WASI stub — tidak pakai new WASI() karena hang di Bun
+  // Rule engine tidak butuh file I/O, stub ini cukup untuk satisfy imports
   const wasiStub: Record<string, (...args: any[]) => any> = {
     fd_write: () => 8,   // EBADF
     fd_read: () => 8,

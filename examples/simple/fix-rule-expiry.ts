@@ -22,7 +22,6 @@ console.log("Receiver:", wallet.address);
 
 const ruleNFT = new ethers.Contract(RULE_ITEM_ERC721, ruleAbi.abi, wallet);
 
-// ← isi tokenId dari debug output: "Rule[0] NFT: 0x... #<tokenId>"
 const TOKEN_ID = 1n;
 
 async function main() {
@@ -52,6 +51,12 @@ async function main() {
   const expiry: bigint = await ruleNFT.getFunction("ruleExpiry")(TOKEN_ID);
   console.log("\nVerified expiry:", new Date(Number(expiry) * 1000).toISOString());
   console.log("✅ Done — run client.ts sekarang");
+
+  console.log("SDK uses name:    'PAY.ID Decision'");
+  console.log("SDK uses version: '2'");
+
+  const now = Math.floor(Date.now() / 1000);
+  console.log("License expiry:", expiry.toString(), "now:", now, "expired:", Number(expiry) < now);
 }
 
 main().catch((err) => {

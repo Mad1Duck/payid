@@ -71,6 +71,8 @@ export interface PayIDServer {
     verifyingContract: string;
     ruleAuthority: string;
     ttlSeconds?: number;
+    chainId: number;
+    blockTimestamp: number;
   }): Promise<{
     result: RuleResult;
     proof: any | null;

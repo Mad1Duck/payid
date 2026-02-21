@@ -17,7 +17,7 @@ const {
     payIdVerifier: PAYID_VERIFIER,
     combinedRuleStorage: COMBINED_RULE_STORAGE,
   },
-  account: { adminPk: ADMIN_PRIVATE_KEY },  // harus pakai account[0] = admin/deployer
+  account: { adminPk: ADMIN_PRIVATE_KEY },
 } = envData;
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -60,6 +60,7 @@ async function main() {
   const nowTrusted: boolean =
     await payIdVerifier.getFunction("trustedAuthorities")(COMBINED_RULE_STORAGE);
   console.log("Verified trusted:", nowTrusted);
+
 }
 
 main().catch((err) => {

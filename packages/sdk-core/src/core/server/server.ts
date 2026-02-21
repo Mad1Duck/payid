@@ -41,6 +41,7 @@ function isRuleSource(rule: RuleConfig | RuleSource): rule is RuleSource {
  * })
  * ```
  */
+
 export class PayIDServer {
   constructor(
     private readonly wasm: Uint8Array,
@@ -49,24 +50,20 @@ export class PayIDServer {
     private readonly debugTrace?: boolean,
   ) { }
 
-  /**
-   * Evaluate + generate proof dengan signer dari constructor
-   */
   async evaluateAndProve(params: {
     context: RuleContext;
     authorityRule: RuleConfig | RuleSource;
     evaluationRule?: RuleConfig;
-
     payId: string;
     payer: string;
     receiver: string;
-
     asset: string;
     amount: bigint;
-
     verifyingContract: string;
     ruleAuthority: string;
     ttlSeconds?: number;
+    chainId: number;
+    blockTimestamp: number;
   }): Promise<{
     result: RuleResult;
     proof: DecisionProof | null;
@@ -102,17 +99,14 @@ export class PayIDServer {
       signer: this.signer,
       verifyingContract: params.verifyingContract,
       ruleAuthority: params.ruleAuthority,
-      chainId: (params.context as any)?.tx?.chainId,
-      ttlSeconds: params.ttlSeconds
+      chainId: params.chainId ?? (params.context as any)?.tx?.chainId,
+      ttlSeconds: params.ttlSeconds,
+      blockTimestamp: params.blockTimestamp
     });
 
     return { result, proof };
   }
 
-  /**
-   * Build ERC-4337 UserOperation dari Decision Proof
-   * Untuk bundler/relayer — server only
-   */
   buildUserOperation(params: {
     proof: DecisionProof;
     smartAccount: string;
@@ -127,7 +121,6 @@ export class PayIDServer {
       params.proof,
       params.attestationUIDs ?? []
     );
-
     return buildUserOperation({
       sender: params.smartAccount,
       nonce: params.nonce,

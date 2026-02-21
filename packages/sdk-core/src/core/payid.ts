@@ -38,9 +38,6 @@ export class PayID implements PayIDClient, PayIDServer {
     private readonly trustedIssuers?: Set<string>,
   ) { }
 
-  /**
-   * Pure evaluation — client-safe
-   */
   async evaluate(
     context: RuleContext,
     rule: RuleConfig | RuleSource
@@ -48,32 +45,27 @@ export class PayID implements PayIDClient, PayIDServer {
     const config = isRuleSource(rule)
       ? (await resolveRule(rule)).config
       : rule;
-
     return evaluatePolicy(this.wasm, context, config, {
       debug: this.debugTrace,
       trustedIssuers: this.trustedIssuers
     });
   }
 
-  /**
-   * Evaluate + generate Decision Proof
-   * FIX: parameter rename ruleRegistryContract → ruleAuthority
-   */
   async evaluateAndProve(params: {
     context: RuleContext;
     authorityRule: RuleConfig | RuleSource;
     evaluationRule?: RuleConfig;
-
     payId: string;
     payer: string;
     receiver: string;
     asset: string;
     amount: bigint;
-
     signer: ethers.Signer;
     ttlSeconds?: number;
     verifyingContract: string;
-    ruleAuthority: string;    // FIX: was "ruleRegistryContract"
+    ruleAuthority: string;
+    chainId: number;
+    blockTimestamp: number;
   }): Promise<{ result: RuleResult; proof: any | null; }> {
     const authorityConfig = isRuleSource(params.authorityRule)
       ? (await resolveRule(params.authorityRule)).config
@@ -106,16 +98,14 @@ export class PayID implements PayIDClient, PayIDServer {
       signer: params.signer,
       verifyingContract: params.verifyingContract,
       ruleAuthority: params.ruleAuthority,
-      chainId: (params.context as any)?.tx?.chainId,
-      ttlSeconds: params.ttlSeconds
+      chainId: params.chainId ?? (params.context as any)?.tx?.chainId,
+      ttlSeconds: params.ttlSeconds,
+      blockTimestamp: params.blockTimestamp
     });
 
     return { result, proof };
   }
 
-  /**
-   * Build ERC-4337 UserOperation
-   */
   buildUserOperation(params: {
     proof: any;
     smartAccount: string;
@@ -128,11 +118,9 @@ export class PayID implements PayIDClient, PayIDServer {
   }) {
     const attestationUIDs = params.attestationUIDs ?? [];
     const isETH = params.paymentType === "eth";
-
     const callData = isETH
       ? buildPayETHCallData(params.targetContract, params.proof, attestationUIDs)
       : buildPayERC20CallData(params.targetContract, params.proof, attestationUIDs);
-
     return buildUserOperation({
       sender: params.smartAccount,
       nonce: params.nonce,

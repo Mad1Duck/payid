@@ -1,10 +1,10 @@
 {
   "name": "payid-rule-engine",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "private": false,
   "type": "module",
   "scripts": {
-    "build": "tsup src/sandbox.ts --format esm --dts --clean"
+    "build": "tsup src/* --format esm --dts --clean"
   },
   "dependencies": {
     "@types/lodash": "^4.17.21",
