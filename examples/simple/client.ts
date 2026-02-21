@@ -98,7 +98,7 @@ async function debugDomain(verifierContract: ethers.Contract) {
 async function main() {
   const RECEIVER = reciverAddress;
   // const AMOUNT = 150_000_000n;
-  const AMOUNT = 666_000_000n;
+  const AMOUNT = 6_000_000n;
 
   // Check RPC chainId
   const network = await provider.getNetwork();
@@ -114,7 +114,8 @@ async function main() {
     logic: "AND" as const,
     rules: ruleConfigs,
   };
-
+  const verifierContract = new ethers.Contract(PAYID_VERIFIER, payIdVerifierAbi.abi, provider);
+  const contractDomain = await debugDomain(verifierContract);
   console.log("\n[2/5] Building Context V1...");
   const spentToday = 0n;
   const spentThisMonth = 12_000_000n;
@@ -124,7 +125,7 @@ async function main() {
       receiver: RECEIVER,
       asset: "USDC",
       amount: AMOUNT.toString(),
-      chainId: 4202,
+      chainId: contractDomain.chainId,
     },
     payId: {
       id: "pay.id/lisk-sepolia-demo",
@@ -153,8 +154,6 @@ async function main() {
   console.log(authorityRule, "=====authorityRule=====");
 
   // ── Get actual domain from contract BEFORE signing ────────────────────────
-  const verifierContract = new ethers.Contract(PAYID_VERIFIER, payIdVerifierAbi.abi, provider);
-  const contractDomain = await debugDomain(verifierContract);
   console.log("\n[DEBUG] Using domain for signing:", contractDomain);
   const nowTs = Math.floor(Date.now() / 1000);
   await provider.send("evm_setNextBlockTimestamp", [nowTs]);
