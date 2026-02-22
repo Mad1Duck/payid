@@ -13,9 +13,9 @@ export * from "./preprocess";
  * @returns RuleResult (ALLOW / REJECT)
  */
 export async function executeRule(
-  wasmBinary: Buffer,
   context: RuleContext,
-  ruleConfig: unknown
+  ruleConfig: unknown,
+  wasmBinary: Buffer,
 ): Promise<RuleResult> {
-  return runWasmRule(wasmBinary, context, ruleConfig);
+  return runWasmRule(context, ruleConfig, wasmBinary,);
 }

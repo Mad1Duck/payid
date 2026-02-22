@@ -37,11 +37,11 @@ import type { PayIDClient, PayIDServer } from "../types";
  *   ```
  */
 export function createPayID(params: {
-  wasm: Uint8Array;
+  wasm?: Uint8Array;
   debugTrace?: boolean;
 }) {
   return new PayID(
-    params.wasm,
     params.debugTrace ?? false,
+    params.wasm,
   );
 }

@@ -1,9 +1,9 @@
 import type { RuleContext, RuleResult } from "payid-types";
 import { loadWasm } from "./wasm";
 export async function runWasmRule(
-  wasmBinary: Buffer,
   context: RuleContext,
-  config: any
+  config: any,
+  wasmBinary?: Buffer,
 ): Promise<RuleResult> {
   const instance = await loadWasm(wasmBinary);
 

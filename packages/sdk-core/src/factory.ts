@@ -59,7 +59,7 @@ import type { PayIDClient, PayIDServer } from "./core/types";
  *   ```
  */
 export function createPayID(params: {
-  wasm: Uint8Array;
+  wasm?: Uint8Array;
   debugTrace?: boolean;
   trustedIssuers?: Set<string>;
 }): PayIDClient & PayIDServer {

@@ -47,8 +47,8 @@ function isRuleSource(rule: RuleConfig | RuleSource): rule is RuleSource {
 
 export class PayIDClient {
   constructor(
-    private readonly wasm: Uint8Array,
     private readonly debugTrace?: boolean,
+    private readonly wasm?: Uint8Array,
   ) { }
 
   async evaluate(
@@ -58,7 +58,7 @@ export class PayIDClient {
     const config = isRuleSource(rule)
       ? (await resolveRule(rule)).config
       : rule;
-    return evaluate(this.wasm, context, config, { debug: this.debugTrace });
+    return evaluate(context, config, { debug: this.debugTrace }, this.wasm,);
   }
 
   async evaluateAndProve(params: {
@@ -98,10 +98,10 @@ export class PayIDClient {
         : authorityConfig);
 
     const result = await evaluate(
-      this.wasm,
       params.context,
       evalConfig,
-      { debug: this.debugTrace }
+      { debug: this.debugTrace },
+      this.wasm,
     ) as RuleResultDebug;
 
     if (result.decision !== "ALLOW") {

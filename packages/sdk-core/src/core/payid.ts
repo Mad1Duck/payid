@@ -33,7 +33,7 @@ function isRuleSource(
  */
 export class PayID implements PayIDClient, PayIDServer {
   constructor(
-    private readonly wasm: Uint8Array,
+    private readonly wasm?: Uint8Array,
     private readonly debugTrace?: boolean,
     private readonly trustedIssuers?: Set<string>,
   ) { }
@@ -45,10 +45,10 @@ export class PayID implements PayIDClient, PayIDServer {
     const config = isRuleSource(rule)
       ? (await resolveRule(rule)).config
       : rule;
-    return evaluatePolicy(this.wasm, context, config, {
+    return evaluatePolicy(context, config, {
       debug: this.debugTrace,
       trustedIssuers: this.trustedIssuers
-    });
+    }, this.wasm,);
   }
 
   async evaluateAndProve(params: {
@@ -74,13 +74,13 @@ export class PayID implements PayIDClient, PayIDServer {
     const evalConfig = params.evaluationRule ?? authorityConfig;
 
     const result = await evaluatePolicy(
-      this.wasm,
       params.context,
       evalConfig,
       {
         debug: this.debugTrace,
         trustedIssuers: this.trustedIssuers
-      }
+      },
+      this.wasm,
     );
 
     if (result.decision !== "ALLOW") {

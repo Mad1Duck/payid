@@ -10,13 +10,13 @@ import { buildDecisionTrace } from "./core/dicisionTrace";
  * - Accepts Uint8Array (browser / node / edge)
  */
 export async function evaluate(
-  wasmBinary: Uint8Array,
   context: RuleContext,
   ruleConfig: RuleConfig,
   options?: {
     trustedIssuers?: Set<string>;
     debug?: boolean;
-  }
+  },
+  wasmBinary?: Uint8Array,
 ): Promise<RuleResult | RuleResultDebug> {
   if (!context || typeof context !== "object") {
     throw new Error("evaluate(): context is required");
@@ -44,15 +44,21 @@ export async function evaluate(
 
     const normalized = normalizeContext(preparedContext);
 
-    const wasmForEngine =
-      typeof Buffer !== "undefined" && !(wasmBinary instanceof Buffer)
-        ? Buffer.from(wasmBinary)
-        : wasmBinary;
+    let wasmForEngine: Buffer | Uint8Array | undefined | null;
 
+    if (wasmBinary == null) {
+      wasmForEngine = undefined;
+    } else if (typeof Buffer !== "undefined") {
+      wasmForEngine = Buffer.isBuffer(wasmBinary)
+        ? wasmBinary
+        : Buffer.from(wasmBinary);
+    } else {
+      wasmForEngine = wasmBinary;
+    }
     result = await executeRule(
-      wasmForEngine as any,
       normalized,
-      ruleConfig
+      ruleConfig,
+      wasmForEngine as any,
     );
   } catch (err: any) {
     return {

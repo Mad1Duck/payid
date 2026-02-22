@@ -63,15 +63,15 @@ import type { ethers } from "ethers";
  *   ```
  */
 export function createPayID(params: {
-  wasm: Uint8Array;
+  wasm?: Uint8Array;
   signer: ethers.Signer;
   debugTrace?: boolean;
   trustedIssuers?: Set<string>;
 }) {
   return new PayID(
-    params.wasm,
     params.signer,
     params.trustedIssuers,
     params.debugTrace ?? false,
+    params.wasm,
   );
 }

@@ -1,10 +1,28 @@
-export async function loadWasm(binary: Buffer): Promise<WebAssembly.Instance> {
-  const module = await WebAssembly.compile(binary);
+export async function loadWasm(binary?: Buffer): Promise<WebAssembly.Instance> {
+  let wasmBinary = binary;
 
-  // WASI stub — tidak pakai new WASI() karena hang di Bun
-  // Rule engine tidak butuh file I/O, stub ini cukup untuk satisfy imports
+  if (!wasmBinary || wasmBinary.length === 0) {
+    if (typeof process !== "undefined" && process.versions?.node) {
+      const { readFileSync } = await import("fs");
+      const { join, dirname } = await import("path");
+      const { fileURLToPath } = await import("url");
+
+      const __dir = dirname(fileURLToPath(import.meta.url));
+      wasmBinary = readFileSync(join(__dir, "wasm/rule_engine.wasm"));
+
+      // Browser
+    } else {
+      const wasmUrl = new URL("../wasm/rule_engine.wasm", import.meta.url);
+      const res = await fetch(wasmUrl);
+      if (!res.ok) throw new Error(`Failed to load rule_engine.wasm: ${res.status}`);
+      wasmBinary = Buffer.from(await res.arrayBuffer());
+    }
+  }
+
+  const module = await WebAssembly.compile(wasmBinary);
+
   const wasiStub: Record<string, (...args: any[]) => any> = {
-    fd_write: () => 8,   // EBADF
+    fd_write: () => 8,
     fd_read: () => 8,
     fd_close: () => 0,
     fd_seek: () => 8,
@@ -21,7 +39,7 @@ export async function loadWasm(binary: Buffer): Promise<WebAssembly.Instance> {
   };
 
   const instance = await WebAssembly.instantiate(module, {
-    wasi_snapshot_preview1: wasiStub
+    wasi_snapshot_preview1: wasiStub,
   });
 
   const _init = instance.exports._initialize as (() => void) | undefined;
