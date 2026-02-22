@@ -28,11 +28,11 @@ const provider = new ethers.JsonRpcProvider(RPC_URL);
 const payerWallet = new ethers.Wallet(SENDER_PRIVATE_KEY, provider);
 console.log("Payer:", payerWallet.address);
 
-const wasm = new Uint8Array(
-  fs.readFileSync(path.join(__dirname, "../rule_engine.wasm"))
-);
+// const wasm = new Uint8Array(
+//   fs.readFileSync(path.join(__dirname, "../rule_engine.wasm"))
+// );
 
-const payid = createPayID({ wasm });
+const payid = createPayID({});
 
 async function getActiveRuleSet(receiver: string) {
   const combined = new ethers.Contract(COMBINED_RULE_STORAGE, combinedAbi.abi, provider);

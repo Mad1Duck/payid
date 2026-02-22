@@ -44,10 +44,10 @@ function isRuleSource(rule: RuleConfig | RuleSource): rule is RuleSource {
 
 export class PayIDServer {
   constructor(
-    private readonly wasm: Uint8Array,
     private readonly signer: ethers.Signer,
     private readonly trustedIssuers?: Set<string>,
     private readonly debugTrace?: boolean,
+    private readonly wasm?: Uint8Array,
   ) { }
 
   async evaluateAndProve(params: {
@@ -75,13 +75,13 @@ export class PayIDServer {
     const evalConfig = params.evaluationRule ?? authorityConfig;
 
     const result = await evaluate(
-      this.wasm,
       params.context,
       evalConfig,
       {
         debug: this.debugTrace,
         trustedIssuers: this.trustedIssuers
-      }
+      },
+      this.wasm,
     );
 
     if (result.decision !== "ALLOW") {
