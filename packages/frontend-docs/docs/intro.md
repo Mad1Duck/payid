@@ -1,47 +1,109 @@
 ---
-sidebar_position: 1
+id: intro
+title: Introduction
+sidebar_label: Apa itu PAY.ID?
+slug: /
 ---
 
-# Tutorial Intro
+# PAY.ID — Programmable Payment Identity
 
-Let's discover **Docusaurus in less than 5 minutes**.
+> **One ID · Rule-based · Non-custodial · ERC-4337 Ready**
 
-## Getting Started
+PAY.ID adalah **policy & proof layer** open-source untuk pembayaran terprogram.
 
-Get started by **creating a new site**.
+Ia menjawab satu pertanyaan fundamental:
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+> **"Apakah transaksi ini boleh terjadi?"**
 
-### What you'll need
+---
 
-- [Node.js](https://nodejs.org/en/download/) version 20.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+## Apa yang PAY.ID Lakukan
 
-## Generate a new site
+PAY.ID memungkinkan kamu mendefinisikan **payment rules** sebagai data, mengevaluasinya off-chain dengan deterministic WASM engine, dan menghasilkan **Decision Proof** bertanda tangan kriptografis yang dapat diverifikasi on-chain oleh smart contract manapun.
 
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
+```
+Context → Rules (WASM) → Decision → Proof (EIP-712) → Verify (Solidity)
 ```
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+---
 
-The command also installs all necessary dependencies you need to run Docusaurus.
+## PAY.ID Bukan...
 
-## Start your site
+| ❌ PAY.ID BUKAN | ✅ PAY.ID ADALAH |
+|---|---|
+| Wallet | Policy layer |
+| Payment gateway | Proof generator |
+| Kustodian | Identity protocol |
+| DeFi protocol | ERC-4337 compatible |
+| Blockchain / L2 | Chain-agnostic |
 
-Run the development server:
+---
 
-```bash
-cd my-website
-npm run start
+## 4 Pilar Utama
+
+### 🪪 Payment Identity
+`pay.id/yourname` adalah **payment identity** kamu — membawa rules-mu, bukan hanya alamatmu.
+
+### 📋 Rule Engine
+Rules adalah **pure JSON config** yang dieksekusi oleh **sandboxed WASM engine**. Deterministik, auditabel, immutable. Support 3 format rule: `SimpleRule`, `MultiConditionRule`, dan `NestedRule`.
+
+### 🔐 Decision Proof
+Setiap evaluasi menghasilkan **EIP-712 signed proof** yang dapat diverifikasi on-chain. Zero trust required.
+
+### ⛓️ On-chain Enforcement
+Smart contracts hanya memverifikasi proof. Mereka tidak pernah mengeksekusi atau mengetahui rules. **Contracts stay dumb.**
+
+---
+
+## Model Infrastruktur (Seperti ENS)
+
+PAY.ID adalah **shared infrastructure** — kamu tidak perlu deploy contract apapun.
+
+```
+App kamu ──────► RuleItemERC721
+App lain ──────► CombinedRuleStorage ──► PayIDVerifier (trust anchor)
+App lain ──────► PayWithPayID
+                 (satu set contract, semua pakai bersama)
 ```
 
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
+Sama seperti ENS — tidak ada developer yang deploy ENS Registry sendiri. Semua connect ke contract resmi yang sama.
 
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
+---
 
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+## Quick Flow
+
+```ts
+import { createPayID } from "@payid/sdk-core";
+import fs from "fs";
+
+// 1. Init SDK dengan WASM
+const payid = createPayID({
+  wasm: new Uint8Array(fs.readFileSync("rule_engine.wasm")),
+});
+
+// 2. Evaluate + generate proof
+const { result, proof } = await payid.evaluateAndProve({
+  context,
+  authorityRule,
+  payId: "pay.id/merchant",
+  payer: "0xPAYER",
+  receiver: "0xRECEIVER",
+  asset: USDC_ADDRESS,
+  amount: 150_000_000n,
+  signer,
+  verifyingContract: PAYID_VERIFIER,
+  ruleAuthority: COMBINED_RULE_STORAGE,
+});
+
+// 3. Kirim payment dengan proof
+await payContract.payERC20(proof.payload, proof.signature, []);
+```
+
+---
+
+## Mulai Dari Sini
+
+- [⚡ Quick Start →](./quickstart)
+- [Instalasi & Setup →](./installation/setup)
+- [Core Concepts →](./core-concepts/overview)
+- [Rule Basics →](./rules/rule-basics)
