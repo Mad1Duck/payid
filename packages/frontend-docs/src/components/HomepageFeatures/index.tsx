@@ -3,6 +3,7 @@ import { ArrowRight, Shield, Zap, Globe } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/button';
 import RuleCheckVisual from '../RuleCheckVisual';
+import { Label } from '../ui/label';
 
 export default function HomePage() {
   return (
@@ -29,8 +30,8 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-4">
               <Button asChild size="lg">
                 <Link to="/docs/01-overview">
-                  Read the Docs
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  <Label className="text-white ">Read the Docs</Label>
+                  <ArrowRight className="ml-2 h-5 w-5 text-white" />
                 </Link>
               </Button>
 
