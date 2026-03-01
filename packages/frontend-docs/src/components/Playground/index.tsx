@@ -23,40 +23,24 @@ import {
 } from 'lucide-react';
 import { cn } from '@site/src/lib/utils';
 import { createPayID } from 'payid/client';
-import type { RuleContext, RuleConfig, RuleResultDebug, RuleTraceEntry } from 'payid-types';
+// import { setWasmUrl } from 'payid-rule-engine';
+import type { RuleConfig, RuleResultDebug, RuleTraceEntry } from 'payid-types';
 
-let payidClient: ReturnType<typeof createPayID> | null = null;
+// ─── SDK setup ────────────────────────────────────────────────────────────────
+// Ganti dengan CID Pinata setelah upload, atau biarkan default
+// untuk serve dari static folder Docusaurus
+// setWasmUrl(
+//   'https://gateway.pinata.cloud/ipfs/bafkreigwfxsb7oot7v55x7vxslvj23csxl2fhk2w7hsnboe55o26s2mgfy',
+// );
 
-async function getClient(): Promise<ReturnType<typeof createPayID>> {
-  if (payidClient) return payidClient;
-  try {
-    const res = await fetch('/rule_engine.wasm');
-    if (!res.ok) throw new Error(`fetch /rule_engine.wasm: ${res.status}`);
-
-    const wasm = new Uint8Array(await res.arrayBuffer());
-    payidClient = createPayID({ wasm, debugTrace: true });
-    console.info('[PAY.ID] WASM loaded', wasm.byteLength, 'bytes');
-  } catch (err) {
-    console.warn('[PAY.ID] WASM load failed, using TS fallback:', err);
-    payidClient = createPayID({ debugTrace: true });
-  }
-  return payidClient;
-}
-
-// ─── Presets ──────────────────────────────────────────────────────────────────
-// env.timestamp = Unix timestamp (seconds)
-// state.spentToday = cumulative spent today (raw, 6 decimals)
-// state.period = YYYY-MM-DD
-// No proof needed in playground (no trustedIssuers = V1 mode, no attestation check)
+const client = createPayID({ debugTrace: true });
 
 const TODAY = new Date().toISOString().slice(0, 10);
-
 function makeEnv(hour: number) {
   const d = new Date();
   d.setUTCHours(hour, 0, 0, 0);
   return { timestamp: Math.floor(d.getTime() / 1000) };
 }
-
 const PRESETS: { id: string; label: string; icon: string; ctx: any }[] = [
   {
     id: 'basic',
@@ -162,12 +146,6 @@ const PRESETS: { id: string; label: string; icon: string; ctx: any }[] = [
   },
 ];
 
-// ─── Rule Templates ───────────────────────────────────────────────────────────
-// Fields reference RuleContext structure:
-//   tx.sender, tx.receiver, tx.asset, tx.amount, tx.chainId
-//   env.timestamp  (unix seconds — use |hour transform for hour-of-day)
-//   state.spentToday (raw 6-decimal string)
-//   state.period   (YYYY-MM-DD)
 const RULE_TEMPLATES = [
   {
     id: 'token',
@@ -315,6 +293,39 @@ const RULE_TEMPLATES = [
   },
 ];
 
+function Field({
+  label,
+  path,
+  type = 'text',
+  hint,
+  get,
+  upd,
+}: {
+  label: string;
+  path: string[];
+  type?: string;
+  hint?: string;
+  get: (path: string[]) => any;
+  upd: (path: string[], val: any) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex justify-between">
+        <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+          {label}
+        </label>
+        {hint && <span className="font-mono text-[9px] text-muted-foreground/50">{hint}</span>}
+      </div>
+      <input
+        type={type}
+        value={get(path) ?? ''}
+        onChange={(e) => upd(path, type === 'number' ? Number(e.target.value) : e.target.value)}
+        className="font-mono text-xs bg-muted/40 border border-border/40 rounded px-2 py-1.5 text-foreground focus:outline-none focus:border-primary/60 transition-colors w-full"
+      />
+    </div>
+  );
+}
+
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
@@ -329,7 +340,6 @@ function Section({ label, children }: { label: string; children: React.ReactNode
     </div>
   );
 }
-
 function ColHeader({ children, extra }: { children: React.ReactNode; extra?: React.ReactNode }) {
   return (
     <div className="px-3 py-2 border-b border-border/30 bg-muted/10 flex items-center justify-between shrink-0">
@@ -343,11 +353,15 @@ function ColHeader({ children, extra }: { children: React.ReactNode; extra?: Rea
 
 function CtxEditor({ ctx, onChange }: { ctx: any; onChange: (c: any) => void }) {
   const upd = (path: string[], val: any) => {
-    const next = JSON.parse(JSON.stringify(ctx));
-    let ref: any = next;
-    for (let i = 0; i < path.length - 1; i++) ref = ref[path[i]];
-    ref[path[path.length - 1]] = val;
-    onChange(next);
+    onChange((prev: any) => {
+      const next = structuredClone(prev);
+      let ref = next;
+      for (let i = 0; i < path.length - 1; i++) {
+        ref = ref[path[i]];
+      }
+      ref[path[path.length - 1]] = val;
+      return next;
+    });
   };
   const get = (path: string[]) => path.reduce((v: any, k) => v?.[k], ctx);
   const F = ({
@@ -376,30 +390,39 @@ function CtxEditor({ ctx, onChange }: { ctx: any; onChange: (c: any) => void }) 
       />
     </div>
   );
-
   const ts = ctx.env?.timestamp ?? Math.floor(Date.now() / 1000);
   const hour = new Date(ts * 1000).getUTCHours();
   const spentToday = Number(ctx.state?.spentToday || 0);
-
   const setHour = (h: number) => {
     const d = new Date(ts * 1000);
     d.setUTCHours(h, 0, 0, 0);
     upd(['env', 'timestamp'], Math.floor(d.getTime() / 1000));
   };
-
   return (
     <div className="space-y-5">
       <Section label="tx">
-        <F label="Sender" path={['tx', 'sender']} hint="auto-lowercased" />
-        <F label="Receiver" path={['tx', 'receiver']} hint="auto-lowercased" />
-        <F label="Asset" path={['tx', 'asset']} hint="auto-uppercased" />
-        <F label="Amount (raw)" path={['tx', 'amount']} hint="6 decimals" />
+        <Field label="Sender" path={['tx', 'sender']} hint="auto-lowercased" get={get} upd={upd} />
+        <Field
+          label="Receiver"
+          path={['tx', 'receiver']}
+          hint="auto-lowercased"
+          get={get}
+          upd={upd}
+        />
+        <Field label="Asset" path={['tx', 'asset']} hint="auto-uppercased" get={get} upd={upd} />
+        <Field label="Amount (raw)" path={['tx', 'amount']} hint="6 decimals" get={get} upd={upd} />
         <div className="text-right font-mono text-[10px] text-muted-foreground/60">
           = {(Number(ctx.tx?.amount || 0) / 1_000_000).toFixed(2)} USDC
         </div>
-        <F label="Chain ID" path={['tx', 'chainId']} type="number" hint="4202 = Lisk" />
+        <Field
+          label="Chain ID"
+          path={['tx', 'chainId']}
+          type="number"
+          hint="4202 = Lisk"
+          get={get}
+          upd={upd}
+        />
       </Section>
-
       <Section label="env">
         <div className="flex flex-col gap-1.5">
           <div className="flex justify-between">
@@ -430,15 +453,19 @@ function CtxEditor({ ctx, onChange }: { ctx: any; onChange: (c: any) => void }) 
           <div className="font-mono text-[9px] text-muted-foreground/50 text-right">unix: {ts}</div>
         </div>
       </Section>
-
       <Section label="state">
-        <F label="Spent Today (raw)" path={['state', 'spentToday']} hint="6 decimals" />
+        <Field
+          label="Spent Today (raw)"
+          path={['state', 'spentToday']}
+          hint="6 decimals"
+          get={get}
+          upd={upd}
+        />
         <div className="text-right font-mono text-[10px] text-muted-foreground/60">
           = {(spentToday / 1_000_000).toFixed(2)} USDC
         </div>
-        <F label="Period" path={['state', 'period']} hint="YYYY-MM-DD" />
+        <Field label="Period" path={['state', 'period']} hint="YYYY-MM-DD" get={get} upd={upd} />
       </Section>
-
       <Section label="intent (optional)">
         <div className="flex flex-col gap-1">
           <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
@@ -568,7 +595,7 @@ function RuleBuilderPanel({
                 <textarea
                   value={JSON.stringify(rule, null, 2)}
                   onChange={(e) => update(i, e.target.value)}
-                  rows={Math.min(14, (JSON.stringify(rule, null, 2).match(/\n/g) || []).length + 2)}
+                  rows={(JSON.stringify(rule, null, 2).match(/\n/g) || []).length + 2}
                   spellCheck={false}
                   className="w-full font-mono text-[10px] bg-background/60 border border-border/30 rounded px-2 py-1.5 text-foreground/80 focus:outline-none focus:border-primary/40 resize-none leading-relaxed"
                 />
@@ -580,12 +607,12 @@ function RuleBuilderPanel({
     </div>
   );
 }
+
 interface FullResult {
   sdkResult: RuleResultDebug;
   trace: RuleTraceEntry[];
   executionMs: number;
 }
-
 function ResultPanel({
   result,
   executing,
@@ -619,7 +646,7 @@ function ResultPanel({
     );
   if (!result)
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground/40">
+      <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground/40 sticky bottom-0">
         <PlayIcon className="size-8" />
         <span className="font-mono text-[11px]">Run evaluation to see results</span>
       </div>
@@ -771,12 +798,19 @@ export default function PayIDPlayground() {
   const [result, setResult] = useState<FullResult | null>(null);
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [wasmStatus, setWasmStatus] = useState<'loading' | 'ready' | 'fallback'>('loading');
+  const [wasmStatus, setWasmStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
+  // Warm up: evaluate dummy request agar WASM ter-fetch + cached sebelum user klik Run
   useEffect(() => {
-    getClient().then((client) => {
-      setWasmStatus((client as any).wasm ? 'ready' : 'fallback');
-    });
+    const warmup = { tx: { sender: '0x0', asset: 'USDC', amount: '0', chainId: 1 } };
+    const dummyRule: RuleConfig = {
+      logic: 'AND',
+      rules: [{ id: 'warmup', if: { field: 'tx.asset', op: '==', value: 'USDC' } }],
+    };
+    client
+      .evaluate(warmup, dummyRule)
+      .then(() => setWasmStatus('ready'))
+      .catch(() => setWasmStatus('error'));
   }, []);
 
   const run = useCallback(async () => {
@@ -784,7 +818,6 @@ export default function PayIDPlayground() {
     setExecuting(true);
     setError(null);
     try {
-      const client = await getClient();
       const ruleConfig: RuleConfig = { version: '1', logic, rules };
       const t0 = performance.now();
       const sdkResult = (await client.evaluate(ctx, ruleConfig)) as RuleResultDebug;
@@ -807,7 +840,6 @@ export default function PayIDPlayground() {
 
   return (
     <div className="flex flex-col bg-background font-mono" style={{ height: 'calc(100vh - 60px)' }}>
-      {/* Preset bar */}
       <div className="border-b border-border/30 px-3 py-1.5 flex items-center gap-2 shrink-0 bg-muted/10 overflow-x-auto">
         <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest shrink-0">
           Scenario
@@ -830,7 +862,7 @@ export default function PayIDPlayground() {
                 ? 'bg-yellow-500 animate-pulse'
                 : wasmStatus === 'ready'
                   ? 'bg-blue-500'
-                  : 'bg-yellow-500',
+                  : 'bg-red-500',
             )}
           />
           <span className="font-mono text-[9px] text-muted-foreground/50 hidden sm:block">
@@ -838,32 +870,23 @@ export default function PayIDPlayground() {
               ? 'loading...'
               : wasmStatus === 'ready'
                 ? '⚡ WASM'
-                : '📜 TS fallback'}
+                : '⚠ error'}
           </span>
           <InfoIcon className="size-3 text-muted-foreground/30" />
         </div>
       </div>
-
-      {/* 3-col layout */}
-      <div className="flex flex-1 overflow-hidden divide-x divide-border/30">
-        <div className="w-[240px] shrink-0 flex flex-col">
+      <div className="flex flex-1 overflow-hidden divide-x divide-border/30 min-h-0">
+        <div className="w-60 shrink-0 flex flex-col">
           <ColHeader>Context</ColHeader>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="p-3">
-              <CtxEditor
-                ctx={ctx}
-                onChange={(c) => {
-                  setCtx(c);
-                  setResult(null);
-                  setError(null);
-                }}
-              />
+              <CtxEditor ctx={ctx} onChange={setCtx} />
             </div>
           </ScrollArea>
         </div>
-        <div className="w-[280px] shrink-0 flex flex-col">
+        <div className="w-70 shrink-0 flex flex-col min-h-0">
           <ColHeader>Rules</ColHeader>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="p-3">
               <RuleBuilderPanel
                 rules={rules}
@@ -888,7 +911,7 @@ export default function PayIDPlayground() {
               {executing ? (
                 <>
                   <RefreshCwIcon className="size-3 animate-spin" />
-                  Running SDK...
+                  Running...
                 </>
               ) : (
                 <>

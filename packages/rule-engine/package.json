@@ -1,6 +1,6 @@
 {
   "name": "payid-rule-engine",
-  "version": "0.2.6",
+  "version": "0.3.0",
   "private": false,
   "type": "module",
   "scripts": {

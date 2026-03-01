@@ -1,5 +1,6 @@
 import type { RuleContext, RuleResult } from "payid-types";
 import { runWasmRule } from "./sandbox";
+export * from "./wasm";
 export * from "./sandbox";
 export * from "./preprocess";
 

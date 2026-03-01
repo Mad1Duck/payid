@@ -3,12 +3,6 @@ import { executeRule, preprocessContextV2 } from "payid-rule-engine";
 import { normalizeContext } from "./normalize";
 import { buildDecisionTrace } from "./core/dicisionTrace";
 
-/**
- * Evaluate rule using WASM engine.
- *
- * Public-safe:
- * - Accepts Uint8Array (browser / node / edge)
- */
 export async function evaluate(
   context: RuleContext,
   ruleConfig: RuleConfig,
@@ -21,11 +15,9 @@ export async function evaluate(
   if (!context || typeof context !== "object") {
     throw new Error("evaluate(): context is required");
   }
-
   if (!context.tx) {
     throw new Error("evaluate(): context.tx is required");
   }
-
   if (!ruleConfig || typeof ruleConfig !== "object") {
     throw new Error("evaluate(): ruleConfig is required");
   }
@@ -33,38 +25,19 @@ export async function evaluate(
   let result: RuleResult;
 
   try {
-    const preparedContext =
-      options?.trustedIssuers
-        ? preprocessContextV2(
-          context,
-          ruleConfig,
-          options.trustedIssuers
-        )
-        : context;
+    const preparedContext = options?.trustedIssuers
+      ? preprocessContextV2(context, ruleConfig, options.trustedIssuers)
+      : context;
 
     const normalized = normalizeContext(preparedContext);
 
-    let wasmForEngine: Buffer | Uint8Array | undefined | null;
-
-    if (wasmBinary == null) {
-      wasmForEngine = undefined;
-    } else if (typeof Buffer !== "undefined") {
-      wasmForEngine = Buffer.isBuffer(wasmBinary)
-        ? wasmBinary
-        : Buffer.from(wasmBinary);
-    } else {
-      wasmForEngine = wasmBinary;
-    }
-    result = await executeRule(
-      normalized,
-      ruleConfig,
-      wasmForEngine as any,
-    );
+    // Tidak pakai Buffer — Uint8Array works di browser, Node.js, dan edge
+    result = await executeRule(normalized, ruleConfig, wasmBinary as any);
   } catch (err: any) {
     return {
       decision: "REJECT",
       code: "CONTEXT_OR_ENGINE_ERROR",
-      reason: err?.message ?? "rule evaluation failed"
+      reason: err?.message ?? "rule evaluation failed",
     };
   }
 
@@ -72,22 +45,22 @@ export async function evaluate(
     return {
       decision: "REJECT",
       code: "INVALID_ENGINE_OUTPUT",
-      reason: "invalid decision value"
+      reason: "invalid decision value",
     };
   }
 
   const baseResult: RuleResult = {
     decision: result.decision,
     code: result.code || "UNKNOWN",
-    reason: result.reason
+    reason: result.reason,
   };
 
   if (options?.debug) {
     return {
       ...baseResult,
       debug: {
-        trace: buildDecisionTrace(context, ruleConfig)
-      }
+        trace: buildDecisionTrace(context, ruleConfig),
+      },
     };
   }
 

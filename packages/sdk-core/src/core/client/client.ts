@@ -1,5 +1,6 @@
 import type { RuleConfig, RuleContext, RuleResult, RuleResultDebug } from "payid-types";
 import { evaluate } from "../../evaluate";
+import { loadWasm } from "payid-rule-engine";
 import { combineRules } from "../../rule/combine";
 import { decodeSessionPolicy } from "../../sessionPolicy/decode";
 import { ethers } from "ethers";
@@ -13,43 +14,29 @@ function isRuleSource(rule: RuleConfig | RuleSource): rule is RuleSource {
   return typeof rule === "object" && rule !== null && "uri" in rule;
 }
 
-/**
- * @class PayIDClient
- * @description Client-side PayID engine.
- *
- * Fully serverless — aman dipakai di browser, mobile, edge.
- * Tidak butuh issuer wallet, tidak butuh server.
- *
- * Untuk attestation, gunakan EAS UIDs yang di-fetch via `eas.EASClient`.
- *
- * @example
- * ```ts
- * const client = new PayIDClient(wasmBinary)
- *
- * // 1. Evaluate rule
- * const result = await client.evaluate(context, ruleConfig)
- *
- * // 2. Evaluate + generate proof (payer sign sendiri)
- * const { result, proof } = await client.evaluateAndProve({
- *   context,
- *   authorityRule: ruleConfig,
- *   payId: "pay.id/merchant",
- *   payer: await signer.getAddress(),
- *   receiver: "0xRECEIVER",
- *   asset: USDT_ADDRESS,
- *   amount: parseUnits("100", 6),
- *   signer,
- *   verifyingContract: PAYID_VERIFIER_ADDRESS,
- *   ruleAuthority: RULE_AUTHORITY_ADDRESS,
- * })
- * ```
- */
-
 export class PayIDClient {
+  // Preload promise — WASM mulai di-fetch saat createPayID() dipanggil,
+  // bukan saat evaluate() pertama. Hasilnya di-cache di wasm.ts.
+  private readonly _ready: Promise<void>;
+
   constructor(
     private readonly debugTrace?: boolean,
     private readonly wasm?: Uint8Array,
-  ) { }
+  ) {
+    // Kick off WASM load immediately — tidak block constructor
+    this._ready = loadWasm(this.wasm).then(() => { }).catch(() => { });
+  }
+
+  /**
+   * Tunggu sampai WASM siap. Opsional — evaluate() akan menunggu sendiri,
+   * tapi bisa di-await eksplisit untuk warmup:
+   *
+   *   const client = createPayID();
+   *   await client.ready(); // WASM pasti sudah loaded setelah ini
+   */
+  async ready(): Promise<void> {
+    return this._ready;
+  }
 
   async evaluate(
     context: RuleContext,
@@ -58,7 +45,7 @@ export class PayIDClient {
     const config = isRuleSource(rule)
       ? (await resolveRule(rule)).config
       : rule;
-    return evaluate(context, config, { debug: this.debugTrace }, this.wasm,);
+    return evaluate(context, config, { debug: this.debugTrace }, this.wasm);
   }
 
   async evaluateAndProve(params: {

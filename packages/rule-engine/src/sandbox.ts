@@ -1,9 +1,13 @@
 import type { RuleContext, RuleResult } from "payid-types";
 import { loadWasm } from "./wasm";
+
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
 export async function runWasmRule(
   context: RuleContext,
   config: any,
-  wasmBinary?: Buffer,
+  wasmBinary?: Buffer | Uint8Array,
 ): Promise<RuleResult> {
   const instance = await loadWasm(wasmBinary);
 
@@ -18,8 +22,8 @@ export async function runWasmRule(
     throw new Error(`WASM missing exports: alloc=${!!alloc} evaluate=${!!evaluate}`);
   }
 
-  const ctxBuf = Buffer.from(JSON.stringify(context));
-  const cfgBuf = Buffer.from(JSON.stringify(config));
+  const ctxBuf = enc.encode(JSON.stringify(context));
+  const cfgBuf = enc.encode(JSON.stringify(config));
   const OUT_SIZE = 4096;
 
   const ctxPtr = alloc(ctxBuf.length);
@@ -38,13 +42,9 @@ export async function runWasmRule(
 
   if (rc < 0) throw new Error(`WASM evaluate failed rc=${rc}`);
 
-  const out = Buffer.from(
-    new Uint8Array(memory.buffer).slice(outPtr, outPtr + rc)
-  );
+  const out = new Uint8Array(memory.buffer).slice(outPtr, outPtr + rc);
+  const result = JSON.parse(dec.decode(out));
 
-  const result = JSON.parse(out.toString("utf8"));
-
-  // free hanya kalau ada — beberapa build tidak export free
   if (free_) {
     free_(ctxPtr, ctxBuf.length);
     free_(cfgPtr, cfgBuf.length);
