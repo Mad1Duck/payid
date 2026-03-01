@@ -31,6 +31,10 @@ export default defineConfig({
     localhost: {
       type: "edr-simulated",
       chainType: "l1",
+      accounts: {
+        mnemonic: "test test test test test test test test test test test junk",
+        count: 5,
+      }
     },
 
     // ─── Testnets ─────────────────────────────────────────────────────────────
