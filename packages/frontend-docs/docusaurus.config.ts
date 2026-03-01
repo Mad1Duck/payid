@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'PAY.ID',
   tagline: 'Programmable Payment Policy. Verified Before Execution.',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/payid-logo.ico',
   plugins: ["./src/plugins/tailwind-config.js"],
   future: {
     v4: true,

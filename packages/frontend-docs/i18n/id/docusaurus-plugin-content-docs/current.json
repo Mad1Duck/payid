@@ -1,34 +1,26 @@
 {
-  "sidebar.tutorialSidebar.category.Installation": {
-    "message": "Instalasi",
-    "description": "The label for category Installation in sidebar tutorialSidebar"
+  "sidebar.tutorialSidebar.category.Getting Started": {
+    "message": "Mulai",
+    "description": "The label for category Getting Started"
   },
   "sidebar.tutorialSidebar.category.Core Concepts": {
     "message": "Konsep Dasar",
-    "description": "The label for category Core Concepts in sidebar tutorialSidebar"
+    "description": "The label for category Core Concepts"
   },
   "sidebar.tutorialSidebar.category.Rules": {
     "message": "Rules",
-    "description": "The label for category Rules in sidebar tutorialSidebar"
+    "description": "The label for category Rules"
   },
   "sidebar.tutorialSidebar.category.Examples": {
     "message": "Contoh",
-    "description": "The label for category Examples in sidebar tutorialSidebar"
+    "description": "The label for category Examples"
   },
   "sidebar.tutorialSidebar.category.Integration": {
     "message": "Integrasi",
-    "description": "The label for category Integration in sidebar tutorialSidebar"
+    "description": "The label for category Integration"
   },
-  "sidebar.tutorialSidebar.category.API": {
-    "message": "API",
-    "description": "The label for category API in sidebar tutorialSidebar"
-  },
-  "sidebar.tutorialSidebar.category.Network": {
-    "message": "Jaringan",
-    "description": "The label for category Network in sidebar tutorialSidebar"
-  },
-  "sidebar.tutorialSidebar.category.Contracts": {
-    "message": "Contracts",
-    "description": "The label for category Contracts in sidebar tutorialSidebar"
+  "sidebar.tutorialSidebar.category.Reference": {
+    "message": "Referensi",
+    "description": "The label for category Reference"
   }
 }
