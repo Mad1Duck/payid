@@ -29,9 +29,8 @@ export default defineConfig({
     },
 
     localhost: {
-      url: "http://127.0.0.1:8545",
-      chainId: 31337,
-      type: "http",
+      type: "edr-simulated",
+      chainType: "l1",
     },
 
     // ─── Testnets ─────────────────────────────────────────────────────────────

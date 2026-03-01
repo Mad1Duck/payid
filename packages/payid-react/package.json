@@ -1,0 +1,49 @@
+{
+  "name": "payid-react",
+  "version": "0.1.0",
+  "description": "React hooks for PAY.ID — connect wallet and interact with PAY.ID smart contracts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --external react --external wagmi --external viem",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "viem": ">=2",
+    "wagmi": ">=2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "~5.8.0",
+    "viem": "^2.0.0",
+    "wagmi": "^2.0.0"
+  },
+  "keywords": [
+    "payid",
+    "web3",
+    "react",
+    "wagmi",
+    "hooks",
+    "evm",
+    "defi"
+  ],
+  "dependencies": {
+    "payid": "^0.4.9",
+    "payid-types": "^0.1.9"
+  }
+}
