@@ -7,7 +7,7 @@ import RuleItemERC721Artifact from '../abis/PayIDModule#RuleItemERC721.json';
 
 const RuleItemERC721ABI = RuleItemERC721Artifact.abi as Abi;
 
-// useRuleCount 
+// useRuleCount
 export function useRuleCount() {
   const { contracts } = usePayIDContext();
 
@@ -18,7 +18,7 @@ export function useRuleCount() {
   });
 }
 
-// useRule 
+// useRule
 export function useRule(ruleId: bigint | undefined) {
   const { contracts } = usePayIDContext();
 
@@ -62,7 +62,7 @@ export function useRule(ruleId: bigint | undefined) {
   return { ...result, data };
 }
 
-// useRules 
+// useRules
 export function useRules(options?: { onlyActive?: boolean; creator?: `0x${string}`; }) {
   const { contracts } = usePayIDContext();
 
@@ -72,7 +72,11 @@ export function useRules(options?: { onlyActive?: boolean; creator?: `0x${string
     functionName: 'nextRuleId',
   });
 
-  const count = nextRuleId ? Number(nextRuleId as bigint) - 1 : 0;
+  // FIX: nextRuleId starts at 0, increments to 1 on first createRule.
+  // ruleIds are 1..nextRuleId (inclusive). count = nextRuleId, NOT nextRuleId - 1.
+  // Old code: `count = Number(nextRuleId) - 1` → if 1 rule exists: count=0 → empty array!
+  const count = nextRuleId ? Number(nextRuleId as bigint) : 0;
+
   const ruleIds = useMemo(
     () => Array.from({ length: count }, (_, i) => BigInt(i + 1)),
     [count]
@@ -100,12 +104,19 @@ export function useRules(options?: { onlyActive?: boolean; creator?: `0x${string
 
   const data = useMemo<RuleDefinition[]>(() => {
     if (!result.data) return [];
+
     return result.data
       .map((item, i) => {
-        if (!item?.result) return null;
+        // FIX: getRule reverts with RULE_NOT_EXIST for invalid ids.
+        // wagmi's useReadContracts silently returns status:'failure' + result:undefined.
+        // Skip those instead of crashing or returning garbage.
+        if (item?.status === 'failure' || !item?.result) return null;
+
         const [ruleHash, uri, creator, rootRuleId, version, deprecated, active] =
           item.result as [string, string, string, bigint, number, boolean, boolean];
+
         const tokenId = (tokenResult.data?.[i]?.result as bigint) ?? 0n;
+
         return {
           ruleId: ruleIds[i]!,
           ruleHash: ruleHash as `0x${string}`,
@@ -135,13 +146,13 @@ export function useRules(options?: { onlyActive?: boolean; creator?: `0x${string
   };
 }
 
-// useMyRules 
+// useMyRules
 export function useMyRules() {
   const { address } = useAccount();
   return useRules({ creator: address });
 }
 
-// useRuleExpiry 
+// useRuleExpiry
 export function useRuleExpiry(tokenId: bigint | undefined) {
   const { contracts } = usePayIDContext();
 
@@ -154,7 +165,7 @@ export function useRuleExpiry(tokenId: bigint | undefined) {
   });
 }
 
-// useSubscription 
+// useSubscription
 export function useSubscription(address: `0x${string}` | undefined) {
   const { contracts } = usePayIDContext();
 

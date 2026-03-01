@@ -14,31 +14,48 @@ const RuleAuthorityABI = RuleAuthorityArtifact.abi as Abi;
 export function useAllCombinedRules(options?: { onlyActive?: boolean; }) {
   const { contracts } = usePayIDContext();
 
+  const onlyActive = options?.onlyActive;
+
   const { data: hashes, isLoading: loadingHashes } = useReadContract({
     address: contracts.combinedRuleStorage,
     abi: CombinedRuleStorageABI,
     functionName: 'listAllRuleSetHashes',
   });
 
-  const allHashes = (hashes as `0x${string}`[]) ?? [];
+  const allHashes = useMemo<`0x${string}`[]>(
+    () => (hashes as `0x${string}`[]) ?? [],
+    [hashes]
+  );
+
+  const ruleContracts = useMemo(
+    () =>
+      allHashes.map(hash => ({
+        address: contracts.combinedRuleStorage,
+        abi: CombinedRuleStorageABI,
+        functionName: 'getRuleByHash' as const,
+        args: [hash] as const,
+      })),
+    [allHashes, contracts.combinedRuleStorage]
+  );
+
+  const activeContracts = useMemo(
+    () =>
+      allHashes.map(hash => ({
+        address: contracts.combinedRuleStorage,
+        abi: CombinedRuleStorageABI,
+        functionName: 'isActive' as const,
+        args: [hash] as const,
+      })),
+    [allHashes, contracts.combinedRuleStorage]
+  );
 
   const result = useReadContracts({
-    contracts: allHashes.map(hash => ({
-      address: contracts.combinedRuleStorage,
-      abi: CombinedRuleStorageABI,
-      functionName: 'getRuleByHash',
-      args: [hash],
-    })),
+    contracts: ruleContracts,
     query: { enabled: allHashes.length > 0 },
   });
 
   const activeResult = useReadContracts({
-    contracts: allHashes.map(hash => ({
-      address: contracts.combinedRuleStorage,
-      abi: CombinedRuleStorageABI,
-      functionName: 'isActive',
-      args: [hash],
-    })),
+    contracts: activeContracts,
     query: { enabled: allHashes.length > 0 },
   });
 
@@ -59,10 +76,10 @@ export function useAllCombinedRules(options?: { onlyActive?: boolean; }) {
       })
       .filter((r): r is CombinedRule => {
         if (!r) return false;
-        if (options?.onlyActive && !r.active) return false;
+        if (onlyActive && !r.active) return false;
         return true;
       });
-  }, [result.data, activeResult.data, allHashes, options?.onlyActive]);
+  }, [result.data, activeResult.data, allHashes, onlyActive]);
 
   return {
     data,
@@ -84,25 +101,27 @@ export function useActiveCombinedRule(owner: `0x${string}` | undefined) {
     query: { enabled: !!owner },
   });
 
+  const stableHash = hash as `0x${string}` | undefined;
+
   const result = useReadContract({
     address: contracts.combinedRuleStorage,
     abi: CombinedRuleStorageABI,
     functionName: 'getRuleByHash',
-    args: hash ? [hash as `0x${string}`] : undefined,
-    query: { enabled: !!hash },
+    args: stableHash ? [stableHash] : undefined,
+    query: { enabled: !!stableHash },
   });
 
   const data = useMemo<CombinedRule | undefined>(() => {
-    if (!result.data || !hash) return undefined;
+    if (!result.data || !stableHash) return undefined;
     const [ownerAddr, ruleRefs, version] = result.data as [string, RuleRef[], bigint];
     return {
-      hash: hash as `0x${string}`,
+      hash: stableHash,
       owner: ownerAddr as `0x${string}`,
       version,
       active: true,
       ruleRefs,
     };
-  }, [result.data, hash]);
+  }, [result.data, stableHash]);
 
   return { ...result, data };
 }
@@ -122,26 +141,28 @@ export function useActiveCombinedRuleByDirection(
     query: { enabled: !!owner },
   });
 
+  const stableHash = hash as `0x${string}` | undefined;
+
   const result = useReadContract({
     address: contracts.combinedRuleStorage,
     abi: CombinedRuleStorageABI,
     functionName: 'getRuleByHash',
-    args: hash ? [hash as `0x${string}`] : undefined,
-    query: { enabled: !!hash },
+    args: stableHash ? [stableHash] : undefined,
+    query: { enabled: !!stableHash },
   });
 
   const data = useMemo<CombinedRule | undefined>(() => {
-    if (!result.data || !hash) return undefined;
+    if (!result.data || !stableHash) return undefined;
     const [ownerAddr, ruleRefs, version] = result.data as [string, RuleRef[], bigint];
     return {
-      hash: hash as `0x${string}`,
+      hash: stableHash,
       owner: ownerAddr as `0x${string}`,
       version,
       active: true,
       ruleRefs,
       direction,
     };
-  }, [result.data, hash, direction]);
+  }, [result.data, stableHash, direction]);
 
   return { ...result, data };
 }
@@ -158,25 +179,40 @@ export function useOwnerRuleSets(owner: `0x${string}` | undefined) {
     query: { enabled: !!owner },
   });
 
-  const allHashes = (hashes as `0x${string}`[]) ?? [];
+  const allHashes = useMemo<`0x${string}`[]>(
+    () => (hashes as `0x${string}`[]) ?? [],
+    [hashes]
+  );
+
+  const ruleSetContracts = useMemo(
+    () =>
+      allHashes.map(hash => ({
+        address: contracts.ruleAuthority,
+        abi: RuleAuthorityABI,
+        functionName: 'getRuleSet' as const,
+        args: [hash] as const,
+      })),
+    [allHashes, contracts.ruleAuthority]
+  );
+
+  const ruleRefContracts = useMemo(
+    () =>
+      allHashes.map(hash => ({
+        address: contracts.ruleAuthority,
+        abi: RuleAuthorityABI,
+        functionName: 'getRuleByHash' as const,
+        args: [hash] as const,
+      })),
+    [allHashes, contracts.ruleAuthority]
+  );
 
   const result = useReadContracts({
-    contracts: allHashes.map(hash => ({
-      address: contracts.ruleAuthority,
-      abi: RuleAuthorityABI,
-      functionName: 'getRuleSet',
-      args: [hash],
-    })),
+    contracts: ruleSetContracts,
     query: { enabled: allHashes.length > 0 },
   });
 
   const refsResult = useReadContracts({
-    contracts: allHashes.map(hash => ({
-      address: contracts.ruleAuthority,
-      abi: RuleAuthorityABI,
-      functionName: 'getRuleByHash',
-      args: [hash],
-    })),
+    contracts: ruleRefContracts,
     query: { enabled: allHashes.length > 0 },
   });
 
