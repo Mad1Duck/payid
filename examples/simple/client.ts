@@ -71,7 +71,7 @@ async function loadRuleConfigs(rules: { ruleNFT: string; tokenId: string; }[]) {
   );
 }
 
-// ── Debug helper: print full EIP-712 domain dari contract ─────────────────────
+// Debug helper: print full EIP-712 domain dari contract 
 async function debugDomain(verifierContract: ethers.Contract) {
   try {
     const d = await verifierContract.getFunction("eip712Domain")();
@@ -153,7 +153,7 @@ async function main() {
   // console.log("[DEBUG] WASM result:", testResult);
   console.log(authorityRule, "=====authorityRule=====");
 
-  // ── Get actual domain from contract BEFORE signing ────────────────────────
+  // Get actual domain from contract BEFORE signing 
   console.log("\n[DEBUG] Using domain for signing:", contractDomain);
   const nowTs = Math.floor(Date.now() / 1000);
   await provider.send("evm_setNextBlockTimestamp", [nowTs]);
@@ -199,7 +199,7 @@ async function main() {
 
   console.log("\n[5/5] Sending payERC20...");
 
-  // ── DEBUG: compare contract hash vs SDK hash ──────────────────────────────
+  // DEBUG: compare contract hash vs SDK hash 
   const contractHash = await verifierContract.getFunction("hashDecision")(proof.payload);
   console.log("\n[DEBUG] Hash comparison:");
   console.log("  contractHash :", contractHash);
@@ -222,7 +222,6 @@ async function main() {
     ],
   };
 
-  // Test dengan chainId dari contract domain (bukan hardcoded 4202)
   const sdkHash = ethers.TypedDataEncoder.hash(
     {
       name: contractDomain.name,
@@ -251,7 +250,7 @@ async function main() {
   console.log("expiresAt :", proof.payload.expiresAt.toString());
   console.log("issuedAt > block.timestamp:", Number(proof.payload.issuedAt) > block!.timestamp);
   console.log("block.timestamp > expiresAt:", block!.timestamp > Number(proof.payload.expiresAt));
-  // ── END DEBUG ─────────────────────────────────────────────────────────────
+  // END DEBUG 
 
   if (!isValid) {
     throw new Error("verifyDecision returned false — cek domain debug di atas");

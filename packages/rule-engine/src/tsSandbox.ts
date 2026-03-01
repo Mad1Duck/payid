@@ -1,21 +1,18 @@
 // sandbox.ts — Pure TypeScript rule engine (no WASM)
 //
-// Implements semua operator v4: exists, not_exists, transforms, regex, mod_ne, dll.
 // Tidak butuh compile Rust, tidak butuh WASI.
 
 import type { RuleContext, RuleResult } from "payid-types";
 
-// ── Entry point (sama interface dengan runWasmRule) ───────────────────────────
-
 export async function runWasmRule(
-  _wasmBinary: Buffer,   // ignored — pakai TS implementation
+  _wasmBinary: Buffer,
   context: RuleContext,
   config: any
 ): Promise<RuleResult> {
   return evaluateRule(context, config);
 }
 
-// ── Core evaluation ───────────────────────────────────────────────────────────
+// Core evaluation ─
 
 function evaluateRule(context: any, config: any): RuleResult {
   const rules: any[] = config?.rules;
@@ -85,7 +82,7 @@ function evalOneRule(context: any, rule: any): RuleResult {
   return { decision: "REJECT", code: ruleId, reason: "rule has no evaluable condition" };
 }
 
-// ── Condition evaluation ──────────────────────────────────────────────────────
+// Condition evaluation
 
 function evalCondition(context: any, cond: any): boolean {
   const fieldExpr: string = cond?.field;
@@ -114,7 +111,7 @@ function evalCondition(context: any, cond: any): boolean {
   return applyOp(actual, op, expected);
 }
 
-// ── Field resolution ──────────────────────────────────────────────────────────
+// Field resolution 
 
 function resolveField(ctx: any, path: string): any {
   const base = splitTransform(path)[0];
@@ -127,7 +124,7 @@ function splitTransform(expr: string): [string, string | null] {
   return [expr.slice(0, i), expr.slice(i + 1)];
 }
 
-// ── Field transforms ──────────────────────────────────────────────────────────
+// Field transforms 
 
 function applyTransform(val: any, expr: string): any {
   const transform = splitTransform(expr)[1];
@@ -173,7 +170,7 @@ function toU128(v: any): bigint | null {
   } catch { return null; }
 }
 
-// ── Gregorian calendar ────────────────────────────────────────────────────────
+// Gregorian calendar 
 
 function isLeap(y: number): boolean { return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
 
@@ -190,7 +187,7 @@ function daysToYMD(days: number): [number, number, number] {
 function dayOfMonth(days: number): number { return daysToYMD(days)[2]; }
 function monthOfYear(days: number): number { return daysToYMD(days)[1]; }
 
-// ── Operator dispatch ─────────────────────────────────────────────────────────
+// Operator dispatch 
 
 function applyOp(actual: any, op: string, expected: any): boolean {
   const a = toU128(actual);
@@ -249,7 +246,7 @@ function looseEq(a: any, b: any): boolean {
   return ba !== null && bb !== null && ba === bb;
 }
 
-// ── Message interpolation ─────────────────────────────────────────────────────
+// Message interpolation 
 
 function interpolate(template: string, context: any): string {
   return template.replace(/\{([^}]+)\}/g, (_, key) => {

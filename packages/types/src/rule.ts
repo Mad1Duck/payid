@@ -1,4 +1,3 @@
-// ─── Primitive condition (shared across all rule formats) ───────────────────
 
 export interface RuleCondition {
   field: string;
@@ -7,7 +6,7 @@ export interface RuleCondition {
   value: any;
 }
 
-// ─── Format A: single-condition rule ────────────────────────────────────────
+// ─── Format A: single-condition rule 
 
 export interface SimpleRule {
   id: string;
@@ -15,7 +14,7 @@ export interface SimpleRule {
   message?: string;
 }
 
-// ─── Format B: multi-condition rule (AND / OR over conditions[]) ─────────────
+// ─── Format B: multi-condition rule (AND / OR over conditions[]) 
 
 export interface MultiConditionRule {
   id: string;
@@ -24,7 +23,7 @@ export interface MultiConditionRule {
   message?: string;
 }
 
-// ─── Format C: nested rule (AND / OR over child rules) ──────────────────────
+// ─── Format C: nested rule (AND / OR over child rules) 
 
 export interface NestedRule {
   id: string;
@@ -33,10 +32,9 @@ export interface NestedRule {
   message?: string;
 }
 
-/** Union of all supported rule formats */
 export type AnyRule = SimpleRule | MultiConditionRule | NestedRule;
 
-// ─── Type guards ─────────────────────────────────────────────────────────────
+// ─── Type guards 
 
 export function isSimpleRule(rule: AnyRule): rule is SimpleRule {
   return "if" in rule;
@@ -50,7 +48,7 @@ export function isNestedRule(rule: AnyRule): rule is NestedRule {
   return "rules" in rule;
 }
 
-// ─── Root rule config ────────────────────────────────────────────────────────
+// ─── Root rule config 
 
 export interface RuleConfig {
   version?: string;
@@ -61,6 +59,6 @@ export interface RuleConfig {
   message?: string;
 }
 
-// ─── Backwards-compat alias (Rule was previously SimpleRule only) ────────────
+// ─── Backwards-compat alias (Rule was previously SimpleRule only) 
 /** @deprecated Use AnyRule instead */
 export type Rule = AnyRule;

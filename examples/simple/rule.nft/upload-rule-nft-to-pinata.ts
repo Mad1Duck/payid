@@ -27,7 +27,7 @@ const pinata = new PinataSDK({
 const IMAGE_PATH = path.join(__dirname, "./rule.jpg");
 const CACHE_JSON_PATH = path.join(__dirname, "./rule.json");
 
-// ─── Definisi rule ────────────────────────────────────────────────────────────
+// ─── Definisi rule 
 // const RULE_OBJECT = {
 //   id: "min_amount",
 //   if: {
@@ -40,7 +40,7 @@ const CACHE_JSON_PATH = path.join(__dirname, "./rule.json");
 const NFT_NAME = "PAY.ID Rule - Min Amount";
 const NFT_DESCRIPTION = "PAY.ID rule enforcing minimum transaction amount of 100 USDC";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers 
 
 function canonicalize(obj: any): string {
   if (Array.isArray(obj)) return `[${obj.map(canonicalize).join(",")}]`;
@@ -53,7 +53,7 @@ function canonicalize(obj: any): string {
   return JSON.stringify(obj);
 }
 
-// ─── Cache check ──────────────────────────────────────────────────────────────
+// ─── Cache check 
 
 function loadCache(): { url: string; cid: string; metadata: any; } | null {
   if (!fs.existsSync(CACHE_JSON_PATH)) return null;
@@ -82,13 +82,13 @@ function loadCache(): { url: string; cid: string; metadata: any; } | null {
   }
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main 
 
 export async function mainPinata() {
   const canonicalRule = canonicalize(RULE_OBJECT);
   const ruleHash = keccak256(toUtf8Bytes(canonicalRule));
 
-  // ── Check cache dulu ──────────────────────────────────────────────────────
+  // Check cache dulu 
   const cached = loadCache();
   if (cached) {
     console.log(" Cache hit — skip upload Pinata");
@@ -98,7 +98,7 @@ export async function mainPinata() {
     return cached;
   }
 
-  // ── Fresh upload ──────────────────────────────────────────────────────────
+  // Fresh upload 
   console.log(" Uploading to Pinata (no cache found)...\n");
   console.log("   ruleHash:", ruleHash);
 
@@ -152,7 +152,7 @@ export async function mainPinata() {
   return { url: previewURL, cid, metadata };
 }
 
-// ─── Run langsung (bun run setup:upload) ─────────────────────────────────────
+// ─── Run langsung (bun run setup:upload) 
 if (import.meta.main) {
   mainPinata()
     .then(() => process.exit(0))

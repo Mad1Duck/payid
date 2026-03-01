@@ -28,7 +28,7 @@ const {
   },
 } = envData;
 
-// ─── Setup ────────────────────────────────────────────────────────────────────
+// ─── Setup 
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 const payerWallet = new ethers.Wallet(SENDER_PRIVATE_KEY, provider);
@@ -58,7 +58,7 @@ const payid = createPayID({
   ]),
 });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers 
 
 async function getActiveRuleSet(receiver: string) {
   const combined = new ethers.Contract(
@@ -110,13 +110,13 @@ async function loadRuleConfigs(rules: { ruleNFT: string; tokenId: string; }[]) {
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main 
 
 async function main() {
   const RECEIVER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC";
   const AMOUNT = 150_000_000n;
 
-  // ── 1. Load rule set ───────────────────────────────────────────────────────
+  // 1. Load rule set 
   console.log("\n[1/5] Loading rule set...");
   const activeRuleSet = await getActiveRuleSet(RECEIVER);
   const ruleConfigs = await loadRuleConfigs(activeRuleSet.rules);
@@ -127,7 +127,7 @@ async function main() {
     rules: ruleConfigs,
   };
 
-  // ── 2. Build Context V2 ────────────────────────────────────────────────────
+  // 2. Build Context V2 ────────────────────────────────────────────────────
   console.log("\n[2/5] Building Context V2...");
 
   const contextV2 = await buildContextV2({
@@ -155,7 +155,7 @@ async function main() {
   console.log("  oracle.country  :", contextV2.oracle?.country);
   console.log("  risk.score      :", contextV2.risk?.score, `(${contextV2.risk?.category})`);
 
-  // ── 3. Evaluate + Prove ────────────────────────────────────────────────────
+  // 3. Evaluate + Prove ────────────────────────────────────────────────────
   console.log("\n[3/5] Evaluating & generating proof...");
 
   const { result, proof } = await payid.evaluateAndProve({
@@ -177,7 +177,7 @@ async function main() {
   if (!proof) throw new Error(`Rejected: ${result.reason ?? result.code}`);
   console.log("  ✅ Proof generated");
 
-  // ── 4. Approve USDC ───────────────────────────────────────────────────────
+  // 4. Approve USDC 
   console.log("\n[4/5] Checking allowance...");
 
   const usdc = new ethers.Contract(USDC, usdcAbi.abi, payerWallet);
@@ -191,7 +191,7 @@ async function main() {
     console.log("  Sufficient, skip");
   }
 
-  // ── 5. Send Payment ────────────────────────────────────────────────────────
+  // 5. Send Payment 
   console.log("\n[5/5] Sending payERC20...");
 
   const payContract = new ethers.Contract(

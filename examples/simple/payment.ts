@@ -40,7 +40,7 @@ async function main() {
   const ruleNFT = new ethers.Contract(RULE_ITEM_ERC721, ruleAbi.abi, provider);
   const usdc = new ethers.Contract(USDC, usdcAbi.abi, provider);
 
-  // ── 1. Check CombinedRuleStorage trusted ─────────────────────────────────
+  // 1. Check CombinedRuleStorage trusted ─────────────────────────────────
   const trusted: boolean =
     await verifier.getFunction("trustedAuthorities")(COMBINED_RULE_STORAGE);
   console.log("[1] CombinedRuleStorage trusted:", trusted);
@@ -49,7 +49,7 @@ async function main() {
     return;
   }
 
-  // ── 2. Check active rule set ──────────────────────────────────────────────
+  // 2. Check active rule set ──────────────────────────────────────────────
   const ruleSetHash: string =
     await combined.getFunction("activeRuleOf")(RECEIVER);
   console.log("[2] Active ruleSetHash:", ruleSetHash);
@@ -58,7 +58,7 @@ async function main() {
     return;
   }
 
-  // ── 3. Check rule refs ────────────────────────────────────────────────────
+  // 3. Check rule refs ────────────────────────────────────────────────────
   const [owner, ruleRefs, version] =
     await combined.getFunction("getRuleByHash")(ruleSetHash);
   console.log("[3] Rule owner  :", owner);
@@ -70,7 +70,7 @@ async function main() {
     return;
   }
 
-  // ── 4. Check each NFT license expiry ─────────────────────────────────────
+  // 4. Check each NFT license expiry ─────────────────────────────────────
   const now = BigInt(Math.floor(Date.now() / 1000));
 
   for (let i = 0; i < ruleRefs.length; i++) {
@@ -98,7 +98,7 @@ async function main() {
     }
   }
 
-  // ── 5. Check payer USDC balance & allowance ───────────────────────────────
+  // 5. Check payer USDC balance & allowance ───────────────────────────────
   const balance: bigint =
     await usdc.getFunction("balanceOf")(payerWallet.address);
   const allowance: bigint =
