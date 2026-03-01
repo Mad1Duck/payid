@@ -91,7 +91,7 @@ export async function mainPinata() {
   // ── Check cache dulu ──────────────────────────────────────────────────────
   const cached = loadCache();
   if (cached) {
-    console.log("⚡ Cache hit — skip upload Pinata");
+    console.log(" Cache hit — skip upload Pinata");
     console.log("   ruleHash :", ruleHash);
     console.log("   tokenURI : ipfs://", cached.cid);
     console.log("   preview  :", cached.url);
@@ -99,7 +99,7 @@ export async function mainPinata() {
   }
 
   // ── Fresh upload ──────────────────────────────────────────────────────────
-  console.log("📦 Uploading to Pinata (no cache found)...\n");
+  console.log(" Uploading to Pinata (no cache found)...\n");
   console.log("   ruleHash:", ruleHash);
 
   // Upload image

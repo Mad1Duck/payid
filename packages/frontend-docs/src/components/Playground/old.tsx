@@ -18,7 +18,7 @@ const RULES = [
   {
     id: 'min_tx',
     label: 'MIN 10',
-    icon: '⚡',
+    icon: '',
     color: '#1565C0',
     bg: '#BBDEFB',
     chip: 'MIN',
@@ -125,7 +125,7 @@ const WALLETS = [
 
 const EMOJIS = [
   '👹',
-  '⚡',
+  '',
   '🌅',
   '🔐',
   '🌿',

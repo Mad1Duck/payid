@@ -1,12 +1,12 @@
 ---
 id: overview
-title: Core Concepts
+title: Konsep Dasar
 sidebar_label: Overview
 ---
 
-# Core Concepts
+# Konsep Dasar
 
-Understanding PAY.ID requires understanding 5 core primitives: **Identity**, **Context**, **Rules**, **Decision**, and **Decision Proof**.
+Memahami PAY.ID butuh memahami 5 primitif utama: **Identity**, **Context**, **Rules**, **Decision**, dan **Decision Proof**.
 
 ---
 
@@ -14,23 +14,23 @@ Understanding PAY.ID requires understanding 5 core primitives: **Identity**, **C
 
 ```
 ┌──────────────┐
-│   Context    │  ← Who, what asset, how much, when
+│   Context    │  ← Siapa, pakai apa, berapa, kapan
 └──────┬───────┘
        ▼
 ┌──────────────┐
-│    Rules     │  ← JSON config evaluated in WASM
+│    Rules     │  ← JSON config dievaluasi di WASM
 └──────┬───────┘
        ▼
 ┌──────────────┐
-│   Decision   │  ← ALLOW or REJECT
+│   Decision   │  ← ALLOW atau REJECT
 └──────┬───────┘
        ▼
 ┌─────────────────┐
-│ Decision Proof  │  ← EIP-712 signed proof (payer signs)
+│ Decision Proof  │  ← EIP-712 signed proof (payer sign)
 └──────┬──────────┘
        ▼
 ┌─────────────────┐
-│ Smart Contract  │  ← Verify proof, transfer or revert
+│ Smart Contract  │  ← Verifikasi proof, transfer atau revert
 └─────────────────┘
 ```
 
@@ -38,19 +38,19 @@ Understanding PAY.ID requires understanding 5 core primitives: **Identity**, **C
 
 ## 1. PAY.ID Identity
 
-`pay.id/yourname` is your **payment identity** — not just a wallet address. It carries:
-- **Owner** — the wallet that owns the rules
-- **Rules** — the active payment policy
-- **Metadata** — stored on-chain + IPFS
+`pay.id/yourname` adalah **payment identity** — bukan sekedar alamat wallet. Ia membawa:
+- **Owner** — wallet pemilik rules
+- **Rules** — payment policy aktif
+- **Metadata** — tersimpan di chain + IPFS
 
-**PAY.ID ≠ ENS** (ENS = name resolver)  
+**PAY.ID ≠ ENS** (ENS = name resolver)
 **PAY.ID = payment policy identity**
 
 ---
 
 ## 2. Context
 
-Context is the **complete description of a payment intent** sent to the rule engine.
+Context adalah **deskripsi lengkap sebuah payment intent** yang dikirim ke rule engine.
 
 ### Context V1 (Client Mode)
 
@@ -60,7 +60,7 @@ type RuleContext = {
     sender?: string;
     receiver?: string;
     asset: string;      // "USDC"
-    amount: string;     // "150000000" (6 decimals)
+    amount: string;     // "150000000" (6 desimal)
     chainId: number;    // 4202
   };
   payId?: { id: string; owner: string; };
@@ -75,7 +75,7 @@ type RuleContext = {
 
 ### Context V2 (Server Mode)
 
-Extends Context V1 with fields **signed by trusted issuers**:
+Extends Context V1 dengan field yang **ditandatangani oleh trusted issuers**:
 
 ```ts
 type ContextV2 = RuleContext & {
@@ -87,14 +87,14 @@ type ContextV2 = RuleContext & {
 ```
 
 :::info Client vs Server
-**Client mode** — context is filled by the payer. Suitable for rules that only need `tx.*`.
+**Client mode** — context di-isi payer sendiri. Cocok untuk rules yang hanya butuh `tx.*`.
 
-**Server mode** — sensitive fields are signed by a trusted issuer. Required for KYC, rate limiting, etc.
+**Server mode** — field sensitif ditandatangani trusted issuer. Diperlukan untuk KYC, rate limiting, dsb.
 :::
 
 ---
 
-## 3. Rules — 3 Formats
+## 3. Rules — 3 Format
 
 ### Format A: SimpleRule
 
@@ -124,20 +124,20 @@ type ContextV2 = RuleContext & {
 
 ## 4. Decision
 
-| Decision | Meaning |
+| Decision | Makna |
 |---|---|
-| `ALLOW` | All rules passed — transaction may proceed |
-| `REJECT` | One or more rules failed — transaction must be stopped |
+| `ALLOW` | Semua rules lolos — transaksi boleh dilanjutkan |
+| `REJECT` | Satu atau lebih rules gagal — transaksi harus dihentikan |
 
 ### Result Codes
 
-| Code | Condition |
+| Code | Kondisi |
 |---|---|
-| `OK` | All rules passed |
-| `RULE_FAILED` | Rule condition is false |
-| `FIELD_NOT_FOUND` | Context field is missing |
-| `INVALID_CONFIG` | Rule config is malformed |
-| `CONTEXT_OR_ENGINE_ERROR` | WASM / runtime error |
+| `OK` | Semua rules pass |
+| `RULE_FAILED` | Kondisi rule false |
+| `FIELD_NOT_FOUND` | Context field tidak ada |
+| `INVALID_CONFIG` | Rule config malformed |
+| `CONTEXT_OR_ENGINE_ERROR` | Error WASM / runtime |
 
 ---
 
@@ -153,7 +153,7 @@ type DecisionProof = {
     nonce: string;  // random, replay protection
     requiresAttestation: boolean;
   };
-  signature: string; // EIP-712 signature from payer
+  signature: string; // EIP-712 signature dari payer
 };
 ```
 
@@ -161,9 +161,9 @@ type DecisionProof = {
 
 ## 6. Fail-Closed
 
-PAY.ID **always fails to REJECT** — never to ALLOW — when an error occurs:
+PAY.ID **selalu gagal ke REJECT** — tidak pernah ke ALLOW — saat ada error:
 
-| Condition | Result |
+| Kondisi | Hasil |
 |---|---|
 | Rule condition false | `REJECT` |
 | Rule config invalid | `REJECT` |
@@ -176,11 +176,11 @@ PAY.ID **always fails to REJECT** — never to ALLOW — when an error occurs:
 ## 7. Rule NFT & Subscription
 
 ```
-subscribe()      → activate account (0.0001 ETH / 30 days)
-createRule()     → register rule definition (no NFT minted yet)
+subscribe()      → aktifkan akun (0.0001 ETH / 30 hari)
+createRule()     → daftarkan rule definition
 activateRule()   → mint NFT, expiry = subscriptionExpiry
-                   (1 slot without subscription, 3 with)
+                   (1 slot tanpa subscription, 3 dengan)
 
-When subscription expires:
-ruleExpiry[tokenId] expired → all payments to receiver: REVERT
+Saat subscription habis:
+ruleExpiry[tokenId] expired → semua payment ke receiver: REVERT
 ```

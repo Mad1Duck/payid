@@ -1,30 +1,30 @@
 ---
 id: server
-title: "Example: Server Payment Flow"
+title: "Contoh: Server Payment Flow"
 sidebar_label: Server Payment Flow
 ---
 
-# Example: Server Payment Flow
+# Contoh: Server Payment Flow
 
 Source: `examples/simple/server.ts`
 
-Server mode is used when rules require **Context V2** — sensitive data (timestamp, spend tracking, oracle, KYC) that must be signed by **trusted issuers**.
+Server mode digunakan saat rules membutuhkan **Context V2** — data sensitif yang harus ditandatangani oleh **trusted issuers**.
 
 ---
 
-## When to Use Server Mode
+## Kapan Pakai Server Mode
 
 | Use Case | Mode |
 |---|---|
-| Rules only need `tx.*` | Client ✅ |
-| Verified server timestamp | **Server** |
-| Spend tracking from database | **Server** |
+| Rules hanya `tx.*` | Client ✅ |
+| `env.timestamp` dari server | **Server** |
+| Spent tracking dari database | **Server** |
 | KYC / oracle data | **Server** |
-| Rule with `requiresAttestation` | **Server** |
+| Rule dengan `requiresAttestation` | **Server** |
 
 ---
 
-## Run
+## Jalankan
 
 ```bash
 bun examples/simple/server.ts
@@ -32,9 +32,9 @@ bun examples/simple/server.ts
 
 ---
 
-## Key Difference: buildContextV2
+## Perbedaan Utama: buildContextV2
 
-Context is built with `buildContextV2()`, which adds an **EIP-712 attestation signature** to each sensitive field:
+Context dibuat dengan `buildContextV2()` yang menambahkan **EIP-712 attestation signature** ke setiap field sensitif:
 
 ```ts
 import { buildContextV2 } from "payid/context";
@@ -63,13 +63,17 @@ const payid = createPayID({
 });
 ```
 
+:::warning
+`new Set([])` = tidak ada issuer dipercaya → semua attestation ditolak.
+:::
+
 ---
 
 ## Evaluate + Proof
 
 ```ts
 const { result, proof } = await payid.evaluateAndProve({
-  context: contextV2,
+  context: contextV2,  // ← Context V2
   authorityRule,
   payId: "pay.id/merchant",
   payer: payerWallet.address, receiver: RECEIVER,
@@ -83,7 +87,7 @@ const { result, proof } = await payid.evaluateAndProve({
 
 ---
 
-## Example Rule Requiring Server Mode
+## Contoh Rule yang Butuh Server Mode
 
 ```json
 { "version": "1", "logic": "AND", "requires": ["oracle", "risk"], "rules": [

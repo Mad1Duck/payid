@@ -1,28 +1,28 @@
 ---
 id: client
-title: "Example: Client Payment Flow"
+title: "Contoh: Client Payment Flow"
 sidebar_label: Client Payment Flow
 ---
 
-# Example: Client Payment Flow
+# Contoh: Client Payment Flow
 
 Source: `examples/simple/client.ts`
 
-A **fully serverless** flow — no server, no trusted issuers needed. Everything runs on the client.
+Flow **fully serverless** — tidak butuh server, tidak butuh trusted issuers. Semua berjalan di client.
 
 ---
 
-## When to Use Client Mode
+## Kapan Pakai Client Mode
 
-| ✅ Client Mode | ❌ Need Server Mode |
+| ✅ Client Mode | ❌ Perlu Server Mode |
 |---|---|
-| Rules only need `tx.*` | Rules need attested `env` |
-| Payer signs with their own wallet | State from database |
-| No `requiresAttestation` | KYC / oracle data required |
+| Rule hanya butuh `tx.*` | Rule butuh `env` yang di-attest |
+| Payer sign sendiri dengan wallet | State dari database |
+| Tidak ada `requiresAttestation` | Butuh KYC / oracle data |
 
 ---
 
-## Run
+## Jalankan
 
 ```bash
 bun examples/simple/client.ts
@@ -43,11 +43,11 @@ const payerWallet = new ethers.Wallet(SENDER_PRIVATE_KEY, provider);
 const payid = createPayID({});
 ```
 
-### Step 1 — Load Rule Set from Chain + IPFS
+### Step 1 — Load Rule Set dari Chain + IPFS
 
 ```ts
 const ruleSetHash = await combined.getFunction("activeRuleOf")(RECEIVER);
-if (ruleSetHash === ethers.ZeroHash) throw new Error("Receiver has no active rule set");
+if (ruleSetHash === ethers.ZeroHash) throw new Error("Receiver tidak punya active rule set");
 
 const [owner, ruleRefs, version] = await combined.getFunction("getRuleByHash")(ruleSetHash);
 
@@ -58,7 +58,8 @@ const ruleConfigs = await Promise.all(
     const url = tokenURI.startsWith("ipfs://")
       ? `https://gateway.pinata.cloud/ipfs/${tokenURI.slice(7)}`
       : tokenURI;
-    return (await fetch(url).then(r => r.json())).rule;
+    const metadata = await fetch(url).then(r => r.json());
+    return metadata.rule;
   })
 );
 
@@ -91,7 +92,7 @@ const { result, proof } = await payid.evaluateAndProve({
   chainId: 4202,
 });
 
-if (!proof) throw new Error(`Payment rejected: ${result.reason ?? result.code}`);
+if (!proof) throw new Error(`Payment ditolak: ${result.reason ?? result.code}`);
 ```
 
 ### Step 4 — Approve ERC20
@@ -103,7 +104,7 @@ if (allowance < AMOUNT) {
 }
 ```
 
-### Step 5 — Send Payment
+### Step 5 — Kirim Payment
 
 ```ts
 const tx = await payContract.getFunction("payERC20").send(proof.payload, proof.signature, []);
@@ -113,6 +114,6 @@ console.log("✅ Payment success! TX:", tx.hash);
 
 ---
 
-## Notes
+## Catatan
 
-**Proof TTL.** The proof is valid for `ttlSeconds`. Never cache a proof — generate a new one for every payment.
+**Proof TTL.** Proof valid selama `ttlSeconds`. Jangan cache proof — generate baru setiap payment.

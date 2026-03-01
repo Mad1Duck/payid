@@ -1,6 +1,6 @@
 ---
 id: create-nft-rule
-title: "Example: Create Rule NFT"
+title: 'Example: Create Rule NFT'
 sidebar_label: Create Rule NFT
 ---
 
@@ -8,118 +8,62 @@ sidebar_label: Create Rule NFT
 
 Source: `examples/simple/rule.nft/create-rule-item.ts`
 
-Script ini melakukan 4 hal sekaligus: **subscribe → upload IPFS → createRule → activateRule**.
+This script does 4 things at once: **subscribe → upload IPFS → createRule → activateRule**.
 
 ---
 
-## Langkah 1 — Definisikan Rule
-
-Edit `examples/simple/rule.nft/currentRule.ts`:
+## Step 1 — Define Your Rule
 
 ```ts
-// currentRule.ts — ini yang kamu edit sesuai kebutuhan
+// examples/simple/rule.nft/currentRule.ts
 export const RULE_OBJECT = {
-  id: "min_amount",
-  if: {
-    field: "tx.amount",
-    op: ">=",
-    value: "100000000",   // 100 USDC (6 decimals)
-  },
-  message: "Minimum 100 USDC",
-};
-```
-
-Atau rule yang lebih complex:
-
-```ts
-export const RULE_OBJECT = {
-  id: "usdc_only",
-  if: {
-    field: "tx.asset",
-    op: "in",
-    value: ["USDC", "USDT"],
-  },
-  message: "Hanya stablecoin",
+  id: 'min_amount',
+  if: { field: 'tx.amount', op: '>=', value: '100000000' },
+  message: 'Minimum 100 USDC',
 };
 ```
 
 ---
 
-## Langkah 2 — Upload ke IPFS (dengan Cache)
+## Step 2 — Upload to IPFS
 
 ```bash
 bun run setup:upload
 ```
 
-Script `upload-rule-nft-to-pinata.ts` punya **cache system**:
-- Kalau `rule.json` ada dan `ruleHash` sama → **skip upload**, pakai cache
-- Kalau rule berubah → upload fresh ke Pinata
-
 ```
-⚡ Cache hit — skip upload Pinata
+ Cache hit — skip Pinata upload
    ruleHash : 0xabc...
-   tokenURI : ipfs://Qm...
-
-# atau kalau rule berubah:
-📦 Uploading to Pinata (no cache found)...
-   ruleHash: 0xabc...
-🖼 Uploading image...
-📤 Uploading metadata JSON...
-✅ Upload done
    tokenURI : ipfs://Qm...
 ```
 
 ---
 
-## Langkah 3 — Subscribe + Create + Activate
+## Step 3 — Subscribe + Create + Activate
 
 ```bash
 bun run setup:create-rule
 ```
 
-Script lengkapnya:
-
 ```ts
-// create-rule-item.ts (disederhanakan)
-
-// 1. Cek subscription
-const isSubscribed = await ruleNFT.getFunction("hasSubscription")(walletAddress);
+// Check subscription
 if (!isSubscribed) {
-  const price = await ruleNFT.getFunction("subscriptionPriceETH")();
-  await ruleNFT.getFunction("subscribe").send({ value: price });
+  const price = await ruleNFT.getFunction('subscriptionPriceETH')();
+  await ruleNFT.getFunction('subscribe').send({ value: price });
 }
 
-// 2. Upload ke IPFS (dengan cache)
-const { url: tokenURI, metadata } = await mainPinata();
-const ruleHash = keccak256(toUtf8Bytes(canonicalize(metadata.rule)));
+// createRule
+const txCreate = await ruleNFT.getFunction('createRule').send(ruleHash, tokenURI);
+const ruleId = getRuleIdFromReceipt(receipt, ruleNFT);
 
-// 3. createRule — daftarkan definition (belum mint NFT)
-const txCreate = await ruleNFT.getFunction("createRule").send(ruleHash, tokenURI);
-const receipt = await txCreate.wait();
-
-// 4. Ambil ruleId dari event RuleCreated
-let ruleId;
-for (const log of receipt.logs) {
-  const parsed = ruleNFT.interface.parseLog(log);
-  if (parsed?.name === "RuleCreated") {
-    ruleId = parsed.args.ruleId;
-  }
-}
-
-// 5. activateRule — mint NFT, ruleExpiry = subscriptionExpiry
-await ruleNFT.getFunction("activateRule").send(ruleId);
-
-// 6. Ambil tokenId dan verifikasi
-const tokenId = await ruleNFT.getFunction("ruleTokenId")(ruleId);
-const expiry = await ruleNFT.getFunction("ruleExpiry")(tokenId);
+// activateRule → mint NFT
+await ruleNFT.getFunction('activateRule').send(ruleId);
 ```
-
-Output yang diharapkan:
 
 ```
 Using wallet: 0xRECEIVER...
-Already subscribed           ← atau "Subscribed" kalau pertama kali
-⚡ Cache hit — skip upload Pinata
+Already subscribed
+ Cache hit — skip Pinata upload
 Creating rule...
 Activating rule...
 NFT Token ID: 1
@@ -130,27 +74,21 @@ DONE — Rule NFT Ready
 
 ---
 
-## Slot Limit
+## Slot Limits
 
-| Status | Max Rule NFT |
-|---|---|
-| Tanpa subscription | 1 slot |
-| Dengan subscription | 3 slot (MAX_SLOT) |
+| Status               | Max Rule NFTs      |
+| -------------------- | ------------------ |
+| Without subscription | 1 slot             |
+| With subscription    | 3 slots (MAX_SLOT) |
 
-Error `RULE_SLOT_FULL` muncul kalau sudah mencapai limit. Subscribe atau `deactivateMyCombinedRule()` dulu jika perlu buat slot baru.
+The `RULE_SLOT_FULL` error appears when the limit is reached. Subscribe or remove an old rule to free up a slot.
 
 ---
 
-## Verifikasi Manual
+## Verify Manually
 
 ```ts
-// Cek status rule NFT
-const tokenId = 1n;
-const expiry = await ruleNFT.getFunction("ruleExpiry")(tokenId);
-const owner = await ruleNFT.getFunction("ownerOf")(tokenId);
-const tokenURI = await ruleNFT.getFunction("tokenURI")(tokenId);
-
-console.log("Owner  :", owner);
-console.log("Expiry :", new Date(Number(expiry) * 1000).toISOString());
-console.log("URI    :", tokenURI);
+const expiry = await ruleNFT.getFunction('ruleExpiry')(tokenId);
+const owner = await ruleNFT.getFunction('ownerOf')(tokenId);
+const tokenURI = await ruleNFT.getFunction('tokenURI')(tokenId);
 ```

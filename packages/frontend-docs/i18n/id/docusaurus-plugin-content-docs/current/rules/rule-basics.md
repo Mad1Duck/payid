@@ -6,7 +6,7 @@ sidebar_label: Rule Basics
 
 # Rule Basics
 
-A rule is a **JSON config** evaluated by the WASM engine. PAY.ID supports 3 formats that can be freely combined.
+Rule adalah **JSON config** yang dievaluasi oleh WASM engine. PAY.ID mendukung 3 format yang bisa dikombinasikan bebas.
 
 ---
 
@@ -21,23 +21,40 @@ interface SimpleRule {
 ```
 
 ```json
-{ "id": "usdc_only", "if": { "field": "tx.asset", "op": "==", "value": "USDC" }, "message": "Only USDC accepted" }
+{ "id": "usdc_only", "if": { "field": "tx.asset", "op": "==", "value": "USDC" }, "message": "Hanya menerima USDC" }
+```
+
+```json
+{ "id": "min_amount", "if": { "field": "tx.amount", "op": ">=", "value": "100000000" }, "message": "Minimum 100 USDC" }
 ```
 
 ---
 
 ## Format B: MultiConditionRule
 
+**Contoh — amount harus antara 10 dan 500 USDC:**
+
 ```json
 { "id": "amount_range", "logic": "AND", "conditions": [
   { "field": "tx.amount", "op": ">=", "value": "10000000" },
   { "field": "tx.amount", "op": "<=", "value": "500000000" }
-], "message": "Amount must be between 10–500 USDC" }
+], "message": "Transaksi hanya 10–500 USDC" }
+```
+
+**Contoh — terima USDC atau USDT:**
+
+```json
+{ "id": "stablecoin_only", "logic": "OR", "conditions": [
+  { "field": "tx.asset", "op": "==", "value": "USDC" },
+  { "field": "tx.asset", "op": "==", "value": "USDT" }
+]}
 ```
 
 ---
 
 ## Format C: NestedRule
+
+**Contoh — VIP bisa transfer besar, non-VIP dibatasi:**
 
 ```json
 { "id": "tiered_limit", "logic": "OR", "rules": [
@@ -60,7 +77,7 @@ interface RuleConfig {
 }
 ```
 
-Full merchant policy example:
+**Contoh lengkap policy merchant:**
 
 ```json
 { "version": "1", "logic": "AND", "rules": [
@@ -71,9 +88,9 @@ Full merchant policy example:
 
 ---
 
-## Operators
+## Semua Operator
 
-| Operator | Type | Example |
+| Operator | Tipe Value | Contoh |
 |---|---|---|
 | `==` | any | `asset == "USDC"` |
 | `!=` | any | `asset != "ETH"` |
@@ -81,8 +98,8 @@ Full merchant policy example:
 | `<=` | number/string | `amount <= "5000000000"` |
 | `in` | array | `asset in ["USDC","USDT"]` |
 | `not_in` | array | `chainId not_in [56, 97]` |
-| `between` | [min, max] | `timestamp between [8, 22]` |
-| `not_between` | [min, max] | `timestamp not_between [23, 6]` |
+| `between` | array [min, max] | `timestamp between [8, 22]` |
+| `not_between` | array [min, max] | `timestamp not_between [23, 6]` |
 
 ---
 
@@ -101,7 +118,7 @@ risk.score / risk.category
 
 ## Cross-field Reference
 
-A value can reference another context field using the `$` prefix:
+Value bisa merujuk ke field context lain dengan prefix `$`:
 
 ```json
 { "id": "within_daily_limit", "if": { "field": "state.spentToday", "op": "<=", "value": "$state.dailyLimit" } }
@@ -111,7 +128,7 @@ A value can reference another context field using the `$` prefix:
 
 ## Rule Hashing
 
-Always canonicalize before hashing. Different key ordering produces a different hash:
+Selalu canonicalize sebelum hash. Key order berbeda menghasilkan hash berbeda:
 
 ```ts
 function canonicalize(obj: any): string {

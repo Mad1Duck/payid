@@ -1,0 +1,34 @@
+{
+  "sidebar.tutorialSidebar.category.Installation": {
+    "message": "Instalasi",
+    "description": "The label for category Installation in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Core Concepts": {
+    "message": "Konsep Dasar",
+    "description": "The label for category Core Concepts in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Rules": {
+    "message": "Rules",
+    "description": "The label for category Rules in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Examples": {
+    "message": "Contoh",
+    "description": "The label for category Examples in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Integration": {
+    "message": "Integrasi",
+    "description": "The label for category Integration in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.API": {
+    "message": "API",
+    "description": "The label for category API in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Network": {
+    "message": "Jaringan",
+    "description": "The label for category Network in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Contracts": {
+    "message": "Contracts",
+    "description": "The label for category Contracts in sidebar tutorialSidebar"
+  }
+}

@@ -6,20 +6,20 @@ sidebar_label: Combining Rules
 
 # Combining Rules
 
-Rules can be combined into a **CombinedRuleSet** — a single policy consisting of multiple Rule NFTs evaluated together.
+Rules bisa digabung menjadi **CombinedRuleSet** — satu policy yang terdiri dari beberapa Rule NFT berbeda, dievaluasi bersama.
 
 ---
 
-## Why Combine Rules?
+## Mengapa Combined Rules?
 
-- **Modularization** — separate "USDC only" from "min amount" rules
-- **Reuse** — a "block weekends" rule can be used in many combined sets
-- **Partial updates** — update one rule without redeploying everything
-- **Audit trail** — every rule has its own NFT on-chain
+- **Modularisasi** — pisah rule "USDC only" dari rule "min amount"
+- **Reuse** — rule "block weekends" bisa dipakai di banyak combined sets
+- **Update parsial** — update satu rule tanpa harus redeploy semua
+- **Audit trail** — setiap rule punya NFT token-nya sendiri di chain
 
 ---
 
-## Structure
+## Struktur
 
 ```
 CombinedRuleStorage
@@ -31,31 +31,29 @@ CombinedRuleStorage
             └── [2] tokenId: 3  → "business_hours"
 ```
 
-When a payment arrives, the SDK fetches all rules from IPFS and evaluates them with **AND** logic (all must pass).
-
 ---
 
 ## Step by Step
 
-### Step 1 — Define Your Rule
+### Step 1 — Definisikan Rule
 
 ```ts
 // examples/simple/rule.nft/currentRule.ts
 export const RULE_OBJECT = {
   id: "usdc_only",
   if: { field: "tx.asset", op: "in", value: ["USDC", "USDT"] },
-  message: "Only stablecoins accepted",
+  message: "Hanya menerima stablecoin",
 };
 ```
 
-### Step 2 — Upload to IPFS + Create Rule NFT
+### Step 2 — Upload ke IPFS + Buat Rule NFT
 
 ```bash
 bun run setup:upload
 bun run setup:create-rule
 ```
 
-Repeat for each rule you want to combine. Each run creates one new Rule NFT.
+Ulangi untuk setiap rule yang mau dikombinasikan.
 
 ### Step 3 — Register Combined Rule Set
 
@@ -76,15 +74,15 @@ function registerCombinedRule(
 ) external
 ```
 
-When called: deactivates old set → validates ownership + expiry → registers new set as active.
+Saat dipanggil, contract: deactivate set lama → validate ownership + expiry → register baru → set `activeRuleOf[msg.sender]`.
 
 :::note
-One address can only have **one** active rule set. Registering a new one automatically replaces the old one.
+Satu address hanya bisa punya **satu** active rule set. Register baru otomatis replace yang lama.
 :::
 
 ---
 
-## Read Active Rule Set
+## Baca Active Rule Set
 
 ```ts
 const ruleSetHash = await combined.getFunction("activeRuleOf")(merchantAddress);
@@ -96,16 +94,17 @@ const rules = await Promise.all(
     const url = tokenURI.startsWith("ipfs://")
       ? `https://gateway.pinata.cloud/ipfs/${tokenURI.slice(7)}`
       : tokenURI;
-    return (await fetch(url).then(r => r.json())).rule;
+    const metadata = await fetch(url).then(r => r.json());
+    return metadata.rule;
   })
 );
 ```
 
 ---
 
-## Limits
+## Batasan
 
-The contract limits a maximum of **10 Rule NFTs** per combined set. For more complex logic, use `NestedRule` within a single Rule NFT.
+Contract membatasi maksimal **10 Rule NFT** per combined set. Untuk policy lebih kompleks, gunakan `NestedRule` di dalam satu NFT.
 
 ---
 
@@ -116,4 +115,4 @@ The contract limits a maximum of **10 Rule NFTs** per combined set. For more com
 3. `bun run setup:create-rule`
 4. `bun run setup:register`
 
-`registerCombinedRule()` automatically deactivates the old set. No downtime.
+`registerCombinedRule()` otomatis deactivate set lama. Tidak ada downtime.

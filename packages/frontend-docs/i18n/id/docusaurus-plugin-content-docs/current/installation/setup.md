@@ -1,17 +1,17 @@
 ---
 id: setup
-title: Installation & Setup
+title: Instalasi & Setup
 sidebar_label: Setup
 ---
 
-# Installation & Setup
+# Instalasi & Setup
 
 ## Requirements
 
 | Tool | Version |
 |---|---|
 | Node.js | `≥ 18` |
-| Bun | `≥ 1.0` (recommended) |
+| Bun | `≥ 1.0` (direkomendasikan) |
 | TypeScript | `≥ 5.0` |
 
 ---
@@ -20,15 +20,15 @@ sidebar_label: Setup
 
 ```bash
 npm install @payid/sdk-core ethers
-# or
+# atau
 bun add @payid/sdk-core ethers
 ```
 
 ---
 
-## 2. Initialize SDK
+## 2. Inisialisasi SDK
 
-### Client Mode (browser / Node.js — no trusted issuers)
+### Client Mode (browser / Node.js — tanpa trusted issuers)
 
 ```ts
 import { createPayID } from "payid/client";
@@ -36,18 +36,21 @@ import { createPayID } from "payid/client";
 const payid = createPayID({});
 ```
 
-### Server Mode (with trusted issuers for Context V2)
+### Server Mode (dengan trusted issuers untuk Context V2)
 
 ```ts
 import { createPayID } from "payid/server";
 
 const payid = createPayID({
-  trustedIssuers: new Set([ENV_ISSUER_ADDRESS, STATE_ISSUER_ADDRESS]),
+  trustedIssuers: new Set([
+    ENV_ISSUER_ADDRESS,
+    STATE_ISSUER_ADDRESS,
+  ]),
 });
 ```
 
 :::warning
-`new Set([])` means "no trusted issuers" — all attestations will be rejected. If you don't need trusted issuers, omit the property entirely.
+`new Set([])` artinya "tidak ada issuer yang dipercaya" — semua attestation akan ditolak. Kalau tidak butuh trusted issuers, omit sama sekali.
 :::
 
 ---
@@ -75,13 +78,12 @@ MOCK_USDC=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
 
 ---
 
-## 4. Verify Installation
+## 4. Verifikasi Instalasi
 
 ```ts
 import { createPayID } from "payid/client";
 
 const payid = createPayID({});
-
 const result = await payid.evaluate(
   {
     tx: { sender: "0x01", receiver: "0x02", asset: "USDC", amount: "150000000", chainId: 4202 },
@@ -99,20 +101,20 @@ console.log(result.decision); // "ALLOW"
 
 ---
 
-## 5. Repository Structure
+## 5. Struktur Repository
 
 ```
 payid-master/
 ├── examples/
 │   ├── simple/
-│   │   ├── client.ts                  # Client payment flow
+│   │   ├── client.ts                  # Flow payment client
 │   │   ├── server.ts                  # Server mode (Context V2)
-│   │   ├── mint-usdc.ts               # Mint testnet USDC
-│   │   ├── rule.nft/currentRule.ts    # ← define your rule here
+│   │   ├── mint-usdc.ts               # Mint USDC testnet
+│   │   ├── rule.nft/currentRule.ts    # ← definisikan rule di sini
 │   │   └── combiner.rule/             # registerCombinedRule
 │   └── wasm/rule_engine.wasm          # WASM binary
 └── packages/
-    ├── sdk-core/                      # Main SDK
+    ├── sdk-core/                      # SDK utama
     ├── types/                         # TypeScript types
     └── contracts/                     # Solidity contracts
 ```
@@ -121,11 +123,11 @@ payid-master/
 
 ## Troubleshooting
 
-**`RULE_LICENSE_EXPIRED`**  
-The merchant's Rule NFT has expired. The merchant needs to resubscribe and call `activateRule()` again.
+**`RULE_LICENSE_EXPIRED`**
+Rule NFT merchant sudah expired. Merchant perlu subscribe ulang lalu `activateRule()` lagi.
 
-**`RULE_AUTHORITY_NOT_TRUSTED`**  
-The `ruleAuthority` is not a whitelisted contract. Use the official `COMBINED_RULE_STORAGE` address.
+**`RULE_AUTHORITY_NOT_TRUSTED`**
+`ruleAuthority` bukan contract yang di-whitelist. Gunakan `COMBINED_RULE_STORAGE` resmi.
 
-**`RULE_SLOT_FULL`**  
-The merchant has reached the rule slot limit. Subscribe first or delete an existing rule.
+**`RULE_SLOT_FULL`**
+Merchant sudah mencapai limit rule slot. Subscribe atau hapus rule lama dulu.

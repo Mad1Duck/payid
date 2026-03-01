@@ -1,18 +1,18 @@
 ---
 id: register-combined-rule
-title: "Example: Register Combined Rule"
+title: "Contoh: Register Combined Rule"
 sidebar_label: Register Combined Rule
 ---
 
-# Example: Register Combined Rule
+# Contoh: Register Combined Rule
 
 Source: `examples/simple/combiner.rule/register-combined-rule.ts`
 
-After the Rule NFT is created, the next step is to **register it as an active policy** in `CombinedRuleStorage`.
+Setelah Rule NFT dibuat, langkah selanjutnya adalah **register sebagai policy aktif** di `CombinedRuleStorage`.
 
 ---
 
-## Run
+## Jalankan
 
 ```bash
 bun run setup:register
@@ -20,17 +20,17 @@ bun run setup:register
 
 ---
 
-## Source Walkthrough
+## Walkthrough
 
 ```ts
-// 1. Get Rule NFT tokenId
+// 1. Ambil tokenId
 const { tokenId: ruleTokenId } = await mainRule();
 
-// 2. Verify ownership
+// 2. Verifikasi ownership
 const owner = await ruleNFT.getFunction("ownerOf")(ruleTokenId);
-if (owner.toLowerCase() !== walletAddress.toLowerCase()) throw new Error("Not the owner");
+if (owner.toLowerCase() !== walletAddress.toLowerCase()) throw new Error("Bukan owner");
 
-// 3. Fetch rule metadata from IPFS
+// 3. Fetch metadata dari IPFS
 const tokenURI = await ruleNFT.getFunction("tokenURI")(ruleTokenId);
 const metadata = await fetch(gatewayUrl(tokenURI)).then(r => r.json());
 
@@ -38,7 +38,7 @@ const metadata = await fetch(gatewayUrl(tokenURI)).then(r => r.json());
 const combinedRuleJSON = canonicalize({ version: "1", logic: "AND", rules: [metadata.rule] });
 const ruleSetHash = keccak256(toUtf8Bytes(combinedRuleJSON));
 
-// 5. Simulate first
+// 5. Simulate dulu
 await combined.getFunction("registerCombinedRule").staticCall(ruleSetHash, [RULE_ITEM_ERC721], [ruleTokenId], 1n);
 
 // 6. Register
@@ -63,5 +63,5 @@ await combined.getFunction("registerCombinedRule").send(
 ```
 
 :::info Auto-Replace
-`registerCombinedRule()` automatically deactivates the old rule set. No manual `deactivate()` needed.
+`registerCombinedRule()` otomatis deactivate rule set lama. Tidak perlu `deactivate()` manual.
 :::

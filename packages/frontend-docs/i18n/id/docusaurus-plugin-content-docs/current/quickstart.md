@@ -8,22 +8,22 @@ slug: /quickstart
 
 # Quick Start
 
-This tutorial walks you through **zero to first payment** on Lisk Sepolia.
+Tutorial ini memandu kamu dari **nol sampai payment pertama** di Lisk Sepolia.
 
-You will:
+Kamu akan:
 
-1. Install the SDK and set up the environment
-2. Subscribe to PAY.ID + create a Rule NFT
-3. Register a Combined Rule Set
-4. Send a payment with a Decision Proof
+1. Install SDK dan setup environment
+2. Subscribe ke PAY.ID + buat Rule NFT
+3. Register Combined Rule Set
+4. Kirim payment dengan Decision Proof
 
 ---
 
 ## Prerequisites
 
-- Node.js `≥ 18` or Bun `≥ 1.0`
-- A free [Pinata](https://pinata.cloud) account for IPFS
-- 2 wallets on Lisk Sepolia with a small amount of ETH for gas
+- Node.js `≥ 18` atau Bun `≥ 1.0`
+- Akun [Pinata](https://pinata.cloud) (gratis) untuk IPFS
+- 2 wallet di Lisk Sepolia dengan sedikit ETH untuk gas
 
 ---
 
@@ -35,7 +35,7 @@ cd payid && bun install
 cp .env.example .env
 ```
 
-Fill in `.env`:
+Isi `.env`:
 
 ```env
 RPC_URL=https://rpc.sepolia-api.lisk.com
@@ -63,30 +63,27 @@ MOCK_USDC=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9
 
 ---
 
-## Step 2 — Mint Testnet USDC
+## Step 2 — Mint USDC Testnet
 
 ```bash
 bun run examples/simple/mint-usdc.ts
-# ✅ Minted 1000 USDC to payer address
+# ✅ Minted 1000 USDC ke payer address
 ```
 
 ---
 
-## Step 3 — Subscribe + Create Rule NFT
+## Step 3 — Subscribe + Buat Rule NFT
 
-As a **receiver/merchant**, you need to subscribe before creating rules.
+Sebagai **receiver/merchant**, kamu perlu subscribe dulu sebelum bisa buat rule.
 
 ```bash
-# Upload rule to IPFS (cached — skips if rule unchanged)
 bun run setup:upload
-
-# Subscribe + createRule + activateRule (mint NFT)
 bun run setup:create-rule
 ```
 
 ```
 Already subscribed
-Uploading to IPFS... ← or " Cache hit" if rule unchanged
+Uploading to IPFS... ← atau " Cache hit"
 Creating rule...
 Activating rule...
 NFT Token ID: 1
@@ -98,7 +95,7 @@ DONE — Rule NFT Ready
 :::info Flow
 `subscribe()` → `createRule(hash, uri)` → `activateRule(ruleId)` → tokenId
 
-Rule NFTs have their own lifecycle tied to the subscription.
+Rule NFT punya lifecycle sendiri yang terikat ke subscription.
 :::
 
 ---
@@ -119,11 +116,11 @@ TX: 0xdef...
 ✅ Registered
 ```
 
-`registerCombinedRule()` activates the rule set immediately — no separate `activateRuleSet()` call needed.
+`registerCombinedRule()` langsung mengaktifkan rule set — tidak perlu `activateRuleSet()` terpisah.
 
 ---
 
-## Step 5 — Send Payment
+## Step 5 — Kirim Payment
 
 ```bash
 bun run examples/simple/client.ts
@@ -142,26 +139,26 @@ bun run examples/simple/client.ts
 
 ---
 
-## Flow Summary
+## Ringkasan Flow
 
 ```
-RECEIVER (one-time setup):
-  subscribe()                → activate account, 0.0001 ETH / 30 days
-  createRule(ruleHash, uri)  → register rule definition
-  activateRule(ruleId)       → mint NFT
-  registerCombinedRule(...)  → activate policy
+RECEIVER (setup sekali):
+  subscribe()                    → aktifkan akun, 0.0001 ETH / 30 hari
+  createRule(ruleHash, uri)      → daftarkan rule definition
+  activateRule(ruleId)           → mint NFT
+  registerCombinedRule(...)      → aktifkan policy
 
-PAYER (every payment):
-  activeRuleOf(receiver)     → read ruleSetHash from chain
-  evaluateAndProve(...)      → evaluate + sign proof
-  payERC20(payload, sig, []) → submit to blockchain
+PAYER (setiap payment):
+  activeRuleOf(receiver)         → baca ruleSetHash dari chain
+  evaluateAndProve(...)          → evaluate + sign proof
+  payERC20(payload, sig, [])     → kirim ke blockchain
 ```
 
 ---
 
-## Next Steps
+## Selanjutnya
 
-- [Understand Rule Types →](./rules/rule-basics)
-- [Combining Rules →](./rules/combining-rules)
+- [Pahami Rule Types →](./rules/rule-basics)
+- [Kombinasi Rules →](./rules/combining-rules)
 - [Server Mode →](./examples/server)
-- [React Integration →](./integration/react-integration)
+- [Integrasi React →](./integration/react-integration)
