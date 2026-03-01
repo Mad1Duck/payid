@@ -102,7 +102,7 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button asChild size="lg">
+              <Button asChild size="lg" className="text-white!">
                 <Link to="/docs/01-overview">
                   Read the Docs
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -193,7 +193,7 @@ export default function HomePage() {
       {/* CTA */}
       <section className="px-6 py-24 bg-primary">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-6">
+          <h2 className="text-3xl md:text-4xl font-bold dark:text-white text-white! mb-6">
             Start Enforcing Payment Policy
           </h2>
           <p className="text-lg text-primary-foreground/80 mb-8">
