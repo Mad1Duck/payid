@@ -21,8 +21,14 @@ interface IRuleAuthority {
 
 /**
  * @title RuleAuthority
- * @notice On-chain registry that maps ruleSetHash → (owner, RuleRef[])
+ * @notice Deterministic deployment compatible
  *
+ * Deploy flow:
+ *   1. Deploy via CREATE2 → address sama di semua chain
+ *   2. Call initialize(adminAddress) per chain
+ *
+ * CATATAN: AccessControl._grantRole dipindah ke initialize()
+ *          bukan constructor, agar bytecode identik di semua chain.
  * @dev Implements IRuleAuthority so PayIDVerifier can verify:
  *      1. The rule set belongs to the correct receiver
  *      2. Each referenced Rule NFT license is still valid and owned
@@ -46,69 +52,68 @@ contract RuleAuthority is IRuleAuthority, AccessControl {
         uint256     registeredAt;
     }
 
-    // ruleSetHash => RuleSet
     mapping(bytes32 => RuleSet) private _ruleSets;
-
-    // owner => list of registered ruleSetHashes (for enumeration)
     mapping(address => bytes32[]) public ownerRuleSets;
+
+    bool private _initialized;
+
+    /* ===================== ERRORS ===================== */
+    error AlreadyInitialized();
+    error NotInitialized();
 
     /* ===================== EVENTS ===================== */
 
-    event RuleSetRegistered(
-        bytes32 indexed ruleSetHash,
-        address indexed owner,
-        uint64  version
-    );
+    event Initialized(address indexed admin);
+    event RuleSetRegistered(bytes32 indexed ruleSetHash, address indexed owner, uint64 version);
+    event RuleSetDeactivated(bytes32 indexed ruleSetHash, address indexed owner);
+    event RuleSetUpdated(bytes32 indexed oldHash, bytes32 indexed newHash, address indexed owner, uint64 newVersion);
 
-    event RuleSetDeactivated(
-        bytes32 indexed ruleSetHash,
-        address indexed owner
-    );
+    /* ===================== INITIALIZE ===================== */
 
-    event RuleSetUpdated(
-        bytes32 indexed oldHash,
-        bytes32 indexed newHash,
-        address indexed owner,
-        uint64  newVersion
-    );
+    /**
+     * @notice Grant admin roles — dipanggil sekali setelah deploy
+     * @dev Dipindah dari constructor ke initialize() agar bytecode identik
+     *      Constructor AccessControl tidak ada args → bytecode sama di semua chain
+     *
+     * @param admin  Address yang akan jadi DEFAULT_ADMIN_ROLE + REGISTRAR_ROLE
+     */
+    function initialize(address admin) external {
+        if (_initialized) revert AlreadyInitialized();
+        require(admin != address(0), "ZERO_ADDRESS");
 
-    /* ===================== CONSTRUCTOR ===================== */
+        _initialized = true;
 
-    constructor(address admin) {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(REGISTRAR_ROLE, admin);
+
+        emit Initialized(admin);
+    }
+
+    /* ===================== MODIFIER ===================== */
+
+    modifier onlyInitialized() {
+        if (!_initialized) revert NotInitialized();
+        _;
     }
 
     /* ===================================================== */
     /* ================= REGISTRATION ====================== */
     /* ===================================================== */
 
-    /**
-     * @notice Register a new rule set
-     * @param ruleSetHash  keccak256 of the rule set content (must match IPFS/off-chain)
-     * @param ruleRefs     array of (ruleNFT address, tokenId) — the "policies"
-     *
-     * @dev Anyone can register — the hash is the commitment.
-     *      The caller becomes the owner, and must be the receiver in PayIDVerifier.
-     */
     function registerRuleSet(
-        bytes32         ruleSetHash,
+        bytes32            ruleSetHash,
         RuleRef[] calldata ruleRefs
-    ) external {
-        require(ruleSetHash != bytes32(0),      "INVALID_HASH");
-        require(ruleRefs.length > 0,            "EMPTY_RULE_REFS");
-        require(ruleRefs.length <= 10,          "TOO_MANY_REFS");
+    ) external onlyInitialized {
+        require(ruleSetHash != bytes32(0),   "INVALID_HASH");
+        require(ruleRefs.length > 0,         "EMPTY_RULE_REFS");
+        require(ruleRefs.length <= 10,       "TOO_MANY_REFS");
         require(
             _ruleSets[ruleSetHash].owner == address(0),
             "HASH_ALREADY_REGISTERED"
         );
 
-        // Validate that each ruleNFT address is a contract
         for (uint256 i = 0; i < ruleRefs.length; ) {
-            require(
-                ruleRefs[i].ruleNFT.code.length > 0,
-                "RULE_NFT_NOT_CONTRACT"
-            );
+            require(ruleRefs[i].ruleNFT.code.length > 0, "RULE_NFT_NOT_CONTRACT");
             unchecked { ++i; }
         }
 
@@ -128,35 +133,29 @@ contract RuleAuthority is IRuleAuthority, AccessControl {
         emit RuleSetRegistered(ruleSetHash, msg.sender, 1);
     }
 
-    /**
-     * @notice Update rule set to a new hash (e.g. after rule version upgrade)
-     * @dev Old hash is deactivated, new hash is registered with incremented version
-     */
     function updateRuleSet(
-        bytes32         oldHash,
-        bytes32         newHash,
+        bytes32            oldHash,
+        bytes32            newHash,
         RuleRef[] calldata newRefs
-    ) external {
+    ) external onlyInitialized {
         RuleSet storage old = _ruleSets[oldHash];
 
-        require(old.owner == msg.sender,  "NOT_OWNER");
-        require(old.active,               "ALREADY_INACTIVE");
-        require(newHash != bytes32(0),    "INVALID_NEW_HASH");
-        require(newHash != oldHash,       "SAME_HASH");
+        require(old.owner == msg.sender, "NOT_OWNER");
+        require(old.active,              "ALREADY_INACTIVE");
+        require(newHash != bytes32(0),   "INVALID_NEW_HASH");
+        require(newHash != oldHash,      "SAME_HASH");
         require(
             _ruleSets[newHash].owner == address(0),
             "NEW_HASH_ALREADY_REGISTERED"
         );
-        require(newRefs.length > 0,       "EMPTY_RULE_REFS");
-        require(newRefs.length <= 10,     "TOO_MANY_REFS");
+        require(newRefs.length > 0,  "EMPTY_RULE_REFS");
+        require(newRefs.length <= 10,"TOO_MANY_REFS");
 
         uint64 newVersion = old.version + 1;
 
-        // Deactivate old
         old.active = false;
         emit RuleSetDeactivated(oldHash, msg.sender);
 
-        // Register new
         RuleSet storage rs = _ruleSets[newHash];
         rs.owner        = msg.sender;
         rs.version      = newVersion;
@@ -173,12 +172,12 @@ contract RuleAuthority is IRuleAuthority, AccessControl {
         emit RuleSetUpdated(oldHash, newHash, msg.sender, newVersion);
     }
 
-    /**
-     * @notice Deactivate a rule set (emergency / deprecation)
-     */
-    function deactivateRuleSet(bytes32 ruleSetHash) external {
+    function deactivateRuleSet(bytes32 ruleSetHash) external onlyInitialized {
         RuleSet storage rs = _ruleSets[ruleSetHash];
-        require(rs.owner == msg.sender || hasRole(REGISTRAR_ROLE, msg.sender), "NOT_AUTHORIZED");
+        require(
+            rs.owner == msg.sender || hasRole(REGISTRAR_ROLE, msg.sender),
+            "NOT_AUTHORIZED"
+        );
         require(rs.active, "ALREADY_INACTIVE");
 
         rs.active = false;
@@ -189,12 +188,6 @@ contract RuleAuthority is IRuleAuthority, AccessControl {
     /* ================= IRuleAuthority ==================== */
     /* ===================================================== */
 
-    /**
-     * @notice Called by PayIDVerifier during requireAllowed()
-     * @return owner     address that registered this rule set
-     * @return ruleRefs  array of (ruleNFT, tokenId) to validate
-     * @return version   current version of this rule set
-     */
     function getRuleByHash(bytes32 ruleSetHash)
         external
         view
@@ -220,23 +213,17 @@ contract RuleAuthority is IRuleAuthority, AccessControl {
         external
         view
         returns (
-            address    owner,
-            uint64     version,
-            bool       active,
-            uint256    registeredAt,
-            uint256    refCount
+            address owner,
+            uint64  version,
+            bool    active,
+            uint256 registeredAt,
+            uint256 refCount
         )
     {
         RuleSet storage rs = _ruleSets[ruleSetHash];
         require(rs.owner != address(0), "RULE_SET_NOT_FOUND");
 
-        return (
-            rs.owner,
-            rs.version,
-            rs.active,
-            rs.registeredAt,
-            rs.ruleRefs.length
-        );
+        return (rs.owner, rs.version, rs.active, rs.registeredAt, rs.ruleRefs.length);
     }
 
     function getRuleRef(bytes32 ruleSetHash, uint256 index)
@@ -258,5 +245,9 @@ contract RuleAuthority is IRuleAuthority, AccessControl {
         returns (bytes32[] memory)
     {
         return ownerRuleSets[owner];
+    }
+
+    function isInitialized() external view returns (bool) {
+        return _initialized;
     }
 }

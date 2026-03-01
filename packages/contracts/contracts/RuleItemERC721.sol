@@ -14,90 +14,125 @@ interface AggregatorV3Interface {
     function decimals() external view returns (uint8);
 }
 
-interface IRuleLicense {
-    function ruleExpiry(uint256 tokenId) external view returns (uint256);
-    function ownerOf(uint256 tokenId) external view returns (address);
-    function ruleTokenId(uint256 ruleId) external view returns (uint256);
-    function getRule(uint256 ruleId)
-        external
-        view
-        returns (
-            bytes32,
-            string memory,
-            address,
-            uint256,
-            uint16,
-            bool,
-            bool
-        );
-}
-
-contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
+/**
+ * @title RuleItemERC721
+ * @notice Deterministic deployment compatible
+ *
+ * Deploy flow:
+ *   1. Deploy via CREATE2 → address sama di semua chain
+ *   2. Call initialize(name, symbol, admin, oracle) per chain
+ *      oracle = Chainlink ETH/USD feed address (beda tiap chain)
+ *
+ * CHANGED:
+ *   - deployer: immutable → storage (immutable inline ke bytecode)
+ *   - ethUsdFeed: set di initialize() bukan constructor
+ *   - ERC721(name, symbol): dipindah ke initialize() via _initERC721()
+ */
+contract RuleItemERC721 is ERC721URIStorage, AccessControl, Pausable {
 
     bytes32 public constant ADMIN_ROLE  = keccak256("ADMIN_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     /* ===================== CONFIG ===================== */
-    uint8   public constant MAX_SLOT = 3;
+    uint8   public constant MAX_SLOT     = 3;
     uint256 public constant SUB_DURATION = 30 days;
 
-    // $0.35 ≈ Rp 5.000
     uint256 public subscriptionUsdCents = 35;
 
     AggregatorV3Interface public ethUsdFeed;
 
     uint256 public nextRuleId;
     uint256 public nextTokenId;
-    address public immutable deployer;
+
+    // CHANGED: dari immutable ke storage variable
+    // immutable deployer di-encode ke bytecode → bytecode beda → CREATE2 address beda
+    address public deployer;
+
+    bool private _initialized;
 
     struct RuleDefinition {
         bytes32 ruleHash;
         string  uri;
         address creator;
-        uint256 parentRuleId;   // 0 if root
+        uint256 parentRuleId;
         uint16  version;
-        bool    deprecated;     // true if replaced
-        uint256 tokenId;        // NFT only for ACTIVE version
+        bool    deprecated;
+        uint256 tokenId;
     }
 
     /* ===================== STORAGE ===================== */
-    mapping(uint256 => RuleDefinition) public rules;        // ruleId   => rule
-    mapping(uint256 => uint256)        public tokenRule;    // tokenId  => ruleId
-    mapping(uint256 => uint256)        public rootRuleOf;   // ruleId   => rootRuleId
-    mapping(uint256 => uint256)        public activeRuleOf; // rootRuleId => active ruleId
-    mapping(address => uint8)          public logicalRuleCount; // ROOT rules per user
+    mapping(uint256 => RuleDefinition) public rules;
+    mapping(uint256 => uint256)        public tokenRule;
+    mapping(uint256 => uint256)        public rootRuleOf;
+    mapping(uint256 => uint256)        public activeRuleOf;
+    mapping(address => uint8)          public logicalRuleCount;
     mapping(address => uint256)        public subscriptionExpiry;
-    mapping(uint256 => uint256)        public ruleExpiry;   // tokenId  => expiry
+    mapping(uint256 => uint256)        public ruleExpiry;
     mapping(uint256 => uint256)        public ruleTokenId;
+    mapping(uint256 => bool)           private _pendingBurn;
 
-    // FIX: track tokens authorized for internal burn
-    // to distinguish internal burns from external transfer attempts
-    mapping(uint256 => bool) private _pendingBurn;
+    /* ===================== ERRORS ===================== */
+    error AlreadyInitialized();
+    error NotInitialized();
 
     /* ===================== EVENTS ===================== */
-    event RuleCreated(
-        uint256 indexed ruleId,
-        uint256 indexed rootRuleId,
-        uint256 indexed parentRuleId,
-        uint16 version
-    );
+    event Initialized(address indexed admin, address indexed oracle);
+    event RuleCreated(uint256 indexed ruleId, uint256 indexed rootRuleId, uint256 indexed parentRuleId, uint16 version);
     event RuleActivated(uint256 indexed ruleId, uint256 indexed tokenId);
     event RuleDeprecated(uint256 indexed ruleId);
     event Subscribed(address indexed user, uint256 expiry);
 
     /* ===================== CONSTRUCTOR ===================== */
-    constructor(
-        string memory name,
-        string memory symbol,
+
+    /**
+     * @dev ERC721 constructor butuh name + symbol — pakai placeholder
+     *      yang akan di-override via _name/_symbol storage kalau perlu,
+     *      atau pakai nama generik karena ini template contract.
+     *
+     *      Alternatif: extend ERC721 dan override name()/symbol() untuk
+     *      baca dari storage yang di-set saat initialize().
+     *
+     *      Untuk simplicity, kita pakai nama fixed di constructor —
+     *      ini tidak mempengaruhi CREATE2 address karena bytecode sama.
+     */
+    constructor() ERC721("PAY.ID Rule License", "PAYID-RULE") {}
+
+    /* ===================== INITIALIZE ===================== */
+
+    /**
+     * @notice Set admin, oracle, dan deployer — dipanggil sekali setelah deploy
+     *
+     * @param admin    Address yang dapat ADMIN_ROLE + PAUSER_ROLE
+     * @param oracle   Chainlink ETH/USD price feed (beda tiap chain — di-set post-deploy)
+     * @param revenueReceiver  Address penerima subscription payment (deployer)
+     */
+    function initialize(
         address admin,
-        address oracle
-    ) ERC721(name, symbol) {
+        address oracle,
+        address revenueReceiver
+    ) external {
+        if (_initialized) revert AlreadyInitialized();
+        require(admin != address(0),           "ZERO_ADMIN");
+        require(oracle != address(0),          "ZERO_ORACLE");
+        require(revenueReceiver != address(0), "ZERO_RECEIVER");
+
+        _initialized = true;
+
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
 
         ethUsdFeed = AggregatorV3Interface(oracle);
-        deployer   = msg.sender;
+        deployer   = revenueReceiver;
+
+        emit Initialized(admin, oracle);
+    }
+
+    /* ===================== MODIFIER ===================== */
+
+    modifier onlyInitialized() {
+        if (!_initialized) revert NotInitialized();
+        _;
     }
 
     /* ===================================================== */
@@ -112,7 +147,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         return 0.0001 ether;
     }
 
-    function subscribe() external payable whenNotPaused {
+    function subscribe() external payable whenNotPaused onlyInitialized {
         uint256 price = subscriptionPriceETH();
         require(msg.value >= price, "INSUFFICIENT_PAYMENT");
 
@@ -136,11 +171,10 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     /* ================= RULE CREATION ===================== */
     /* ===================================================== */
 
-    /// Create ROOT rule (v1)
     function createRule(
         bytes32 ruleHash,
         string calldata uri
-    ) external whenNotPaused returns (uint256 ruleId) {
+    ) external whenNotPaused onlyInitialized returns (uint256 ruleId) {
         require(ruleHash != bytes32(0), "INVALID_RULE_HASH");
 
         uint8 limit = hasSubscription(msg.sender) ? MAX_SLOT : 1;
@@ -164,20 +198,18 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         emit RuleCreated(ruleId, ruleId, 0, 1);
     }
 
-    /// Create NEW VERSION of a rule
     function createRuleVersion(
         uint256 parentRuleId,
         bytes32 newHash,
         string calldata newUri
-    ) external whenNotPaused returns (uint256 ruleId) {
+    ) external whenNotPaused onlyInitialized returns (uint256 ruleId) {
         RuleDefinition storage parent = rules[parentRuleId];
 
         require(parent.creator == msg.sender, "NOT_CREATOR");
-        require(!parent.deprecated, "PARENT_DEPRECATED");
-        require(newHash != bytes32(0), "INVALID_RULE_HASH");
+        require(!parent.deprecated,           "PARENT_DEPRECATED");
+        require(newHash != bytes32(0),        "INVALID_RULE_HASH");
 
         uint256 root = rootRuleOf[parentRuleId];
-
         ruleId = ++nextRuleId;
 
         rules[ruleId] = RuleDefinition({
@@ -191,7 +223,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         });
 
         rootRuleOf[ruleId] = root;
-
         parent.deprecated = true;
         emit RuleDeprecated(parentRuleId);
 
@@ -202,22 +233,21 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     /* =========== SLOT-AWARE VERSION ACTIVATION =========== */
     /* ===================================================== */
 
-    /// Activate a rule version — auto-deactivates previous version
     function activateRule(uint256 ruleId)
         external
         whenNotPaused
+        onlyInitialized
         returns (uint256 tokenId)
     {
         RuleDefinition storage r = rules[ruleId];
 
         require(r.creator == msg.sender, "NOT_CREATOR");
-        require(!r.deprecated, "RULE_DEPRECATED");
-        require(r.tokenId == 0, "ALREADY_ACTIVE");
+        require(!r.deprecated,           "RULE_DEPRECATED");
+        require(r.tokenId == 0,          "ALREADY_ACTIVE");
 
-        uint256 root     = rootRuleOf[ruleId];
+        uint256 root      = rootRuleOf[ruleId];
         uint256 oldActive = activeRuleOf[root];
 
-        // Deactivate previous version (burn its NFT)
         if (oldActive != 0) {
             uint256 oldToken = rules[oldActive].tokenId;
             if (oldToken != 0) {
@@ -225,12 +255,11 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
                 _burn(oldToken);
                 delete tokenRule[oldToken];
             }
-            rules[oldActive].tokenId  = 0;
+            rules[oldActive].tokenId    = 0;
             rules[oldActive].deprecated = true;
             emit RuleDeprecated(oldActive);
         }
 
-        // Activate new version
         tokenId = ++nextTokenId;
         r.tokenId            = tokenId;
         tokenRule[tokenId]   = ruleId;
@@ -248,15 +277,14 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     /* ================= AUTO EXPIRY ======================= */
     /* ===================================================== */
 
-    function burnExpired(uint256 tokenId) external {
-        address owner = _ownerOf(tokenId);
-        require(owner != address(0), "NOT_EXIST");
+    function burnExpired(uint256 tokenId) external onlyInitialized {
+        address tokenOwner = _ownerOf(tokenId);
+        require(tokenOwner != address(0),          "NOT_EXIST");
         require(ruleExpiry[tokenId] < block.timestamp, "NOT_EXPIRED");
 
         uint256 ruleId = tokenRule[tokenId];
         uint256 root   = rootRuleOf[ruleId];
 
-        // FIX: mark as pending burn before calling _burn
         _pendingBurn[tokenId] = true;
         _burn(tokenId);
         delete tokenRule[tokenId];
@@ -268,13 +296,12 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         rules[ruleId].tokenId = 0;
     }
 
-    /// Extend rule license expiry
     function extendRuleExpiry(
         uint256 tokenId,
         uint256 newExpiry
-    ) external payable {
-        require(ownerOf(tokenId) == msg.sender, "NOT_RULE_OWNER");
-        require(newExpiry > ruleExpiry[tokenId], "EXPIRY_NOT_EXTENDED");
+    ) external payable onlyInitialized {
+        require(ownerOf(tokenId) == msg.sender,     "NOT_RULE_OWNER");
+        require(newExpiry > ruleExpiry[tokenId],    "EXPIRY_NOT_EXTENDED");
 
         uint256 price = subscriptionPriceETH();
         require(msg.value >= price, "INSUFFICIENT_PAYMENT");
@@ -285,7 +312,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
                 ? block.timestamp + SUB_DURATION
                 : expiry + SUB_DURATION;
 
-        // FIX: transfer exact price, refund excess — sama seperti subscribe()
         (bool ok, ) = deployer.call{value: price}("");
         require(ok, "DEPLOYER_TRANSFER_FAILED");
 
@@ -306,14 +332,11 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         from = super._update(to, tokenId, auth);
 
         if (to == address(0)) {
-            // FIX: ini adalah burn — hanya boleh dari internal (_pendingBurn)
-            // Bug sebelumnya: require(to != address(0)) justru BLOCK semua burn
             require(_pendingBurn[tokenId], "BURN_ONLY_VIA_EXPIRY_OR_ACTIVATION");
-            _pendingBurn[tokenId] = false; // reset flag
+            _pendingBurn[tokenId] = false;
             return from;
         }
 
-        // Transfer: update expiry berdasarkan subscription owner baru
         ruleExpiry[tokenId] = subscriptionExpiry[to];
     }
 
@@ -337,10 +360,14 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         RuleDefinition memory r = rules[ruleId];
         require(r.ruleHash != bytes32(0), "RULE_NOT_EXIST");
 
-        uint256 root    = rootRuleOf[ruleId];
+        uint256 root     = rootRuleOf[ruleId];
         bool    isActive = activeRuleOf[root] == ruleId;
 
         return (r.ruleHash, r.uri, r.creator, root, r.version, r.deprecated, isActive);
+    }
+
+    function isInitialized() external view returns (bool) {
+        return _initialized;
     }
 
     /* ===================== OVERRIDES ===================== */

@@ -6,16 +6,35 @@ import "./AttestationVerifier.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @title PayWithPayID (EAS-based, fully serverless)
- * @notice Entry point untuk semua payment via PAY.ID
- *         Attestation verification dilakukan langsung via EAS on-chain
- *         Client hanya perlu pass EAS attestation UIDs — tidak perlu server
+ * @title PayWithPayID
+ * @notice Deterministic deployment compatible
+ *
+ * Deploy flow:
+ *   1. Deploy via CREATE2 → address sama di semua chain
+ *   2. Call initialize(verifierAddress, attestationVerifierAddress)
+ *      → verifier + attestationVerifier sudah punya address yang sama
+ *        di semua chain (karena mereka juga di-deploy via CREATE2)
+ *
+ * Karena semua dependency (verifier, attestationVerifier) juga CREATE2-deployed
+ * dengan address yang sama, initialize() akan menerima address yang sama
+ * di semua chain → bytecode + storage identik.
  */
 contract PayWithPayID {
 
-    PayIDVerifier        public immutable verifier;
-    AttestationVerifier  public immutable attestationVerifier;
+    // CHANGED: dari immutable ke storage
+    // immutable di-encode ke bytecode → bytecode beda antar chain → CREATE2 address beda
+    PayIDVerifier       public verifier;
+    AttestationVerifier public attestationVerifier;
 
+    bool private _initialized;
+
+    /* ===================== ERRORS ===================== */
+    error AlreadyInitialized();
+    error NotInitialized();
+    error ZeroAddress();
+
+    /* ===================== EVENTS ===================== */
+    event Initialized(address indexed verifier, address indexed attestationVerifier);
     event PaymentETH(
         address indexed payer,
         address indexed receiver,
@@ -23,7 +42,6 @@ contract PayWithPayID {
         bytes32         payId,
         bytes32         nonce
     );
-
     event PaymentERC20(
         address indexed payer,
         address indexed receiver,
@@ -33,38 +51,56 @@ contract PayWithPayID {
         bytes32         nonce
     );
 
-    constructor(
+    /* ===================== INITIALIZE ===================== */
+
+    /**
+     * @notice Set verifier addresses — dipanggil sekali setelah deploy
+     * @param verifier_              PayIDVerifier address (sama di semua chain via CREATE2)
+     * @param attestationVerifier_   AttestationVerifier address (sama di semua chain via CREATE2)
+     */
+    function initialize(
         address verifier_,
         address attestationVerifier_
-    ) {
+    ) external {
+        if (_initialized) revert AlreadyInitialized();
+        if (verifier_ == address(0)) revert ZeroAddress();
+        if (attestationVerifier_ == address(0)) revert ZeroAddress();
+
+        _initialized        = true;
         verifier            = PayIDVerifier(verifier_);
         attestationVerifier = AttestationVerifier(attestationVerifier_);
+
+        emit Initialized(verifier_, attestationVerifier_);
     }
+
+    /* ===================== MODIFIERS ===================== */
+
+    modifier onlyInitialized() {
+        if (!_initialized) revert NotInitialized();
+        _;
+    }
+
+    /* ===================== PAYMENT ===================== */
 
     /**
      * @notice Pay with ETH
-     * @param attestationUIDs  EAS UIDs — client ambil dari EAS SDK, no server needed
-     *                         Pass [] kalau requiresAttestation = false
+     * @param attestationUIDs  EAS UIDs — pass [] kalau requiresAttestation = false
      */
     function payETH(
         PayIDVerifier.Decision  calldata d,
         bytes                   calldata sig,
         bytes32[]               calldata attestationUIDs
-    ) external payable {
-        // Step 1: Attestation dulu (view only — no state change)
+    ) external payable onlyInitialized {
         if (d.requiresAttestation) {
             require(attestationUIDs.length > 0, "ATTESTATION_REQUIRED");
             attestationVerifier.verifyAttestationBatch(attestationUIDs, d.payer);
         }
 
-        // Step 2: Verify Decision + consume nonce (state change)
         verifier.requireAllowed(d, sig);
 
-        // Step 3: Validate
         require(d.asset == address(0), "ASSET_NOT_ETH");
         require(msg.value == d.amount,  "AMOUNT_MISMATCH");
 
-        // Step 4: Transfer
         (bool ok, ) = payable(d.receiver).call{value: msg.value}("");
         require(ok, "ETH_TRANSFER_FAILED");
 
@@ -73,30 +109,31 @@ contract PayWithPayID {
 
     /**
      * @notice Pay with ERC20
-     * @param attestationUIDs  EAS UIDs — client ambil dari EAS SDK, no server needed
-     *                         Pass [] kalau requiresAttestation = false
+     * @param attestationUIDs  EAS UIDs — pass [] kalau requiresAttestation = false
      */
     function payERC20(
         PayIDVerifier.Decision  calldata d,
         bytes                   calldata sig,
         bytes32[]               calldata attestationUIDs
-    ) external {
-        // Step 1: Attestation dulu (view only — no state change)
+    ) external onlyInitialized {
         if (d.requiresAttestation) {
             require(attestationUIDs.length > 0, "ATTESTATION_REQUIRED");
             attestationVerifier.verifyAttestationBatch(attestationUIDs, d.payer);
         }
 
-        // Step 2: Verify Decision + consume nonce (state change)
         verifier.requireAllowed(d, sig);
 
-        // Step 3: Validate
         require(d.asset != address(0), "ASSET_NOT_ERC20");
 
-        // Step 4: Transfer
         bool ok = IERC20(d.asset).transferFrom(d.payer, d.receiver, d.amount);
         require(ok, "TRANSFER_FAILED");
 
         emit PaymentERC20(d.payer, d.receiver, d.asset, d.amount, d.payId, d.nonce);
+    }
+
+    /* ===================== VIEW ===================== */
+
+    function isInitialized() external view returns (bool) {
+        return _initialized;
     }
 }

@@ -3,9 +3,11 @@ pragma solidity ^0.8.20;
 
 /**
  * @title AttestationVerifier (EAS-based)
- * @notice Verifies attestations via Ethereum Attestation Service (EAS)
- *         Fully serverless — no trusted issuer server needed.
- *         Client hanya perlu query EAS UID dan pass ke sini.
+ * @notice Deterministic deployment compatible — pakai initialize() bukan constructor args
+ *
+ * Deploy via CREATE2 proxy (sama di semua chain):
+ *   1. Deploy kontrak ini dengan salt yang sama → address sama
+ *   2. Call initialize(easAddress, schemas, attesters) per chain
  *
  * EAS Deployments:
  *   Ethereum Mainnet : 0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587
@@ -14,8 +16,6 @@ pragma solidity ^0.8.20;
  *   Arbitrum One     : 0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458
  *   Sepolia (testnet): 0xC2679fBD37d54388Ce493F1DB75320D236e1815e
  */
-
-/* ===================== EAS INTERFACE ===================== */
 
 interface IEAS {
     struct Attestation {
@@ -31,18 +31,9 @@ interface IEAS {
         bytes   data;
     }
 
-    function getAttestation(bytes32 uid)
-        external
-        view
-        returns (Attestation memory);
-
-    function isAttestationValid(bytes32 uid)
-        external
-        view
-        returns (bool);
+    function getAttestation(bytes32 uid) external view returns (Attestation memory);
+    function isAttestationValid(bytes32 uid) external view returns (bool);
 }
-
-/* ===================== CONTRACT ===================== */
 
 contract AttestationVerifier {
 
@@ -57,23 +48,26 @@ contract AttestationVerifier {
     error LengthMismatch();
     error NotOwner();
     error ZeroAddress();
+    error AlreadyInitialized();
+    error NotInitialized();
 
     /* ===================== STORAGE ===================== */
 
-    IEAS    public immutable eas;
+    // CHANGED: dari immutable ke storage variable
+    // immutable di-inline ke bytecode → bytecode beda tiap chain → CREATE2 address beda
+    IEAS public eas;
 
-    // Schemas yang diizinkan (kamu define schema di EAS registry)
     mapping(bytes32 => bool) public trustedSchemas;
-
-    // Attesters yang diizinkan (Worldcoin, Gitcoin, KYC provider, dll)
     mapping(address => bool) public trustedAttesters;
-
-    // Replay protection untuk one-time attestation
     mapping(bytes32 => bool) public usedAttestations;
 
     address public owner;
 
+    // Initialization guard
+    bool private _initialized;
+
     /* ===================== EVENTS ===================== */
+    event Initialized(address indexed easAddress);
     event SchemaUpdated(bytes32 indexed schemaUID, bool trusted);
     event AttesterUpdated(address indexed attester, bool trusted);
     event OwnershipTransferred(address indexed prev, address indexed next);
@@ -84,20 +78,31 @@ contract AttestationVerifier {
         _;
     }
 
-    /* ===================== CONSTRUCTOR ===================== */
+    modifier onlyInitialized() {
+        if (!_initialized) revert NotInitialized();
+        _;
+    }
+
+    /* ===================== INITIALIZE ===================== */
 
     /**
+     * @notice Ganti constructor — dipanggil sekali setelah deploy
+     * @dev Bytecode kontrak ini identik di semua chain → CREATE2 address sama
+     *      easAddress berbeda per chain tapi di-set SETELAH deploy
+     *
      * @param easAddress       EAS contract address sesuai chain
      * @param initialSchemas   List schema UID yang diizinkan
-     * @param initialAttesters List attester yang diizinkan (Worldcoin, Gitcoin, dll)
+     * @param initialAttesters List attester yang diizinkan
      */
-    constructor(
+    function initialize(
         address          easAddress,
         bytes32[] memory initialSchemas,
         address[] memory initialAttesters
-    ) {
+    ) external {
+        if (_initialized) revert AlreadyInitialized();
         if (easAddress == address(0)) revert ZeroAddress();
 
+        _initialized = true;
         eas   = IEAS(easAddress);
         owner = msg.sender;
 
@@ -112,6 +117,8 @@ contract AttestationVerifier {
             emit AttesterUpdated(initialAttesters[i], true);
             unchecked { ++i; }
         }
+
+        emit Initialized(easAddress);
     }
 
     /* ===================== ADMIN ===================== */
@@ -119,6 +126,7 @@ contract AttestationVerifier {
     function setTrustedSchema(bytes32 schemaUID, bool trusted)
         external
         onlyOwner
+        onlyInitialized
     {
         trustedSchemas[schemaUID] = trusted;
         emit SchemaUpdated(schemaUID, trusted);
@@ -127,6 +135,7 @@ contract AttestationVerifier {
     function setTrustedAttester(address attester, bool trusted)
         external
         onlyOwner
+        onlyInitialized
     {
         if (attester == address(0)) revert ZeroAddress();
         trustedAttesters[attester] = trusted;
@@ -141,78 +150,41 @@ contract AttestationVerifier {
 
     /* ===================== INTERNAL VERIFY ===================== */
 
-    /**
-     * @notice Core verification — dipanggil oleh semua public verify functions
-     * @param attestationUID  UID dari EAS attestation (didapat client dari EAS SDK)
-     * @param payer           Address yang harus jadi recipient attestation
-     */
     function _verifyEASAttestation(
         bytes32 attestationUID,
         address payer
-    ) internal view {
-        // 1. Fetch attestation dari EAS contract (on-chain, no server)
+    ) internal view onlyInitialized {
         IEAS.Attestation memory att = eas.getAttestation(attestationUID);
 
-        // 2. Attestation harus exist
-        if (att.uid == bytes32(0)) revert AttestationNotFound();
-
-        // 3. Schema harus trusted
-        if (!trustedSchemas[att.schema]) revert WrongSchema();
-
-        // 4. Attester harus trusted (Worldcoin, Gitcoin, KYC provider)
-        if (!trustedAttesters[att.attester]) revert UntrustedAttester();
-
-        // 5. Recipient harus payer — attestation untuk orang yang bayar
-        if (att.recipient != payer) revert AttestationNotForPayer();
-
-        // 6. Belum expired (0 = tidak ada expiry)
+        if (att.uid == bytes32(0))             revert AttestationNotFound();
+        if (!trustedSchemas[att.schema])       revert WrongSchema();
+        if (!trustedAttesters[att.attester])   revert UntrustedAttester();
+        if (att.recipient != payer)            revert AttestationNotForPayer();
         if (
             att.expirationTime != 0 &&
             att.expirationTime <= block.timestamp
-        ) revert AttestationExpired();
-
-        // 7. Belum direvoke
-        if (att.revocationTime != 0) revert AttestationRevoked();
-
-        // 8. Double-check via EAS isAttestationValid
+        )                                      revert AttestationExpired();
+        if (att.revocationTime != 0)           revert AttestationRevoked();
         if (!eas.isAttestationValid(attestationUID)) revert AttestationRevoked();
     }
 
     /* ===================== PUBLIC VERIFY ===================== */
 
-    /**
-     * @notice Verify single EAS attestation (reusable)
-     * @param attestationUID  EAS attestation UID
-     * @param payer           Harus match dengan att.recipient
-     */
-    function verifyAttestation(
-        bytes32 attestationUID,
-        address payer
-    ) external view {
+    function verifyAttestation(bytes32 attestationUID, address payer)
+        external
+        view
+    {
         _verifyEASAttestation(attestationUID, payer);
     }
 
-    /**
-     * @notice Verify attestation dan mark sebagai used (one-time use)
-     * @dev Cocok untuk high-value atau compliance use case
-     */
-    function verifyAttestationOnce(
-        bytes32 attestationUID,
-        address payer
-    ) external {
+    function verifyAttestationOnce(bytes32 attestationUID, address payer)
+        external
+    {
         if (usedAttestations[attestationUID]) revert ReplayAttestation();
         _verifyEASAttestation(attestationUID, payer);
         usedAttestations[attestationUID] = true;
     }
 
-    /**
-     * @notice Verify multiple attestations sekaligus (gas optimized)
-     * @dev Cocok untuk payer yang perlu multiple attestations
-     *      contoh: KYC attestation + AML attestation + Accredited Investor attestation
-     *
-     * @param attestationUIDs  Array EAS attestation UIDs
-     * @param payer            Semua attestation harus untuk payer yang sama
-     */
     function verifyAttestationBatch(
         bytes32[] calldata attestationUIDs,
         address            payer
@@ -226,18 +198,19 @@ contract AttestationVerifier {
 
     /* ===================== VIEW HELPERS ===================== */
 
-    /**
-     * @notice Cek apakah payer punya valid attestation untuk schema tertentu
-     *         Berguna untuk client-side pre-check sebelum build transaction
-     */
-    function hasValidAttestation(
-        bytes32 attestationUID,
-        address payer
-    ) external view returns (bool) {
+    function hasValidAttestation(bytes32 attestationUID, address payer)
+        external
+        view
+        returns (bool)
+    {
         try this.verifyAttestation(attestationUID, payer) {
             return true;
         } catch {
             return false;
         }
+    }
+
+    function isInitialized() external view returns (bool) {
+        return _initialized;
     }
 }
