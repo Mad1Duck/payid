@@ -2,12 +2,12 @@ import { useState, useCallback, useEffect } from 'react';
 import {
   useAccount,
   useChainId,
+  usePublicClient,
   useWriteContract,
   useWaitForTransactionReceipt,
 } from 'wagmi';
 import { createPayID } from 'payid/client';
 import type { Address, Hash, Abi } from 'viem';
-import { createPublicClient, http } from 'viem';
 import { BrowserProvider } from 'ethers';
 
 import { usePayIDContext } from '../PayIDProvider';
@@ -20,10 +20,10 @@ const CombinedRuleStorageABI = CombinedRuleStorageArtifact.abi as Abi;
 const RuleAuthorityABI = RuleAuthorityArtifact.abi as Abi;
 const PayWithPayIDABI = PayWithPayIDArtifact.abi as Abi;
 
-// SDK singleton — WASM di-load sekali saat module di-import 
+// SDK singleton — WASM di-load sekali saat module di-import
 const sdk = createPayID({ debugTrace: true });
 
-// Types 
+// ─── Types ────────────────────────────────────────────────────────────────────
 export type PayIDFlowStatus =
   | 'idle'
   | 'fetching-rule'
@@ -57,11 +57,13 @@ export interface PayIDFlowResult {
   reset: () => void;
 }
 
-// Hook 
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 export function usePayIDFlow(): PayIDFlowResult {
   const { address: payer } = useAccount();
   const chainId = useChainId();
   const { contracts } = usePayIDContext();
+
+  const publicClient = usePublicClient();
 
   const [status, setStatus] = useState<PayIDFlowStatus>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -91,22 +93,22 @@ export function usePayIDFlow(): PayIDFlowResult {
       return;
     }
 
+    if (!publicClient) {
+      setError('RPC client not available. Check wagmi transport config.');
+      setStatus('error');
+      return;
+    }
+
     try {
       reset();
 
       // ── Step 1: Fetch active rule dari chain ─────────────────────────────
       setStatus('fetching-rule');
 
-      // Pakai wagmi public client via viem — tidak butuh window.ethereum
-      const publicClient = createPublicClient({
-        transport: http(),
-      });
-
       let activeHash: Hash | null = null;
-      let ruleAuthorityAddr: Address = params.ruleAuthorityAddress
-        ?? contracts.combinedRuleStorage;
+      let ruleAuthorityAddr: Address =
+        params.ruleAuthorityAddress ?? contracts.combinedRuleStorage;
 
-      // Coba CombinedRuleStorage dulu
       try {
         const result = await publicClient.readContract({
           address: contracts.combinedRuleStorage,
@@ -120,12 +122,12 @@ export function usePayIDFlow(): PayIDFlowResult {
       // Fallback ke RuleAuthority
       if (!activeHash && contracts.ruleAuthority) {
         try {
-          const hashes = await publicClient.readContract({
+          const hashes = (await publicClient.readContract({
             address: contracts.ruleAuthority,
             abi: RuleAuthorityABI,
             functionName: 'getOwnerRuleSets',
             args: [params.receiver],
-          }) as Hash[];
+          })) as Hash[];
 
           if (hashes.length > 0) {
             activeHash = hashes[hashes.length - 1]!;
@@ -136,14 +138,10 @@ export function usePayIDFlow(): PayIDFlowResult {
 
       // Kalau tidak ada rule → allow all
       const ruleConfig = activeHash
-        ? { uri: `payid:rule:${activeHash}` } as any
+        ? ({ uri: `payid:rule:${activeHash}` } as any)
         : { logic: 'AND' as const, rules: [] };
 
-      // Step 2 + 3: Evaluate + Prove dalam satu call
-      // evaluateAndProve() dari SDK handle semuanya:
-      // - resolve rule URI dari IPFS
-      // - evaluate WASM di browser
-      // - kalau ALLOW → generate EIP-712 proof + signature
+      // ── Step 2: Evaluate ──────────────────────────────────────────────────
       setStatus('evaluating');
 
       const context = {
@@ -164,14 +162,14 @@ export function usePayIDFlow(): PayIDFlowResult {
         ...params.context,
       };
 
-
-      // BrowserProvider wraps the injected EIP-1193 provider yang sudah di-connect wagmi
+      // BrowserProvider wraps injected EIP-1193 provider yang sudah di-connect wagmi
       const ethereum = (globalThis as any).ethereum;
       if (!ethereum) throw new Error('No injected wallet found');
 
       const provider = new BrowserProvider(ethereum);
       const signer = await provider.getSigner();
 
+      // ── Step 3: Prove ─────────────────────────────────────────────────────
       setStatus('proving');
 
       const { result, proof } = await sdk.evaluateAndProve({
@@ -199,10 +197,11 @@ export function usePayIDFlow(): PayIDFlowResult {
         return;
       }
 
-      // Step 4: Submit transaksi
+      // ── Step 4: Submit transaksi ──────────────────────────────────────────
       setStatus('awaiting-wallet');
 
-      const isETH = params.asset === '0x0000000000000000000000000000000000000000';
+      const isETH =
+        params.asset === '0x0000000000000000000000000000000000000000';
       const d = proof.payload;
       const sig = proof.signature as Hash;
 
@@ -220,27 +219,31 @@ export function usePayIDFlow(): PayIDFlowResult {
             abi: PayWithPayIDABI,
             functionName: 'payERC20',
             args: [d, sig, params.attestationUIDs ?? []],
-          }
+          },
       );
 
       setTxHash(hash);
       setStatus('confirming');
-
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-
       setError(
         msg.toLowerCase().includes('user rejected')
           ? 'Transaction rejected by user'
-          : msg
+          : msg,
       );
       setStatus('error');
     }
-  }, [payer, chainId, contracts, writeContractAsync, reset]);
+  }, [payer, chainId, contracts, publicClient, writeContractAsync, reset]);
 
   return {
     status,
-    isPending: ['fetching-rule', 'evaluating', 'proving', 'awaiting-wallet', 'confirming'].includes(status),
+    isPending: [
+      'fetching-rule',
+      'evaluating',
+      'proving',
+      'awaiting-wallet',
+      'confirming',
+    ].includes(status),
     isSuccess: status === 'success',
     error,
     decision,
