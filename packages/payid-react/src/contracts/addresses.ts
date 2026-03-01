@@ -1,7 +1,4 @@
 
-// ─── Address per chain ────────────────────────────────────────────────────────
-// Update setelah deploy, atau override via PayIDProvider
-
 import type { PayIDContracts } from "../types";
 
 export const PAYID_CONTRACTS: Record<number, PayIDContracts> = {

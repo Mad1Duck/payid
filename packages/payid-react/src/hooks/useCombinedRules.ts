@@ -11,7 +11,6 @@ const CombinedRuleStorageABI = CombinedRuleStorageArtifact.abi as Abi;
 const RuleAuthorityABI = RuleAuthorityArtifact.abi as Abi;
 
 // useAllCombinedRules
-
 export function useAllCombinedRules(options?: { onlyActive?: boolean; }) {
   const { contracts } = usePayIDContext();
 
@@ -74,7 +73,6 @@ export function useAllCombinedRules(options?: { onlyActive?: boolean; }) {
 }
 
 // useActiveCombinedRule
-
 export function useActiveCombinedRule(owner: `0x${string}` | undefined) {
   const { contracts } = usePayIDContext();
 
@@ -110,7 +108,6 @@ export function useActiveCombinedRule(owner: `0x${string}` | undefined) {
 }
 
 // useActiveCombinedRuleByDirection
-
 export function useActiveCombinedRuleByDirection(
   owner: `0x${string}` | undefined,
   direction: RuleDirection
@@ -150,7 +147,6 @@ export function useActiveCombinedRuleByDirection(
 }
 
 // useOwnerRuleSets
-
 export function useOwnerRuleSets(owner: `0x${string}` | undefined) {
   const { contracts } = usePayIDContext();
 
@@ -221,7 +217,6 @@ export function useOwnerRuleSets(owner: `0x${string}` | undefined) {
 }
 
 // useMyRuleSets
-
 export function useMyRuleSets() {
   const { address } = useAccount();
   return useOwnerRuleSets(address);

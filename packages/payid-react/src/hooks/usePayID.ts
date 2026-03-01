@@ -1,11 +1,9 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { useMemo } from 'react';
 import { usePayIDContext } from '../PayIDProvider';
 import PayIDVerifierABI from '../abis/PayIDModule#PayIDVerifier.json';
 import PayWithPayIDABI from '../abis/PayIDModule#PayWithPayID.json';
 
 // Types
-
 interface Decision {
   version: `0x${string}`;
   payId: `0x${string}`;
@@ -23,7 +21,6 @@ interface Decision {
 }
 
 // useVerifyDecision
-
 /**
  * Verify EIP-712 decision proof (view only)
  *
@@ -47,7 +44,6 @@ export function useVerifyDecision(
 }
 
 // useNonceUsed 
-
 /**
  * Cek apakah nonce sudah dipakai (replay protection)
  */
@@ -67,7 +63,6 @@ export function useNonceUsed(
 }
 
 // usePayETH 
-
 /**
  * Pay with ETH via PAY.ID
  *
@@ -100,7 +95,6 @@ export function usePayETH() {
 }
 
 // usePayERC20
-
 /**
  * Pay with ERC20 via PAY.ID
  *
