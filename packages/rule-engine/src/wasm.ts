@@ -1,22 +1,12 @@
-export async function loadWasm(binary?: Buffer): Promise<WebAssembly.Instance> {
-  let wasmBinary = binary;
+export async function loadWasm(binary?: Buffer | Uint8Array): Promise<WebAssembly.Instance> {
+  let wasmBinary: Buffer | Uint8Array | undefined = binary;
 
   if (!wasmBinary || wasmBinary.length === 0) {
-    if (typeof process !== "undefined" && process.versions?.node) {
-      const { readFileSync } = await import("fs");
-      const { join, dirname } = await import("path");
-      const { fileURLToPath } = await import("url");
-
-      const __dir = dirname(fileURLToPath(import.meta.url));
-      wasmBinary = readFileSync(join(__dir, "wasm/rule_engine.wasm"));
-
-      // Browser
-    } else {
-      const wasmUrl = new URL("../wasm/rule_engine.wasm", import.meta.url);
-      const res = await fetch(wasmUrl);
-      if (!res.ok) throw new Error(`Failed to load rule_engine.wasm: ${res.status}`);
-      wasmBinary = Buffer.from(await res.arrayBuffer());
-    }
+    const { readFileSync } = await import(/* webpackIgnore: true */ "fs");
+    const { join, dirname } = await import(/* webpackIgnore: true */ "path");
+    const { fileURLToPath } = await import(/* webpackIgnore: true */ "url");
+    const __dir = dirname(fileURLToPath(import.meta.url));
+    wasmBinary = readFileSync(join(__dir, "wasm/rule_engine.wasm"));
   }
 
   const module = await WebAssembly.compile(wasmBinary);

@@ -1,1901 +1,919 @@
-import { useState, useEffect, useRef } from 'react';
-import { RuleIcon } from '../RuleIcon';
-import { PinBlock } from '../PinBlock';
-import { PhysBtn } from '../PhysBtn';
-import { Cartridge } from '../Cartridge';
-import { LEDDot } from '../LEDDot';
+import { useState, useCallback, useEffect } from 'react';
+import { ScrollArea } from '../ui/scroll-area';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Separator } from '../ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
+import {
+  PlayIcon,
+  CheckCircle2Icon,
+  XCircleIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  WalletIcon,
+  ShieldCheckIcon,
+  CoinsIcon,
+  TrendingUpIcon,
+  ListIcon,
+  ZapIcon,
+  RefreshCwIcon,
+  CopyIcon,
+  InfoIcon,
+} from 'lucide-react';
+import { cn } from '@site/src/lib/utils';
+import { createPayID } from 'payid/client';
+import { setWasmUrl } from 'payid-rule-engine/src/wasm';
+import type { RuleConfig, RuleResultDebug, RuleTraceEntry } from 'payid-types';
 
-const RULES = [
+// ─── WASM hosted on Pinata IPFS ───────────────────────────────────────────────
+// Ganti CID ini setelah upload rule_engine.wasm ke Pinata
+const WASM_CID = 'bafkreigwfxsb7oot7v55x7vxslvj23csxl2fhk2w7hsnboe55o26s2mgfy';
+setWasmUrl(`https://gateway.pinata.cloud/ipfs/${WASM_CID}`);
+
+// ─── PAY.ID client singleton ──────────────────────────────────────────────────
+// Tidak perlu fetch manual — wasm.ts sudah handle browser fetch via setWasmUrl
+let payidClient: ReturnType<typeof createPayID> | null = null;
+
+async function getClient(): Promise<ReturnType<typeof createPayID>> {
+  if (payidClient) return payidClient;
+  payidClient = createPayID({ debugTrace: true });
+  return payidClient;
+}
+
+// ─── Presets ──────────────────────────────────────────────────────────────────
+const TODAY = new Date().toISOString().slice(0, 10);
+
+function makeEnv(hour: number) {
+  const d = new Date();
+  d.setUTCHours(hour, 0, 0, 0);
+  return { timestamp: Math.floor(d.getTime() / 1000) };
+}
+
+const PRESETS: { id: string; label: string; icon: string; ctx: any }[] = [
   {
-    id: 'no_cursed',
-    label: 'NO 666',
-    icon: '👹',
-    color: '#E53935',
-    bg: '#FFCDD2',
-    chip: 'MOD',
-    desc: 'Block multiples of 666',
+    id: 'basic',
+    label: 'Basic Payment',
+    icon: '💳',
+    ctx: {
+      tx: {
+        sender: '0xAlice',
+        receiver: '0xBob',
+        asset: 'USDC',
+        amount: '150000000',
+        chainId: 4202,
+      },
+      payId: { id: 'pay.id/bob', owner: '0xBob' },
+      env: makeEnv(14),
+      state: { spentToday: '50000000', period: TODAY },
+    },
   },
   {
-    id: 'min_tx',
-    label: 'MIN 10',
-    icon: '',
-    color: '#1565C0',
-    bg: '#BBDEFB',
-    chip: 'MIN',
-    desc: 'Minimum 10 USDC',
+    id: 'overlimit',
+    label: 'Over Daily Limit',
+    icon: '🚫',
+    ctx: {
+      tx: {
+        sender: '0xAlice',
+        receiver: '0xBob',
+        asset: 'USDC',
+        amount: '600000000',
+        chainId: 4202,
+      },
+      payId: { id: 'pay.id/bob', owner: '0xBob' },
+      env: makeEnv(14),
+      state: { spentToday: '480000000', period: TODAY },
+    },
   },
   {
-    id: 'daily_cap',
-    label: 'DAY CAP',
-    icon: '🌅',
-    color: '#E65100',
-    bg: '#FFE0B2',
-    chip: 'CAP',
-    desc: 'Max $500 per day',
+    id: 'offhours',
+    label: 'Off Hours',
+    icon: '📅',
+    ctx: {
+      tx: {
+        sender: '0xAlice',
+        receiver: '0xBob',
+        asset: 'USDC',
+        amount: '50000000',
+        chainId: 4202,
+      },
+      payId: { id: 'pay.id/bob', owner: '0xBob' },
+      env: makeEnv(3),
+      state: { spentToday: '0', period: TODAY },
+    },
   },
   {
-    id: 'kyc_only',
-    label: 'KYC',
-    icon: '🔐',
-    color: '#6A1B9A',
-    bg: '#E1BEE7',
-    chip: 'KYC',
-    desc: 'Verified wallets only',
+    id: 'wrongtoken',
+    label: 'Wrong Token',
+    icon: '🪙',
+    ctx: {
+      tx: {
+        sender: '0xAlice',
+        receiver: '0xBob',
+        asset: 'ETH',
+        amount: '100000000',
+        chainId: 4202,
+      },
+      payId: { id: 'pay.id/bob', owner: '0xBob' },
+      env: makeEnv(12),
+      state: { spentToday: '0', period: TODAY },
+    },
   },
   {
-    id: 'weekday',
-    label: 'WKDAY',
-    icon: '🌿',
-    color: '#2E7D32',
-    bg: '#C8E6C9',
-    chip: 'WKD',
-    desc: 'Mon–Fri only',
+    id: 'vip',
+    label: 'VIP Sender',
+    icon: '⭐',
+    ctx: {
+      tx: {
+        sender: '0xVIP1',
+        receiver: '0xBob',
+        asset: 'USDC',
+        amount: '999000000',
+        chainId: 4202,
+      },
+      payId: { id: 'pay.id/bob', owner: '0xBob' },
+      env: makeEnv(20),
+      state: { spentToday: '0', period: TODAY },
+    },
   },
   {
-    id: 'no_bots',
-    label: 'NO BOTS',
-    icon: '🤖',
-    color: '#4E342E',
-    bg: '#D7CCC8',
-    chip: 'BOT',
-    desc: 'Block contract callers',
+    id: 'blacklisted',
+    label: 'Blacklisted',
+    icon: '🔴',
+    ctx: {
+      tx: {
+        sender: '0xScammer',
+        receiver: '0xBob',
+        asset: 'USDC',
+        amount: '10000000',
+        chainId: 4202,
+      },
+      payId: { id: 'pay.id/bob', owner: '0xBob' },
+      env: makeEnv(10),
+      state: { spentToday: '0', period: TODAY },
+    },
+  },
+];
+
+// ─── Rule Templates ───────────────────────────────────────────────────────────
+const RULE_TEMPLATES = [
+  {
+    id: 'token',
+    label: 'Token Whitelist',
+    icon: <CoinsIcon className="size-3.5" />,
+    color: 'text-blue-500',
+    rule: {
+      id: 'token_whitelist',
+      logic: 'OR',
+      conditions: [
+        { field: 'tx.asset', op: '==', value: 'USDC' },
+        { field: 'tx.asset', op: '==', value: 'USDT' },
+      ],
+      message: 'Only USDC or USDT accepted',
+    },
   },
   {
-    id: 'timelock',
-    label: 'T-LOCK',
-    icon: '⏳',
-    color: '#00695C',
-    bg: '#B2DFDB',
-    chip: 'TME',
-    desc: '30s cooldown',
+    id: 'amount_min',
+    label: 'Min Amount',
+    icon: <TrendingUpIcon className="size-3.5" />,
+    color: 'text-green-500',
+    rule: {
+      id: 'min_amount',
+      if: { field: 'tx.amount', op: '>=', value: '10000000' },
+      message: 'Minimum 10 USDC',
+    },
+  },
+  {
+    id: 'amount_max',
+    label: 'Max Amount',
+    icon: <TrendingUpIcon className="size-3.5 rotate-180" />,
+    color: 'text-orange-500',
+    rule: {
+      id: 'max_amount',
+      if: { field: 'tx.amount', op: '<=', value: '500000000' },
+      message: 'Maximum 500 USDC',
+    },
+  },
+  {
+    id: 'daily_limit',
+    label: 'Daily Limit',
+    icon: <WalletIcon className="size-3.5" />,
+    color: 'text-purple-500',
+    rule: {
+      id: 'daily_limit',
+      if: { field: 'state.spentToday', op: '<=', value: '500000000' },
+      message: 'Daily spend limit exceeded',
+    },
+  },
+  {
+    id: 'business_hours',
+    label: 'Business Hours',
+    icon: <ClockIcon className="size-3.5" />,
+    color: 'text-yellow-500',
+    rule: {
+      id: 'business_hours',
+      if: { field: 'env.timestamp|hour', op: 'between', value: [8, 22] },
+      message: 'Only open 08:00–22:00',
+    },
   },
   {
     id: 'whitelist',
-    label: 'WLIST',
-    icon: '✨',
-    color: '#880E4F',
-    bg: '#FCE4EC',
-    chip: 'WLT',
-    desc: 'Approved recipients',
+    label: 'Sender Whitelist',
+    icon: <ShieldCheckIcon className="size-3.5" />,
+    color: 'text-cyan-500',
+    rule: {
+      id: 'sender_whitelist',
+      if: { field: 'tx.sender', op: 'in', value: ['0xalice', '0xbob', '0xvip1'] },
+      message: 'Sender not whitelisted',
+    },
+  },
+  {
+    id: 'blacklist',
+    label: 'Sender Blacklist',
+    icon: <ShieldCheckIcon className="size-3.5" />,
+    color: 'text-red-500',
+    rule: {
+      id: 'sender_blacklist',
+      if: { field: 'tx.sender', op: 'not_in', value: ['0xscammer', '0xbadactor'] },
+      message: 'Sender is blacklisted',
+    },
+  },
+  {
+    id: 'receiver_whitelist',
+    label: 'Receiver Whitelist',
+    icon: <ShieldCheckIcon className="size-3.5" />,
+    color: 'text-lime-500',
+    rule: {
+      id: 'receiver_whitelist',
+      if: { field: 'tx.receiver', op: 'in', value: ['0xbob', '0xmerchant'] },
+      message: 'Receiver not allowed',
+    },
+  },
+  {
+    id: 'chain',
+    label: 'Chain Filter',
+    icon: <ZapIcon className="size-3.5" />,
+    color: 'text-indigo-500',
+    rule: {
+      id: 'chain_filter',
+      if: { field: 'tx.chainId', op: 'in', value: [4202, 1, 137] },
+      message: 'Chain not supported',
+    },
+  },
+  {
+    id: 'amount_range',
+    label: 'Amount Range',
+    icon: <ListIcon className="size-3.5" />,
+    color: 'text-teal-500',
+    rule: {
+      id: 'amount_range',
+      logic: 'AND',
+      conditions: [
+        { field: 'tx.amount', op: '>=', value: '10000000' },
+        { field: 'tx.amount', op: '<=', value: '500000000' },
+      ],
+      message: 'Amount must be 10–500 USDC',
+    },
+  },
+  {
+    id: 'intent_type',
+    label: 'Intent Type',
+    icon: <ZapIcon className="size-3.5" />,
+    color: 'text-pink-500',
+    rule: {
+      id: 'intent_type',
+      if: { field: 'intent.type', op: 'in', value: ['QR', 'DIRECT'] },
+      message: 'Only QR or DIRECT payments',
+    },
+  },
+  {
+    id: 'vip_bypass',
+    label: 'VIP Bypass',
+    icon: <ZapIcon className="size-3.5" />,
+    color: 'text-amber-500',
+    rule: {
+      id: 'vip_or_small',
+      logic: 'OR',
+      rules: [
+        { id: 'is_vip', if: { field: 'tx.sender', op: 'in', value: ['0xvip1', '0xvip2'] } },
+        { id: 'small_amount', if: { field: 'tx.amount', op: '<=', value: '50000000' } },
+      ],
+      message: 'VIPs bypass limits, others max 50 USDC',
+    },
   },
 ];
 
-const WALLETS = [
-  {
-    id: 'metamask',
-    name: 'MetaMask',
-    icon: '🦊',
-    desc: 'Browser extension',
-    color: '#F6851B',
-    bg: '#FFF3E0',
-  },
-  {
-    id: 'rainbow',
-    name: 'Rainbow',
-    icon: '🌈',
-    desc: 'Mobile & web wallet',
-    color: '#8B5CF6',
-    bg: '#EDE9FE',
-  },
-  {
-    id: 'coinbase',
-    name: 'Coinbase',
-    icon: '🔵',
-    desc: 'Coinbase Wallet',
-    color: '#0052FF',
-    bg: '#EFF6FF',
-  },
-  {
-    id: 'walletconnect',
-    name: 'WalletConnect',
-    icon: '🔗',
-    desc: 'Scan with any wallet',
-    color: '#3B99FC',
-    bg: '#E8F4FF',
-  },
-  {
-    id: 'phantom',
-    name: 'Phantom',
-    icon: '👻',
-    desc: 'Solana & EVM',
-    color: '#AB9FF2',
-    bg: '#F3F0FF',
-  },
-];
-
-const EMOJIS = [
-  '👹',
-  '',
-  '🌅',
-  '🔐',
-  '🌿',
-  '🤖',
-  '⏳',
-  '✨',
-  '🛡️',
-  '🎯',
-  '💎',
-  '🔥',
-  '❄️',
-  '⚠️',
-  '🚫',
-  '✅',
-  '💰',
-  '🌙',
-  '⭐',
-  '🎮',
-];
-const COLORS = [
-  { color: '#E53935', bg: '#FFCDD2' },
-  { color: '#1565C0', bg: '#BBDEFB' },
-  { color: '#E65100', bg: '#FFE0B2' },
-  { color: '#6A1B9A', bg: '#E1BEE7' },
-  { color: '#2E7D32', bg: '#C8E6C9' },
-  { color: '#00695C', bg: '#B2DFDB' },
-  { color: '#880E4F', bg: '#FCE4EC' },
-  { color: '#4E342E', bg: '#D7CCC8' },
-  { color: '#0277BD', bg: '#B3E5FC' },
-  { color: '#558B2F', bg: '#DCEDC8' },
-];
-const CHIPS = ['MOD', 'MIN', 'CAP', 'KYC', 'WKD', 'BOT', 'TME', 'WLT', 'MAX', 'SEC'];
-export const SAGE = '#5A8A50';
-
-const shortAddr = (a) => (a ? `${a.slice(0, 6)}...${a.slice(-4)}` : '');
-const randAddr = () => {
-  let a = '0x';
-  for (let i = 0; i < 40; i++) a += '0123456789abcdef'[Math.floor(Math.random() * 16)];
-  return a;
-};
-
-// ─── Field helper ────────────────────────────────────────────────
-function Field({ label, children }) {
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: '14px' }}>
-      <div
-        style={{
-          fontFamily: "'Space Mono',monospace",
-          fontSize: '7px',
-          color: '#888',
-          letterSpacing: '2px',
-          marginBottom: '6px',
-        }}>
-        {label}
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="h-px flex-1 bg-border/40" />
+        <span className="font-mono text-[10px] text-muted-foreground/70 uppercase tracking-widest px-1">
+          {label}
+        </span>
+        <div className="h-px flex-1 bg-border/40" />
       </div>
-      {children}
+      <div className="space-y-2">{children}</div>
     </div>
   );
 }
 
-// ─── WalletModal ─────────────────────────────────────────────────
-function WalletModal({ onClose, onConnect }) {
-  const [connecting, setConnecting] = useState(null);
-  const [connected, setConnected] = useState(null);
-
-  const tryConnect = (w) => {
-    setConnecting(w.id);
-    setTimeout(() => {
-      setConnecting(null);
-      setConnected({ ...w, address: randAddr() });
-    }, 1400);
-  };
-
+function ColHeader({ children, extra }: { children: React.ReactNode; extra?: React.ReactNode }) {
   return (
-    <div
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        background: 'rgba(0,0,0,.4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backdropFilter: 'blur(6px)',
-        padding: '20px',
-      }}>
-      <div
-        style={{
-          background: 'linear-gradient(160deg,#ECECF0,#E0E0E4)',
-          borderRadius: '20px',
-          width: '100%',
-          maxWidth: '360px',
-          boxShadow: '0 24px 60px #00000045,0 4px 0 #C0C0C4,inset 0 1px 0 #F8F8FC',
-          overflow: 'hidden',
-          animation: 'slidein .22s ease-out',
-        }}>
-        <div
-          style={{
-            background: 'linear-gradient(90deg,#1A237E,#283593)',
-            padding: '14px 20px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
-          <span
-            style={{
-              fontFamily: "'Orbitron',monospace",
-              fontWeight: 900,
-              fontSize: '11px',
-              color: '#FFF',
-              letterSpacing: '2px',
-            }}>
-            🔌 CONNECT WALLET
-          </span>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'rgba(255,255,255,.15)',
-              border: 'none',
-              color: '#FFF',
-              width: '26px',
-              height: '26px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '12px',
-            }}>
-            ✕
-          </button>
+    <div className="px-3 py-2 border-b border-border/30 bg-muted/10 flex items-center justify-between shrink-0">
+      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        {children}
+      </span>
+      {extra}
+    </div>
+  );
+}
+
+// ─── Context Editor ───────────────────────────────────────────────────────────
+function CtxEditor({ ctx, onChange }: { ctx: any; onChange: (c: any) => void }) {
+  const upd = (path: string[], val: any) => {
+    const next = JSON.parse(JSON.stringify(ctx));
+    let ref: any = next;
+    for (let i = 0; i < path.length - 1; i++) ref = ref[path[i]];
+    ref[path[path.length - 1]] = val;
+    onChange(next);
+  };
+  const get = (path: string[]) => path.reduce((v: any, k) => v?.[k], ctx);
+  const F = ({
+    label,
+    path,
+    type = 'text',
+    hint,
+  }: {
+    label: string;
+    path: string[];
+    type?: string;
+    hint?: string;
+  }) => (
+    <div className="flex flex-col gap-1">
+      <div className="flex justify-between">
+        <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+          {label}
+        </label>
+        {hint && <span className="font-mono text-[9px] text-muted-foreground/50">{hint}</span>}
+      </div>
+      <input
+        type={type}
+        value={get(path) ?? ''}
+        onChange={(e) => upd(path, type === 'number' ? Number(e.target.value) : e.target.value)}
+        className="font-mono text-xs bg-muted/40 border border-border/40 rounded px-2 py-1.5 text-foreground focus:outline-none focus:border-primary/60 transition-colors w-full"
+      />
+    </div>
+  );
+  const ts = ctx.env?.timestamp ?? Math.floor(Date.now() / 1000);
+  const hour = new Date(ts * 1000).getUTCHours();
+  const spentToday = Number(ctx.state?.spentToday || 0);
+  const setHour = (h: number) => {
+    const d = new Date(ts * 1000);
+    d.setUTCHours(h, 0, 0, 0);
+    upd(['env', 'timestamp'], Math.floor(d.getTime() / 1000));
+  };
+  return (
+    <div className="space-y-5">
+      <Section label="tx">
+        <F label="Sender" path={['tx', 'sender']} hint="auto-lowercased" />
+        <F label="Receiver" path={['tx', 'receiver']} hint="auto-lowercased" />
+        <F label="Asset" path={['tx', 'asset']} hint="auto-uppercased" />
+        <F label="Amount (raw)" path={['tx', 'amount']} hint="6 decimals" />
+        <div className="text-right font-mono text-[10px] text-muted-foreground/60">
+          = {(Number(ctx.tx?.amount || 0) / 1_000_000).toFixed(2)} USDC
         </div>
-        <div style={{ padding: '18px' }}>
-          {connected ? (
-            <div style={{ animation: 'slidein .3s ease-out' }}>
-              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <div style={{ fontSize: '48px', marginBottom: '10px' }}>{connected.icon}</div>
-                <div
-                  style={{
-                    fontFamily: "'Orbitron',monospace",
-                    fontWeight: 900,
-                    fontSize: '13px',
-                    color: '#2E7D32',
-                    letterSpacing: '2px',
-                  }}>
-                  CONNECTED ✓
-                </div>
-              </div>
-              <div
-                style={{
-                  background: 'linear-gradient(135deg,#E8F5E9,#F1F8E9)',
-                  border: '2px solid #4CAF5055',
-                  borderRadius: '12px',
-                  padding: '14px 16px',
-                  marginBottom: '16px',
-                }}>
-                <div
-                  style={{
-                    fontFamily: "'Space Mono',monospace",
-                    fontSize: '7px',
-                    color: '#888',
-                    letterSpacing: '2px',
-                    marginBottom: '8px',
-                  }}>
-                  WALLET ADDRESS
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'JetBrains Mono',monospace",
-                    fontSize: '10px',
-                    color: '#1A237E',
-                    fontWeight: 700,
-                    wordBreak: 'break-all',
-                    lineHeight: 1.6,
-                  }}>
-                  {connected.address}
-                </div>
-                <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
-                  {[
-                    ['NETWORK', 'LISK'],
-                    ['CHAIN ID', '4202'],
-                    ['STATUS', 'LIVE'],
-                  ].map(([l, v]) => (
-                    <div
-                      key={l}
-                      style={{
-                        flex: 1,
-                        background: '#E8F5E9',
-                        border: '1px solid #A5D6A7',
-                        borderRadius: '6px',
-                        padding: '5px 8px',
-                        textAlign: 'center',
-                      }}>
-                      <div
-                        style={{
-                          fontFamily: "'Space Mono',monospace",
-                          fontSize: '6.5px',
-                          color: '#888',
-                        }}>
-                        {l}
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "'Orbitron',monospace",
-                          fontSize: '8px',
-                          color: '#2E7D32',
-                          fontWeight: 700,
-                          marginTop: '2px',
-                        }}>
-                        {v}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+        <F label="Chain ID" path={['tx', 'chainId']} type="number" hint="4202 = Lisk" />
+      </Section>
+      <Section label="env">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between">
+            <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+              Hour UTC (0–23)
+            </label>
+            <span
+              className={cn(
+                'font-mono text-[10px] font-medium',
+                hour < 8 || hour > 22 ? 'text-red-400' : 'text-green-400',
+              )}>
+              {String(hour).padStart(2, '0')}:00 {hour < 8 || hour > 22 ? '— off hours' : '— open'}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={23}
+            value={hour}
+            onChange={(e) => setHour(Number(e.target.value))}
+            className="w-full accent-primary cursor-pointer"
+          />
+          <div className="flex justify-between font-mono text-[9px] text-muted-foreground/40">
+            {['00', '06', '12', '18', '23'].map((h) => (
+              <span key={h}>{h}:00</span>
+            ))}
+          </div>
+          <div className="font-mono text-[9px] text-muted-foreground/50 text-right">unix: {ts}</div>
+        </div>
+      </Section>
+      <Section label="state">
+        <F label="Spent Today (raw)" path={['state', 'spentToday']} hint="6 decimals" />
+        <div className="text-right font-mono text-[10px] text-muted-foreground/60">
+          = {(spentToday / 1_000_000).toFixed(2)} USDC
+        </div>
+        <F label="Period" path={['state', 'period']} hint="YYYY-MM-DD" />
+      </Section>
+      <Section label="intent (optional)">
+        <div className="flex flex-col gap-1">
+          <label className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+            Type
+          </label>
+          <select
+            value={ctx.intent?.type || ''}
+            onChange={(e) => {
+              if (!e.target.value) {
+                const n = JSON.parse(JSON.stringify(ctx));
+                delete n.intent;
+                onChange(n);
+              } else upd(['intent', 'type'], e.target.value);
+            }}
+            className="font-mono text-xs bg-muted/40 border border-border/40 rounded px-2 py-1.5 text-foreground focus:outline-none focus:border-primary/60 w-full">
+            <option value="">— none —</option>
+            <option value="QR">QR</option>
+            <option value="DIRECT">DIRECT</option>
+            <option value="API">API</option>
+          </select>
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+// ─── Rule Builder ─────────────────────────────────────────────────────────────
+function RuleBuilderPanel({
+  rules,
+  logic,
+  onRules,
+  onLogic,
+}: {
+  rules: any[];
+  logic: 'AND' | 'OR';
+  onRules: (r: any[]) => void;
+  onLogic: (l: 'AND' | 'OR') => void;
+}) {
+  const [expanded, setExpanded] = useState<Set<number>>(new Set([0]));
+  const toggle = (i: number) => {
+    const s = new Set(expanded);
+    s.has(i) ? s.delete(i) : s.add(i);
+    setExpanded(s);
+  };
+  const add = (t: (typeof RULE_TEMPLATES)[0]) => {
+    onRules([...rules, JSON.parse(JSON.stringify(t.rule))]);
+    setExpanded((s) => new Set([...s, rules.length]));
+  };
+  const remove = (i: number) => onRules(rules.filter((_, idx) => idx !== i));
+  const update = (i: number, json: string) => {
+    try {
+      const next = [...rules];
+      next[i] = JSON.parse(json);
+      onRules(next);
+    } catch {}
+  };
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-[10px] text-muted-foreground">Root logic:</span>
+        <button
+          onClick={() => onLogic(logic === 'AND' ? 'OR' : 'AND')}
+          className={cn(
+            'font-mono text-[10px] font-bold px-2 py-0.5 rounded border transition-colors',
+            logic === 'AND'
+              ? 'border-blue-500/50 bg-blue-500/10 text-blue-400'
+              : 'border-orange-500/50 bg-orange-500/10 text-orange-400',
+          )}>
+          {logic}
+        </button>
+        <span className="font-mono text-[9px] text-muted-foreground/50">
+          {logic === 'AND' ? 'all must pass' : 'any can pass'}
+        </span>
+      </div>
+      <Separator />
+      <div>
+        <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest mb-2">
+          Add Rule
+        </div>
+        <div className="grid grid-cols-2 gap-1">
+          {RULE_TEMPLATES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => add(t)}
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded border border-border/40 bg-muted/20 hover:bg-muted/60 hover:border-border transition-all text-left group">
+              <span className={cn('shrink-0', t.color)}>{t.icon}</span>
+              <span className="font-mono text-[10px] text-foreground/70 group-hover:text-foreground truncate">
+                {t.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <Separator />
+      <div className="space-y-2">
+        <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+          Active ({rules.length})
+        </div>
+        {rules.length === 0 && (
+          <div className="text-center py-6 font-mono text-[10px] text-muted-foreground/50 border border-dashed border-border/30 rounded">
+            No rules — add one above
+          </div>
+        )}
+        {rules.map((rule, i) => (
+          <div key={i} className="border border-border/40 rounded overflow-hidden">
+            <button
+              onClick={() => toggle(i)}
+              className="w-full flex items-center gap-2 px-3 py-2 bg-muted/20 hover:bg-muted/40 transition-colors text-left">
+              {expanded.has(i) ? (
+                <ChevronDownIcon className="size-3 shrink-0 text-muted-foreground" />
+              ) : (
+                <ChevronRightIcon className="size-3 shrink-0 text-muted-foreground" />
+              )}
+              <span className="font-mono text-xs flex-1 truncate text-foreground/80">
+                {rule.id || `rule_${i}`}
+              </span>
               <button
-                onClick={() => {
-                  onConnect(connected);
-                  onClose();
+                onClick={(e) => {
+                  e.stopPropagation();
+                  remove(i);
                 }}
-                style={{
-                  width: '100%',
-                  height: '46px',
-                  background: 'linear-gradient(180deg,#43A047,#2E7D32)',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontFamily: "'Orbitron',monospace",
-                  fontWeight: 900,
-                  fontSize: '10px',
-                  color: '#FFF',
-                  letterSpacing: '2px',
-                  cursor: 'pointer',
-                  boxShadow: '0 5px 0 #1B5E20,inset 0 1px 0 rgba(255,255,255,.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                }}>
-                ✓ CONFIRM CONNECTION
+                className="font-mono text-[10px] text-muted-foreground/50 hover:text-destructive transition-colors px-1">
+                ✕
               </button>
-            </div>
-          ) : (
-            <>
-              <div
-                style={{
-                  fontFamily: "'Space Mono',monospace",
-                  fontSize: '7.5px',
-                  color: '#888',
-                  letterSpacing: '2px',
-                  marginBottom: '12px',
-                  textAlign: 'center',
-                }}>
-                SELECT A WALLET TO CONNECT
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  marginBottom: '16px',
-                }}>
-                {WALLETS.map((w) => (
-                  <button
-                    key={w.id}
-                    onClick={() => tryConnect(w)}
-                    disabled={!!connecting}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '12px 14px',
-                      background: connecting === w.id ? w.bg : `${w.bg}80`,
-                      border: `2px solid ${w.color}${connecting === w.id ? 'FF' : '44'}`,
-                      borderRadius: '12px',
-                      cursor: connecting ? 'wait' : 'pointer',
-                      transition: 'all .2s',
-                      width: '100%',
-                      textAlign: 'left',
-                    }}>
-                    <div
-                      style={{
-                        width: '38px',
-                        height: '38px',
-                        background: w.bg,
-                        border: `2px solid ${w.color}55`,
-                        borderRadius: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '20px',
-                        flexShrink: 0,
-                      }}>
-                      {connecting === w.id ? (
-                        <span style={{ animation: 'blink .5s infinite', fontSize: '14px' }}>
-                          ⚙️
-                        </span>
-                      ) : (
-                        w.icon
-                      )}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div
-                        style={{
-                          fontFamily: "'Orbitron',monospace",
-                          fontWeight: 700,
-                          fontSize: '10px',
-                          color: w.color,
-                          letterSpacing: '1px',
-                        }}>
-                        {w.name}
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "'Space Mono',monospace",
-                          fontSize: '7.5px',
-                          color: '#888',
-                          marginTop: '2px',
-                        }}>
-                        {connecting === w.id ? 'Connecting...' : w.desc}
-                      </div>
-                    </div>
-                    <span style={{ color: '#CCC', fontSize: '12px' }}>›</span>
-                  </button>
-                ))}
-              </div>
-              <div
-                style={{
-                  textAlign: 'center',
-                  fontFamily: "'Space Mono',monospace",
-                  fontSize: '7px',
-                  color: '#BBB',
-                  lineHeight: 1.7,
-                }}>
-                By connecting you agree to the{' '}
-                <span style={{ color: SAGE, cursor: 'pointer' }}>PAY.ID Terms</span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── CreateModal ─────────────────────────────────────────────────
-function CreateModal({ onClose, onCreate }) {
-  const [label, setLabel] = useState('');
-  const [desc, setDesc] = useState('');
-  const [ico, setIco] = useState('🎯');
-  const [imgSrc, setImgSrc] = useState(null);
-  const [useImg, setUseImg] = useState(false);
-  const [ci, setCi] = useState(0);
-  const [chip, setChip] = useState('MOD');
-  const fileRef = useRef(null);
-  const c = COLORS[ci];
-  const activeIcon = useImg && imgSrc ? imgSrc : ico;
-  const prev = {
-    label: label || 'MY RULE',
-    desc: desc || 'Custom rule',
-    icon: activeIcon,
-    color: c.color,
-    bg: c.bg,
-    chip,
-    id: 'prev',
-  };
-
-  const onFile = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const r = new FileReader();
-    r.onload = (ev) => {
-      setImgSrc(ev.target.result);
-      setUseImg(true);
-    };
-    r.readAsDataURL(f);
-  };
-
-  return (
-    <div
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        background: 'rgba(0,0,0,.38)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backdropFilter: 'blur(5px)',
-        padding: '20px',
-      }}>
-      <div
-        style={{
-          background: 'linear-gradient(160deg,#ECECF0,#E0E0E4)',
-          borderRadius: '20px',
-          width: '100%',
-          maxWidth: '380px',
-          boxShadow: '0 24px 60px #00000045,0 4px 0 #C0C0C4',
-          overflow: 'hidden',
-          animation: 'slidein .22s ease-out',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-        }}>
-        <div
-          style={{
-            background: `linear-gradient(90deg,${SAGE},#4A7A42)`,
-            padding: '14px 20px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            position: 'sticky',
-            top: 0,
-            zIndex: 10,
-          }}>
-          <span
-            style={{
-              fontFamily: "'Orbitron',monospace",
-              fontWeight: 900,
-              fontSize: '11px',
-              color: '#FFF',
-              letterSpacing: '2px',
-            }}>
-            ✦ CREATE RULE
-          </span>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'rgba(0,0,0,.2)',
-              border: 'none',
-              color: '#FFF',
-              width: '26px',
-              height: '26px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '12px',
-            }}>
-            ✕
-          </button>
-        </div>
-        <div style={{ padding: '18px' }}>
-          <Field label="PREVIEW">
-            <Cartridge rule={prev} plugged onDragStart={undefined} onDragEnd={undefined} />
-          </Field>
-
-          <Field label="RULE NAME">
-            <input
-              value={label}
-              onChange={(e) => setLabel(e.target.value.toUpperCase().slice(0, 10))}
-              placeholder="e.g. MAX 1000"
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                background: '#D8D8DC',
-                border: '1.5px solid #C0C0C4',
-                borderRadius: '8px',
-                fontFamily: "'Orbitron',monospace",
-                fontWeight: 700,
-                fontSize: '12px',
-                color: '#333',
-                letterSpacing: '2px',
-                outline: 'none',
-                boxShadow: 'inset 0 2px 4px #00000015',
-              }}
-            />
-          </Field>
-
-          <Field label="DESCRIPTION">
-            <input
-              value={desc}
-              onChange={(e) => setDesc(e.target.value.slice(0, 40))}
-              placeholder="Short description..."
-              style={{
-                width: '100%',
-                padding: '9px 14px',
-                background: '#D8D8DC',
-                border: '1.5px solid #C0C0C4',
-                borderRadius: '8px',
-                fontFamily: "'Space Mono',monospace",
-                fontSize: '10px',
-                color: '#555',
-                outline: 'none',
-                boxShadow: 'inset 0 2px 4px #00000015',
-              }}
-            />
-          </Field>
-
-          <Field label="ICON">
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-              {[
-                ['EMOJI', '🙂'],
-                ['UPLOAD', '📁'],
-              ].map(([t, e]) => {
-                const active = (!useImg && t === 'EMOJI') || (useImg && t === 'UPLOAD');
-                return (
-                  <button
-                    key={t}
-                    onClick={() => {
-                      if (t === 'UPLOAD' && !imgSrc) fileRef.current?.click();
-                      setUseImg(t === 'UPLOAD');
-                    }}
-                    style={{
-                      flex: 1,
-                      height: '32px',
-                      fontFamily: "'Space Mono',monospace",
-                      fontSize: '8px',
-                      fontWeight: 700,
-                      letterSpacing: '1px',
-                      border: `2px solid ${active ? c.color : '#C8C8CC'}`,
-                      background: active ? `${c.bg}60` : '#D0D0D4',
-                      color: active ? c.color : '#888',
-                      borderRadius: '7px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '5px',
-                    }}>
-                    <span>{e}</span>
-                    {t}
-                  </button>
-                );
-              })}
-            </div>
-            {useImg ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div
-                  onClick={() => fileRef.current?.click()}
-                  style={{
-                    height: '80px',
-                    border: `2px dashed ${c.color}66`,
-                    borderRadius: '10px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    cursor: 'pointer',
-                    background: `${c.bg}15`,
-                  }}>
-                  {imgSrc ? (
-                    <img
-                      src={imgSrc}
-                      style={{
-                        width: '52px',
-                        height: '52px',
-                        objectFit: 'cover',
-                        borderRadius: '8px',
-                      }}
-                      alt=""
-                    />
-                  ) : (
-                    <>
-                      <span style={{ fontSize: '24px' }}>⬆️</span>
-                      <span
-                        style={{
-                          fontFamily: "'Space Mono',monospace",
-                          fontSize: '8px',
-                          color: c.color,
-                          letterSpacing: '1px',
-                        }}>
-                        CLICK TO UPLOAD
-                      </span>
-                      <span
-                        style={{
-                          fontFamily: "'Space Mono',monospace",
-                          fontSize: '7px',
-                          color: '#AAA',
-                        }}>
-                        PNG, JPG, SVG, WEBP
-                      </span>
-                    </>
-                  )}
-                </div>
-                {imgSrc && (
-                  <button
-                    onClick={() => {
-                      setImgSrc(null);
-                      setUseImg(false);
-                    }}
-                    style={{
-                      fontFamily: "'Space Mono',monospace",
-                      fontSize: '8px',
-                      color: '#E53935',
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                    }}>
-                    ✕ Remove
-                  </button>
-                )}
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={onFile}
-                  style={{ display: 'none' }}
+            </button>
+            {expanded.has(i) && (
+              <div className="p-2 bg-background/30">
+                <textarea
+                  value={JSON.stringify(rule, null, 2)}
+                  onChange={(e) => update(i, e.target.value)}
+                  rows={Math.min(14, (JSON.stringify(rule, null, 2).match(/\n/g) || []).length + 2)}
+                  spellCheck={false}
+                  className="w-full font-mono text-[10px] bg-background/60 border border-border/30 rounded px-2 py-1.5 text-foreground/80 focus:outline-none focus:border-primary/40 resize-none leading-relaxed"
                 />
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                {EMOJIS.map((e) => (
-                  <button
-                    key={e}
-                    onClick={() => setIco(e)}
-                    style={{
-                      width: '34px',
-                      height: '34px',
-                      fontSize: '17px',
-                      background: ico === e ? c.bg : '#D0D0D4',
-                      border: `2px solid ${ico === e ? c.color : 'transparent'}`,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      boxShadow: ico === e ? `0 2px 8px ${c.color}44` : 'none',
-                    }}>
-                    {e}
-                  </button>
-                ))}
               </div>
             )}
-          </Field>
-
-          <Field label="COLOR">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px' }}>
-              {COLORS.map((col, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCi(idx)}
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    background: `radial-gradient(circle at 35% 35%,${col.bg},${col.color})`,
-                    border: `3px solid ${ci === idx ? col.color : 'transparent'}`,
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    boxShadow: ci === idx ? `0 0 8px ${col.color}88` : '0 2px 4px #00000020',
-                    outline: ci === idx ? '2px solid white' : 'none',
-                    outlineOffset: '-3px',
-                  }}
-                />
-              ))}
-            </div>
-          </Field>
-
-          <Field label="BADGE">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-              {CHIPS.map((ch) => (
-                <button
-                  key={ch}
-                  onClick={() => setChip(ch)}
-                  style={{
-                    padding: '4px 10px',
-                    fontFamily: "'Space Mono',monospace",
-                    fontWeight: 700,
-                    fontSize: '8px',
-                    color: chip === ch ? c.color : '#888',
-                    background: chip === ch ? `${c.bg}80` : '#D0D0D4',
-                    border: `2px solid ${chip === ch ? c.color : 'transparent'}`,
-                    borderRadius: '5px',
-                    cursor: 'pointer',
-                  }}>
-                  {ch}
-                </button>
-              ))}
-            </div>
-          </Field>
-
-          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-            <button
-              onClick={onClose}
-              style={{
-                flex: 1,
-                height: '42px',
-                background: '#C8C8CC',
-                border: 'none',
-                borderRadius: '10px',
-                fontFamily: "'Space Mono',monospace",
-                fontSize: '9px',
-                color: '#666',
-                cursor: 'pointer',
-                boxShadow: '0 4px 0 #A8A8AC',
-              }}>
-              CANCEL
-            </button>
-            <button
-              onClick={() => {
-                if (!label.trim()) return;
-                onCreate({ ...prev, id: 'c' + Date.now() });
-                onClose();
-              }}
-              disabled={!label.trim()}
-              style={{
-                flex: 2,
-                height: '42px',
-                background: !label.trim()
-                  ? '#D0D0D4'
-                  : `linear-gradient(180deg,${c.bg},${c.color}CC)`,
-                border: `2px solid ${c.color}`,
-                borderRadius: '10px',
-                fontFamily: "'Orbitron',monospace",
-                fontWeight: 900,
-                fontSize: '10px',
-                color: !label.trim() ? '#AAA' : '#FFF',
-                cursor: !label.trim() ? 'not-allowed' : 'pointer',
-                boxShadow: !label.trim() ? 'none' : `0 4px 0 ${c.color}AA`,
-                letterSpacing: '1px',
-              }}>
-              + CREATE RULE
-            </button>
           </div>
-        </div>
+        ))}
       </div>
     </div>
   );
 }
 
-export default function PAYIDConsole() {
-  const [allRules, setAllRules] = useState(RULES);
-  const [slots, setSlots] = useState([RULES[0], RULES[1], RULES[2], null, null, null]);
-  const [drag, setDrag] = useState(null);
-  const [overSlot, setOverSlot] = useState(null);
-  const [amt, setAmt] = useState('150');
-  const [result, setResult] = useState(null);
-  const [testing, setTesting] = useState(false);
-  const [showCreate, setShowCreate] = useState(false);
-  const [showWallet, setShowWallet] = useState(false);
-  const [wallet, setWallet] = useState(null);
-  const [plugged, setPlugged] = useState(null);
-  const [tick, setTick] = useState(0);
+// ─── Result Panel ─────────────────────────────────────────────────────────────
+interface FullResult {
+  sdkResult: RuleResultDebug;
+  trace: RuleTraceEntry[];
+  executionMs: number;
+}
 
-  useEffect(() => {
-    const t = setInterval(() => setTick((p) => p + 1), 1000);
-    return () => clearInterval(t);
-  }, []);
-  const now = new Date();
-  const ts = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-
-  const active = slots.filter(Boolean);
-  const freeRules = allRules.filter((r) => !slots.find((s) => s?.id === r.id));
-
-  const dropSlot = (e, i) => {
-    e.preventDefault();
-    if (!drag) return;
-    const s = [...slots];
-    if (drag.src.type === 'slot') s[drag.src.i] = null;
-    s[i] = drag.rule;
-    setSlots(s);
-    setPlugged(i);
-    setTimeout(() => setPlugged(null), 500);
-    setDrag(null);
-    setOverSlot(null);
-    setResult(null);
+function ResultPanel({
+  result,
+  executing,
+  error,
+}: {
+  result: FullResult | null;
+  executing: boolean;
+  error: string | null;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    if (result) {
+      navigator.clipboard.writeText(JSON.stringify(result.sdkResult, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
   };
-  const dropLib = (e) => {
-    e.preventDefault();
-    if (drag?.src.type !== 'slot') return;
-    const s = [...slots];
-    s[drag.src.i] = null;
-    setSlots(s);
-    setDrag(null);
-    setOverSlot(null);
-  };
-  const eject = (i) => {
-    const s = [...slots];
-    s[i] = null;
-    setSlots(s);
-    setResult(null);
-  };
-
-  const runTest = () => {
-    if (!active.length || testing) return;
-    setTesting(true);
-    setResult(null);
-    setTimeout(() => {
-      const n = parseFloat(amt) || 0;
-      let fail = null;
-      for (const r of active) {
-        if (r.id === 'no_cursed' && n > 0 && n % 666 === 0) {
-          fail = r;
-          break;
-        }
-        if (r.id === 'min_tx' && n < 10) {
-          fail = r;
-          break;
-        }
-        if (r.id === 'daily_cap' && n > 500) {
-          fail = r;
-          break;
-        }
-      }
-      setResult({ allow: !fail, failedRule: fail, amount: n, ts: new Date().toISOString() });
-      setTesting(false);
-    }, 1100);
-  };
-
+  if (executing)
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+        <div className="size-7 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        <span className="font-mono text-[11px]">Running PAY.ID SDK...</span>
+      </div>
+    );
+  if (error)
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 px-4">
+        <XCircleIcon className="size-8 text-destructive/60" />
+        <div className="text-center font-mono text-xs text-destructive break-all">{error}</div>
+      </div>
+    );
+  if (!result)
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground/40">
+        <PlayIcon className="size-8" />
+        <span className="font-mono text-[11px]">Run evaluation to see results</span>
+      </div>
+    );
+  const isAllow = result.sdkResult.decision === 'ALLOW';
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: 'radial-gradient(ellipse at 50% 30%,#F0EEE8,#E0DED8)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '32px 16px',
-        fontFamily: "'Space Mono',monospace",
-      }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap');
-        *{box-sizing:border-box;margin:0;padding:0}
-        ::-webkit-scrollbar{height:3px;width:3px} ::-webkit-scrollbar-track{background:#D8D8DC} ::-webkit-scrollbar-thumb{background:#B0B0B4;border-radius:2px}
-        @keyframes ledpulse{0%,100%{opacity:1}50%{opacity:.6}}
-        @keyframes ledring{0%{transform:scale(1);opacity:.45}100%{transform:scale(2.8);opacity:0}}
-        @keyframes blink{0%,100%{opacity:1}50%{opacity:.1}}
-        @keyframes slidein{0%{opacity:0;transform:translateY(7px)}100%{opacity:1;transform:translateY(0)}}
-        @keyframes screenon{0%{opacity:0;filter:brightness(3)}100%{opacity:1;filter:brightness(1)}}
-        @keyframes wpulse{0%,100%{box-shadow:0 5px 0 #0D47A1,0 6px 10px #00000020}50%{box-shadow:0 5px 0 #0D47A1,0 6px 20px #1565C044}}
-        input:focus{outline:none} input::placeholder{color:#B8B8BC}
-      `}</style>
-
-      <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
+    <Tabs defaultValue="summary" className="h-full flex flex-col">
+      <TabsList className="grid grid-cols-3 w-full shrink-0">
+        <TabsTrigger value="summary" className="font-mono text-xs">
+          Summary
+        </TabsTrigger>
+        <TabsTrigger value="trace" className="font-mono text-xs">
+          Trace ({result.trace.length})
+        </TabsTrigger>
+        <TabsTrigger value="raw" className="font-mono text-xs">
+          Raw JSON
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="summary" className="flex-1 overflow-auto mt-3 space-y-3">
         <div
-          style={{
-            position: 'absolute',
-            bottom: '-18px',
-            left: '8%',
-            right: '8%',
-            height: '20px',
-            background: 'radial-gradient(ellipse,#00000028,transparent 70%)',
-            filter: 'blur(10px)',
-          }}
-        />
-
-        {/* SHELL */}
-        <div
-          style={{
-            background: 'linear-gradient(160deg,#E8E8EC,#D0D0D4 40%,#C8C8CC)',
-            borderRadius: '22px 22px 28px 28px',
-            boxShadow:
-              '0 1px 0 #F8F8FC,0 8px 0 #B8B8BC,0 9px 0 #A8A8AC,0 12px 40px #00000030,inset 0 2px 0 #F0F0F4,inset 2px 0 0 #E0E0E4,inset -2px 0 0 #C0C0C4',
-          }}>
-          {/* TABS */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              gap: '36px',
-              padding: '0 48px',
-              zIndex: 2,
-            }}>
-            {[0, 1].map((i) => (
+          className={cn(
+            'rounded-lg border-2 p-4 flex items-center gap-3',
+            isAllow ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5',
+          )}>
+          {isAllow ? (
+            <CheckCircle2Icon className="size-6 text-green-500 shrink-0" />
+          ) : (
+            <XCircleIcon className="size-6 text-red-500 shrink-0" />
+          )}
+          <div className="flex-1 min-w-0">
+            <div
+              className={cn(
+                'font-mono text-xl font-bold',
+                isAllow ? 'text-green-500' : 'text-red-500',
+              )}>
+              {result.sdkResult.decision}
+            </div>
+            <div className="font-mono text-xs text-muted-foreground truncate">
+              {result.sdkResult.reason || result.sdkResult.code}
+            </div>
+          </div>
+          <div className="font-mono text-[10px] text-right shrink-0">
+            <div className="text-blue-400 font-medium">PAY.ID SDK</div>
+            <div className="text-muted-foreground">{result.executionMs}ms</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] text-muted-foreground">Code:</span>
+          <Badge variant={isAllow ? 'default' : 'destructive'} className="font-mono text-[10px]">
+            {result.sdkResult.code}
+          </Badge>
+        </div>
+        {result.trace.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+              Conditions
+            </div>
+            {result.trace.map((t, i) => (
               <div
                 key={i}
-                style={{
-                  width: '52px',
-                  height: '20px',
-                  background: `linear-gradient(180deg,#7AAE6A,${SAGE} 50%,#3A6030)`,
-                  borderRadius: '8px 8px 0 0',
-                  boxShadow: 'inset 0 2px 0 #9ACA88,inset 2px 0 0 #6A9E58,inset -2px 0 0 #4A7A40',
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  justifyContent: 'center',
-                  paddingBottom: '4px',
-                }}>
-                <div
-                  style={{
-                    width: '30px',
-                    height: '5px',
-                    background: '#2A5020',
-                    borderRadius: '2px',
-                    boxShadow: 'inset 0 2px 3px #00000040',
-                  }}
-                />
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2 rounded border',
+                  t.result === 'PASS'
+                    ? 'border-green-500/20 bg-green-500/5'
+                    : 'border-red-500/20 bg-red-500/5',
+                )}>
+                {t.result === 'PASS' ? (
+                  <CheckCircle2Icon className="size-3.5 text-green-500 shrink-0" />
+                ) : (
+                  <XCircleIcon className="size-3.5 text-red-500 shrink-0" />
+                )}
+                <span className="font-mono text-[10px] text-muted-foreground/60 shrink-0">
+                  [{t.ruleId}]
+                </span>
+                <span className="font-mono text-[10px] flex-1 truncate">
+                  {t.field} {t.op} {JSON.stringify(t.expected)}
+                </span>
+                <Badge
+                  variant={t.result === 'PASS' ? 'default' : 'destructive'}
+                  className="font-mono text-[9px] shrink-0">
+                  {t.result}
+                </Badge>
               </div>
             ))}
           </div>
-
-          <div style={{ padding: '14px 18px 22px' }}>
-            {/* TOPBAR */}
+        )}
+      </TabsContent>
+      <TabsContent value="trace" className="flex-1 overflow-auto mt-3">
+        <div className="space-y-2">
+          {result.trace.map((t, i) => (
             <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '12px',
-                gap: '8px',
-              }}>
-              <div
-                style={{
-                  fontFamily: "'Orbitron',monospace",
-                  fontWeight: 900,
-                  fontSize: '12px',
-                  letterSpacing: '3px',
-                  color: '#444',
-                  flexShrink: 0,
-                }}>
-                PAY<span style={{ color: SAGE }}>.</span>ID
-              </div>
-
-              {wallet ? (
-                <button
-                  onClick={() => setShowWallet(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: 'linear-gradient(180deg,#E3F2FD,#BBDEFB)',
-                    border: '2px solid #1565C0AA',
-                    borderRadius: '20px',
-                    padding: '4px 10px 4px 6px',
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 0 #0D47A1,inset 0 1px 0 rgba(255,255,255,.7)',
-                    flex: 1,
-                    maxWidth: '160px',
-                  }}>
-                  <div
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      background: `radial-gradient(circle at 35% 35%,${wallet.bg},${wallet.color})`,
-                      border: `2px solid ${wallet.color}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '10px',
-                      flexShrink: 0,
-                    }}>
-                    {wallet.icon}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "'JetBrains Mono',monospace",
-                      fontSize: '8px',
-                      color: '#1565C0',
-                      fontWeight: 700,
-                      flex: 1,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>
-                    {shortAddr(wallet.address)}
-                  </div>
-                  <div
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: '#4CAF50',
-                      boxShadow: '0 0 4px #4CAF50',
-                      flexShrink: 0,
-                    }}
-                  />
-                </button>
-              ) : (
-                <button
-                  onClick={() => setShowWallet(true)}
-                  onMouseDown={(e) => (e.currentTarget.style.transform = 'translateY(3px)')}
-                  onMouseUp={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: 'linear-gradient(180deg,#1976D2,#1565C0)',
-                    border: 'none',
-                    borderRadius: '20px',
-                    padding: '6px 12px',
-                    cursor: 'pointer',
-                    fontFamily: "'Orbitron',monospace",
-                    fontWeight: 700,
-                    fontSize: '7.5px',
-                    color: '#FFF',
-                    letterSpacing: '1.5px',
-                    boxShadow: '0 4px 0 #0D47A1,inset 0 1px 0 rgba(255,255,255,.3)',
-                    animation: 'wpulse 3s infinite',
-                    flex: 1,
-                    maxWidth: '160px',
-                    justifyContent: 'center',
-                    whiteSpace: 'nowrap',
-                  }}>
-                  <span style={{ fontSize: '11px' }}>🔌</span> CONNECT
-                </button>
-              )}
-
-              <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexShrink: 0 }}>
-                <LEDDot color={wallet ? '#4CAF50' : '#9E9E9E'} pulse={!!wallet} />
-                <span
-                  style={{
-                    fontFamily: "'JetBrains Mono',monospace",
-                    fontSize: '9px',
-                    color: '#888',
-                    letterSpacing: '1px',
-                  }}>
-                  {ts}
+              key={i}
+              className={cn(
+                'rounded border p-3 space-y-2',
+                t.result === 'PASS' ? 'border-green-500/20' : 'border-red-500/20',
+              )}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono text-[10px] text-muted-foreground/60">[{t.ruleId}]</span>
+                <span className="font-mono text-xs font-semibold">{t.field}</span>
+                <span className="font-mono text-[10px] text-primary/70 border border-primary/20 px-1 rounded">
+                  {t.op}
                 </span>
+                <code className="font-mono text-[10px] text-muted-foreground">
+                  {JSON.stringify(t.expected)}
+                </code>
+                <Badge
+                  variant={t.result === 'PASS' ? 'default' : 'destructive'}
+                  className="font-mono text-[9px] ml-auto">
+                  {t.result}
+                </Badge>
+              </div>
+              <div className="font-mono text-[10px] bg-muted/20 rounded p-2 flex gap-3">
+                <span className="text-muted-foreground/60 shrink-0">actual →</span>
+                <code
+                  className={cn(
+                    'font-bold break-all',
+                    t.result === 'PASS' ? 'text-green-400' : 'text-red-400',
+                  )}>
+                  {JSON.stringify(t.actual)}
+                </code>
               </div>
             </div>
+          ))}
+        </div>
+      </TabsContent>
+      <TabsContent value="raw" className="flex-1 overflow-auto mt-3 space-y-2">
+        <button
+          onClick={copy}
+          className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded border border-border/40 hover:border-border transition-colors">
+          <CopyIcon className="size-3" />
+          {copied ? 'Copied!' : 'Copy JSON'}
+        </button>
+        <pre className="font-mono text-[10px] text-foreground/70 whitespace-pre-wrap break-all leading-relaxed rounded border border-border/40 bg-muted/10 p-3">
+          {JSON.stringify(result.sdkResult, null, 2)}
+        </pre>
+      </TabsContent>
+    </Tabs>
+  );
+}
 
-            {/* SCREEN BEZEL */}
-            <div
-              style={{
-                background: 'linear-gradient(170deg,#C8C8CC,#B8B8BC)',
-                borderRadius: '14px',
-                padding: '8px',
-                marginBottom: '14px',
-                boxShadow: 'inset 0 4px 12px #00000030,inset 0 -2px 4px #D8D8DC,0 2px 0 #D0D0D4',
-              }}>
-              <div style={{ display: 'flex', gap: '3px', marginBottom: '6px', padding: '0 4px' }}>
-                {[...Array(12)].map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      flex: 1,
-                      height: '2px',
-                      background: i % 3 === 0 ? '#A0A0A4' : '#ACACB0',
-                      borderRadius: '1px',
-                    }}
-                  />
-                ))}
-              </div>
+// ─── Main ─────────────────────────────────────────────────────────────────────
+export default function PayIDPlayground() {
+  const [ctx, setCtx] = useState<any>(PRESETS[0].ctx);
+  const [rules, setRules] = useState<any[]>(
+    [RULE_TEMPLATES[0], RULE_TEMPLATES[1], RULE_TEMPLATES[3], RULE_TEMPLATES[5]].map((t) =>
+      JSON.parse(JSON.stringify(t.rule)),
+    ),
+  );
+  const [logic, setLogic] = useState<'AND' | 'OR'>('AND');
+  const [result, setResult] = useState<FullResult | null>(null);
+  const [executing, setExecuting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [wasmStatus, setWasmStatus] = useState<'loading' | 'ready' | 'fallback'>('loading');
 
-              {/* SCREEN */}
-              <div
-                style={{
-                  background: 'linear-gradient(160deg,#E8F0E0,#DCE8D4)',
-                  borderRadius: '9px',
-                  overflow: 'hidden',
-                  boxShadow: 'inset 0 2px 10px #00000020,inset 0 0 0 1.5px #C0CCB8',
-                  position: 'relative',
-                  animation: 'screenon .5s ease-out',
-                }}>
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    pointerEvents: 'none',
-                    zIndex: 10,
-                    background:
-                      'repeating-linear-gradient(0deg,transparent,transparent 2px,#00000008 2px,#00000008 3px)',
-                  }}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '45%',
-                    background: 'linear-gradient(180deg,rgba(255,255,255,.18),transparent)',
-                    borderRadius: '9px 9px 0 0',
-                    pointerEvents: 'none',
-                    zIndex: 11,
-                  }}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '5px',
-                    right: '10px',
-                    width: '30px',
-                    height: '10px',
-                    background: 'rgba(255,255,255,.25)',
-                    borderRadius: '50%',
-                    transform: 'rotate(-20deg)',
-                    pointerEvents: 'none',
-                    zIndex: 11,
-                    filter: 'blur(3px)',
-                  }}
-                />
+  useEffect(() => {
+    // Warm up client — WASM akan di-fetch dari Pinata saat evaluate pertama kali
+    getClient()
+      .then(() => setWasmStatus('ready'))
+      .catch(() => setWasmStatus('fallback'));
+  }, []);
 
-                {/* screen topbar */}
-                <div
-                  style={{
-                    background: 'linear-gradient(90deg,#B8C8B0,#C8D8C0)',
-                    borderBottom: '1px solid #B0C0A8',
-                    padding: '6px 12px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    position: 'relative',
-                    zIndex: 12,
-                  }}>
-                  <span
-                    style={{ fontSize: '7px', color: SAGE, letterSpacing: '2px', fontWeight: 700 }}>
-                    ● POLICY DEVICE
-                  </span>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {[...Array(6)].map((_, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          width: '8px',
-                          height: '8px',
-                          borderRadius: '50%',
-                          background: slots[i]
-                            ? `radial-gradient(circle at 35% 35%,${slots[i].bg},${slots[i].color})`
-                            : '#C8D0C0',
-                          boxShadow: slots[i]
-                            ? `0 0 4px ${slots[i].color}88`
-                            : 'inset 0 1px 0 #D8E0D0',
-                          transition: 'all .3s cubic-bezier(0.34,1.56,0.64,1)',
-                          transform: plugged === i ? 'scale(1.4)' : 'scale(1)',
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <span style={{ fontSize: '7px', color: '#8A9A88' }}>{active.length}/6</span>
-                </div>
+  const run = useCallback(async () => {
+    if (rules.length === 0) return;
+    setExecuting(true);
+    setError(null);
+    try {
+      const client = await getClient();
+      const ruleConfig: RuleConfig = { version: '1', logic, rules };
+      const t0 = performance.now();
+      const sdkResult = (await client.evaluate(ctx, ruleConfig)) as RuleResultDebug;
+      const trace: RuleTraceEntry[] = sdkResult.debug?.trace ?? [];
+      setResult({ sdkResult, trace, executionMs: Math.round(performance.now() - t0) });
+      setWasmStatus('ready');
+    } catch (e: any) {
+      setError(e?.message || 'Unknown error');
+      setWasmStatus('fallback');
+    } finally {
+      setExecuting(false);
+    }
+  }, [ctx, rules, logic]);
 
-                {/* screen body */}
-                <div
-                  style={{ padding: '12px', minHeight: '200px', position: 'relative', zIndex: 12 }}>
-                  {!wallet && (
-                    <div
-                      style={{
-                        background: '#FFF8E1',
-                        border: '1.5px solid #FFD54F',
-                        borderLeft: '3px solid #FFC107',
-                        borderRadius: '8px',
-                        padding: '8px 12px',
-                        marginBottom: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                      }}>
-                      <span style={{ fontSize: '14px' }}>⚠️</span>
-                      <div>
-                        <div
-                          style={{
-                            fontFamily: "'Orbitron',monospace",
-                            fontSize: '8px',
-                            fontWeight: 700,
-                            color: '#F57F17',
-                            letterSpacing: '1px',
-                          }}>
-                          NO WALLET
-                        </div>
-                        <div
-                          style={{
-                            fontFamily: "'Space Mono',monospace",
-                            fontSize: '7px',
-                            color: '#888',
-                            marginTop: '1px',
-                          }}>
-                          Connect wallet to deploy rules
-                        </div>
-                      </div>
-                    </div>
-                  )}
+  const applyPreset = (p: (typeof PRESETS)[0]) => {
+    setCtx(JSON.parse(JSON.stringify(p.ctx)));
+    setResult(null);
+    setError(null);
+  };
+  const decision = result?.sdkResult.decision;
 
-                  {testing ? (
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: '140px',
-                        gap: '12px',
-                      }}>
-                      <div style={{ fontSize: '32px', animation: 'blink .6s infinite' }}>⚙️</div>
-                      <div
-                        style={{
-                          fontFamily: "'Orbitron',monospace",
-                          fontSize: '9px',
-                          color: SAGE,
-                          letterSpacing: '3px',
-                        }}>
-                        EVALUATING
-                      </div>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        {[0, 1, 2, 3].map((i) => (
-                          <div
-                            key={i}
-                            style={{
-                              width: '6px',
-                              height: '6px',
-                              borderRadius: '50%',
-                              background: SAGE,
-                              animation: `blink 1s infinite ${i * 0.2}s`,
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ) : result ? (
-                    <div style={{ animation: 'slidein .3s ease-out' }}>
-                      <div
-                        style={{
-                          background: result.allow
-                            ? 'linear-gradient(135deg,#E8F5E8,#F0FAF0)'
-                            : 'linear-gradient(135deg,#FDEAEA,#FEF0F0)',
-                          border: `2px solid ${result.allow ? '#4CAF50' : '#F44336'}44`,
-                          borderLeft: `4px solid ${result.allow ? '#4CAF50' : '#F44336'}`,
-                          borderRadius: '10px',
-                          padding: '12px 14px',
-                        }}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            marginBottom: '10px',
-                          }}>
-                          <span style={{ fontSize: '28px' }}>{result.allow ? '✅' : '❌'}</span>
-                          <div>
-                            <div
-                              style={{
-                                fontFamily: "'Orbitron',monospace",
-                                fontWeight: 900,
-                                fontSize: '20px',
-                                color: result.allow ? '#2E7D32' : '#C62828',
-                                lineHeight: 1,
-                              }}>
-                              {result.allow ? 'ALLOW' : 'REJECT'}
-                            </div>
-                            <div
-                              style={{
-                                fontFamily: "'Space Mono',monospace",
-                                fontSize: '7px',
-                                color: '#778',
-                                marginTop: '3px',
-                              }}>
-                              {result.allow
-                                ? `All ${active.length} rules passed`
-                                : `Blocked: ${result.failedRule?.label}`}
-                            </div>
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            borderTop: '1px solid #C8D0C0',
-                            paddingTop: '8px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px',
-                          }}>
-                          {active.map((r, idx) => {
-                            const fail = result.failedRule?.id === r.id;
-                            return (
-                              <div
-                                key={r.id}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  animation: `slidein .3s ease-out ${idx * 0.08}s both`,
-                                }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <RuleIcon icon={r.icon} size={12} />
-                                  <span
-                                    style={{
-                                      fontFamily: "'Orbitron',monospace",
-                                      fontWeight: 700,
-                                      fontSize: '8px',
-                                      color: r.color,
-                                      letterSpacing: '1px',
-                                    }}>
-                                    {r.label}
-                                  </span>
-                                </div>
-                                <div
-                                  style={{
-                                    fontFamily: "'Space Mono',monospace",
-                                    fontWeight: 700,
-                                    fontSize: '8px',
-                                    color: fail ? '#C62828' : '#2E7D32',
-                                    background: fail ? '#FFEBEE' : '#E8F5E9',
-                                    border: `1px solid ${fail ? '#EF9A9A' : '#A5D6A7'}`,
-                                    padding: '1px 6px',
-                                    borderRadius: '3px',
-                                  }}>
-                                  {fail ? 'FAIL' : 'PASS'}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div
-                          style={{
-                            marginTop: '8px',
-                            fontFamily: "'JetBrains Mono',monospace",
-                            fontSize: '6.5px',
-                            color: '#AAA',
-                          }}>
-                          {result.amount} USDC · {result.ts.split('T')[1].substring(0, 8)} UTC
-                        </div>
-                      </div>
-                    </div>
-                  ) : active.length === 0 ? (
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: '150px',
-                        gap: '10px',
-                      }}>
-                      <div style={{ fontSize: '36px', opacity: 0.2 }}>🎮</div>
-                      <div
-                        style={{
-                          fontFamily: "'Orbitron',monospace",
-                          fontSize: '8px',
-                          color: '#B0B8A8',
-                          letterSpacing: '2px',
-                          textAlign: 'center',
-                          lineHeight: 1.8,
-                        }}>
-                        NO CARTRIDGES LOADED
-                        <br />
-                        <span
-                          style={{
-                            fontFamily: "'Space Mono',monospace",
-                            fontSize: '7px',
-                            color: '#C8D0C0',
-                            fontWeight: 400,
-                          }}>
-                          DRAG RULES TO SLOTS BELOW
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '7px',
-                        animation: 'slidein .3s ease-out',
-                      }}>
-                      <div
-                        style={{
-                          fontFamily: "'Space Mono',monospace",
-                          fontSize: '7px',
-                          color: '#8A9A88',
-                          letterSpacing: '2.5px',
-                          marginBottom: '2px',
-                        }}>
-                        ACTIVE RULES
-                      </div>
-                      {active.map((r, idx) => (
-                        <div
-                          key={r.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            background: `linear-gradient(90deg,${r.bg}20,${r.bg}08)`,
-                            border: `1px solid ${r.color}30`,
-                            borderLeft: `3px solid ${r.color}`,
-                            borderRadius: '7px',
-                            padding: '6px 10px',
-                            animation: `slidein .3s ease-out ${idx * 0.07}s both`,
-                          }}>
-                          <PinBlock color={r.color} lit small />
-                          <div
-                            style={{
-                              width: '26px',
-                              height: '26px',
-                              borderRadius: '6px',
-                              background: `${r.bg}50`,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              border: `1px solid ${r.color}25`,
-                              overflow: 'hidden',
-                              flexShrink: 0,
-                            }}>
-                            <RuleIcon icon={r.icon} size={14} />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div
-                              style={{
-                                fontFamily: "'Space Mono',monospace",
-                                fontSize: '8.5px',
-                                fontWeight: 700,
-                                color: r.color,
-                                letterSpacing: '1px',
-                              }}>
-                              {r.label}
-                            </div>
-                            <div
-                              style={{
-                                fontFamily: "'Space Mono',monospace",
-                                fontSize: '6.5px',
-                                color: '#8A9A88',
-                                marginTop: '1px',
-                              }}>
-                              {r.desc}
-                            </div>
-                          </div>
-                          <LEDDot color={r.color} pulse />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '3px', marginTop: '6px', padding: '0 4px' }}>
-                {[...Array(12)].map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      flex: 1,
-                      height: '2px',
-                      background: i % 3 === 0 ? '#A0A0A4' : '#ACACB0',
-                      borderRadius: '1px',
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* AMOUNT + BUTTONS */}
-            <div
-              style={{ display: 'flex', gap: '10px', alignItems: 'stretch', marginBottom: '14px' }}>
-              <div
-                style={{
-                  flex: 1,
-                  background: 'linear-gradient(160deg,#D8D8DC,#C8C8CC)',
-                  borderRadius: '12px',
-                  padding: '10px 14px',
-                  boxShadow: 'inset 0 3px 6px #00000018,0 1px 0 #E8E8EC',
-                }}>
-                <div
-                  style={{
-                    fontFamily: "'Space Mono',monospace",
-                    fontSize: '6.5px',
-                    color: '#999',
-                    letterSpacing: '2px',
-                    marginBottom: '4px',
-                  }}>
-                  AMOUNT
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    value={amt}
-                    onChange={(e) => setAmt(e.target.value.replace(/[^0-9.]/g, ''))}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      fontFamily: "'JetBrains Mono',monospace",
-                      fontWeight: 700,
-                      fontSize: '22px',
-                      color: '#333',
-                      width: '80px',
-                    }}
-                  />
-                  <div
-                    style={{
-                      fontFamily: "'Space Mono',monospace",
-                      fontSize: '8px',
-                      fontWeight: 700,
-                      color: SAGE,
-                      border: `1.5px solid ${SAGE}88`,
-                      background: `${SAGE}15`,
-                      padding: '2px 8px',
-                      borderRadius: '5px',
-                      letterSpacing: '1px',
-                    }}>
-                    USDC
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <PhysBtn
-                  label="CLEAR"
-                  small
-                  onClick={() => setResult(null)}
-                  primary={undefined}
-                  danger={undefined}
-                  disabled={undefined}
-                  icon={undefined}
-                  full={undefined}
-                />
-                <PhysBtn
-                  label={testing ? 'WAIT…' : '▶ RUN'}
-                  small
-                  primary
-                  onClick={runTest}
-                  disabled={!active.length || testing}
-                  danger={undefined}
-                  icon={undefined}
-                  full={undefined}
-                />
-              </div>
-            </div>
-
-            {/* SLOTS */}
-            <div
-              style={{
-                background: 'linear-gradient(180deg,#C4C4C8,#BCBCC0)',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                marginBottom: '14px',
-                boxShadow: 'inset 0 3px 8px #00000020,0 2px 0 #D4D4D8',
-              }}>
-              <div
-                style={{
-                  background: 'linear-gradient(90deg,#B8B8BC,#C4C4C8)',
-                  borderBottom: '1px solid #B0B0B4',
-                  padding: '7px 12px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div
-                    style={{
-                      width: '10px',
-                      height: '10px',
-                      borderRadius: '2px',
-                      background: SAGE,
-                      boxShadow: `0 0 4px ${SAGE}88`,
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontFamily: "'Orbitron',monospace",
-                      fontSize: '8px',
-                      color: '#555',
-                      letterSpacing: '2px',
-                    }}>
-                    POLICY DEVICE
-                  </span>
-                </div>
-                <span
-                  style={{
-                    fontFamily: "'Space Mono',monospace",
-                    fontSize: '6.5px',
-                    color: '#AAA',
-                  }}>
-                  DRAG TO LOAD
-                </span>
-              </div>
-
-              {slots.map((rule, i) => (
-                <div
-                  key={i}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setOverSlot(i);
-                  }}
-                  onDrop={(e) => dropSlot(e, i)}
-                  onDragLeave={() => setOverSlot(null)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    height: '54px',
-                    borderBottom: i < 5 ? '1px solid #B4B4B8' : 'none',
-                    background:
-                      plugged === i
-                        ? `${rule?.color}18`
-                        : overSlot === i
-                          ? `${rule?.color || SAGE}10`
-                          : i % 2 === 0
-                            ? '#C4C4C8'
-                            : '#C0C0C4',
-                    outline: overSlot === i ? `2px dashed ${rule?.color || SAGE}66` : 'none',
-                    outlineOffset: '-4px',
-                    transition: 'all .15s',
-                  }}>
-                  <div
-                    style={{
-                      width: '32px',
-                      height: '100%',
-                      background: 'linear-gradient(90deg,#B8B8BC,#C0C0C4)',
-                      borderRight: '1px solid #B0B0B4',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                    <span
-                      style={{
-                        fontFamily: "'Orbitron',monospace",
-                        fontSize: '9px',
-                        fontWeight: 700,
-                        color: rule ? rule.color : '#C8C8CC',
-                      }}>
-                      {i + 1}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      width: '20px',
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRight: '1px solid #B8B8BC',
-                      flexShrink: 0,
-                    }}>
-                    <PinBlock color={rule?.color || SAGE} lit={!!rule} small />
-                  </div>
-                  <div style={{ flex: 1, padding: '0 8px' }}>
-                    {rule ? (
-                      <Cartridge
-                        rule={rule}
-                        mini
-                        plugged
-                        onDragStart={(e) => {
-                          setDrag({ rule, src: { type: 'slot', i } });
-                          e.dataTransfer.effectAllowed = 'move';
-                        }}
-                        onDragEnd={() => setDrag(null)}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          height: '36px',
-                          border: '1.5px dashed #B8B8BC',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontFamily: "'Space Mono',monospace",
-                          fontSize: '6.5px',
-                          color: '#C0C0C4',
-                          letterSpacing: '2px',
-                        }}>
-                        — SLOT {i + 1} —
-                      </div>
-                    )}
-                  </div>
-                  {rule && (
-                    <button
-                      onClick={() => eject(i)}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = '#FF5252')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = '#BBBBBC')}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: '#BBBBBC',
-                        fontSize: '11px',
-                        padding: '0 12px',
-                        height: '100%',
-                        flexShrink: 0,
-                        transition: 'color .15s',
-                      }}>
-                      ⏏
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* LIBRARY */}
-            <div onDragOver={(e) => e.preventDefault()} onDrop={dropLib}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '8px',
-                }}>
-                <div>
-                  <span
-                    style={{
-                      fontFamily: "'Space Mono',monospace",
-                      fontSize: '7px',
-                      color: '#888',
-                      letterSpacing: '2.5px',
-                    }}>
-                    CARTRIDGE LIBRARY
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: "'Space Mono',monospace",
-                      fontSize: '7px',
-                      color: '#BBB',
-                      marginLeft: '8px',
-                    }}>
-                    {freeRules.length} avail
-                  </span>
-                </div>
-                <PhysBtn
-                  label="+ NEW RULE"
-                  small
-                  icon="🛠️"
-                  onClick={() => setShowCreate(true)}
-                  primary={undefined}
-                  danger={undefined}
-                  disabled={undefined}
-                  full={undefined}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '7px', overflowX: 'auto', paddingBottom: '6px' }}>
-                {freeRules.length > 0 ? (
-                  freeRules.map((rule) => (
-                    <div key={rule.id} style={{ flexShrink: 0, width: '160px' }}>
-                      <Cartridge
-                        rule={rule}
-                        dragging={drag?.rule.id === rule.id && drag?.src.type === 'library'}
-                        onDragStart={(e) => {
-                          setDrag({ rule, src: { type: 'library' } });
-                          e.dataTransfer.effectAllowed = 'copy';
-                        }}
-                        onDragEnd={() => setDrag(null)}
-                      />
-                    </div>
-                  ))
-                ) : (
-                  <div
-                    style={{
-                      fontFamily: "'Space Mono',monospace",
-                      fontSize: '8px',
-                      color: '#C0C0C4',
-                      letterSpacing: '1px',
-                      padding: '12px 0',
-                    }}>
-                    ALL CARTRIDGES LOADED ✓
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* STATUS BAR */}
+  return (
+    <div className="flex flex-col bg-background font-mono" style={{ height: 'calc(100vh - 60px)' }}>
+      <div className="border-b border-border/30 px-3 py-1.5 flex items-center gap-2 shrink-0 bg-muted/10 overflow-x-auto">
+        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest shrink-0">
+          Scenario
+        </span>
+        <div className="w-px h-3 bg-border/50 shrink-0" />
+        {PRESETS.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => applyPreset(p)}
+            className="flex items-center gap-1 px-2 py-1 rounded border border-border/40 bg-background/60 hover:bg-muted hover:border-border font-mono text-[10px] text-foreground/70 hover:text-foreground transition-all whitespace-nowrap shrink-0">
+            <span>{p.icon}</span>
+            <span>{p.label}</span>
+          </button>
+        ))}
+        <div className="ml-auto flex items-center gap-1.5 shrink-0">
           <div
-            style={{
-              background: 'linear-gradient(90deg,#B4B4B8,#BCBCC0,#B4B4B8)',
-              borderTop: '1px solid #A8A8AC',
-              borderRadius: '0 0 28px 28px',
-              padding: '8px 22px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-            <span
-              style={{
-                fontFamily: "'Space Mono',monospace",
-                fontSize: '6.5px',
-                color: '#888',
-                letterSpacing: '1.5px',
-              }}>
-              LISK · 4202
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <LEDDot color={wallet ? '#4CAF50' : '#9E9E9E'} pulse={!!wallet} />
-              <span
-                style={{
-                  fontFamily: "'Space Mono',monospace",
-                  fontSize: '6px',
-                  color: '#999',
-                  letterSpacing: '1px',
-                }}>
-                {wallet ? 'CONNECTED' : 'OFFLINE'}
-              </span>
+            className={cn(
+              'w-1.5 h-1.5 rounded-full transition-colors',
+              wasmStatus === 'loading'
+                ? 'bg-yellow-500 animate-pulse'
+                : wasmStatus === 'ready'
+                  ? 'bg-blue-500'
+                  : 'bg-yellow-500',
+            )}
+          />
+          <span className="font-mono text-[9px] text-muted-foreground/50 hidden sm:block">
+            {wasmStatus === 'loading'
+              ? 'loading...'
+              : wasmStatus === 'ready'
+                ? '⚡ WASM'
+                : '📜 TS fallback'}
+          </span>
+          <InfoIcon className="size-3 text-muted-foreground/30" />
+        </div>
+      </div>
+      <div className="flex flex-1 overflow-hidden divide-x divide-border/30">
+        <div className="w-[240px] shrink-0 flex flex-col">
+          <ColHeader>Context</ColHeader>
+          <ScrollArea className="flex-1">
+            <div className="p-3">
+              <CtxEditor
+                ctx={ctx}
+                onChange={(c) => {
+                  setCtx(c);
+                  setResult(null);
+                  setError(null);
+                }}
+              />
             </div>
-            <span
-              style={{
-                fontFamily: "'Space Mono',monospace",
-                fontSize: '6.5px',
-                color: '#888',
-                letterSpacing: '1.5px',
-              }}>
-              EIP-712
-            </span>
+          </ScrollArea>
+        </div>
+        <div className="w-[280px] shrink-0 flex flex-col">
+          <ColHeader>Rules</ColHeader>
+          <ScrollArea className="flex-1">
+            <div className="p-3">
+              <RuleBuilderPanel
+                rules={rules}
+                logic={logic}
+                onRules={(r) => {
+                  setRules(r);
+                  setResult(null);
+                  setError(null);
+                }}
+                onLogic={(l) => {
+                  setLogic(l);
+                  setResult(null);
+                }}
+              />
+            </div>
+          </ScrollArea>
+          <div className="p-3 border-t border-border/30 shrink-0">
+            <Button
+              onClick={run}
+              disabled={executing || rules.length === 0}
+              className="w-full font-mono text-xs gap-2">
+              {executing ? (
+                <>
+                  <RefreshCwIcon className="size-3 animate-spin" />
+                  Running SDK...
+                </>
+              ) : (
+                <>
+                  <PlayIcon className="size-3" />
+                  Run Evaluation
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col min-w-0">
+          <ColHeader
+            extra={
+              decision && (
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className={cn(
+                      'size-1.5 rounded-full',
+                      decision === 'ALLOW' ? 'bg-green-500' : 'bg-red-500',
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      'font-mono text-[10px] font-bold',
+                      decision === 'ALLOW' ? 'text-green-500' : 'text-red-500',
+                    )}>
+                    {decision}
+                  </span>
+                </div>
+              )
+            }>
+            Result
+          </ColHeader>
+          <div className="flex-1 overflow-hidden p-3">
+            <ResultPanel result={result} executing={executing} error={error} />
           </div>
         </div>
       </div>
-
-      {showWallet && (
-        <WalletModal onClose={() => setShowWallet(false)} onConnect={(w) => setWallet(w)} />
-      )}
-      {showCreate && (
-        <CreateModal
-          onClose={() => setShowCreate(false)}
-          onCreate={(r) => setAllRules((p) => [...p, r])}
-        />
-      )}
     </div>
   );
 }
