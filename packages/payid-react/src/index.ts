@@ -1,5 +1,6 @@
 // Provider
-export { PayIDProvider } from './PayIDProvider';
+export { PayIDProvider, usePayIDContext } from './PayIDProvider';
+export type { PayIDContextValue } from './PayIDProvider';
 export type {
   PayIDContracts,
   RuleRef,

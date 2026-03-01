@@ -1,6 +1,6 @@
 {
   "name": "payid-react",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "React hooks for PAY.ID — connect wallet and interact with PAY.ID smart contracts",
   "type": "module",
   "main": "./dist/index.js",
