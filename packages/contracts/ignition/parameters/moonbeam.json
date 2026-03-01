@@ -1,0 +1,7 @@
+{
+  "$global": {
+    "useMockEAS": true,
+    "useMockOracle": false,
+    "chainlinkEthUsd": "0x4497B606be93e773bbA5eaCFCb2ac5E2214220Eb"
+  }
+}

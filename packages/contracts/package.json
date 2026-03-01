@@ -3,11 +3,21 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "deploy:local": "bun hardhat ignition deploy ignition/modules/PayID.ts --network localhost",
-    "deploy:sepolia:lisk": "bun hardhat ignition deploy ignition/modules/PayID.ts --network liskSepolia --deployment-id lisk-sepolia-v1",
     "hardhat:compile": "bun hardhat compile",
     "hardhat:run": "bun hardhat node",
-    "hardhat:clean": "bun hardhat clean"
+    "hardhat:clean": "bun hardhat clean",
+    "deploy:local": "bun hardhat ignition deploy ignition/modules/PayID.ts --network localhost",
+    "deploy:lisk-sepolia": "bun hardhat ignition deploy ignition/modules/PayID.ts --network liskSepolia    --parameters ignition/parameters/liskSepolia.json    --deployment-id lisk-sepolia-v1",
+    "deploy:monad": "bun hardhat ignition deploy ignition/modules/PayID.ts --network monadTestnet   --parameters ignition/parameters/monadTestnet.json    --deployment-id monad-testnet-v1",
+    "deploy:polygon-amoy": "bun hardhat ignition deploy ignition/modules/PayID.ts --network polygonAmoy    --parameters ignition/parameters/polygonAmoy.json     --deployment-id polygon-amoy-v1",
+    "deploy:sepolia": "bun hardhat ignition deploy ignition/modules/PayID.ts --network sepolia        --parameters ignition/parameters/sepolia.json         --deployment-id sepolia-v1",
+    "deploy:base-sepolia": "bun hardhat ignition deploy ignition/modules/PayID.ts --network baseSepolia    --parameters ignition/parameters/baseSepolia.json     --deployment-id base-sepolia-v1",
+    "deploy:moonbase": "bun hardhat ignition deploy ignition/modules/PayID.ts --network moonbaseAlpha  --parameters ignition/parameters/moonbaseAlpha.json   --deployment-id moonbase-alpha-v1",
+    "deploy:polygon": "bun hardhat ignition deploy ignition/modules/PayID.ts --network polygon   --parameters ignition/parameters/polygon.json   --deployment-id polygon-v1",
+    "deploy:base": "bun hardhat ignition deploy ignition/modules/PayID.ts --network base      --parameters ignition/parameters/base.json       --deployment-id base-v1",
+    "deploy:moonbeam": "bun hardhat ignition deploy ignition/modules/PayID.ts --network moonbeam  --parameters ignition/parameters/moonbeam.json   --deployment-id moonbeam-v1",
+    "deploy:moonriver": "bun hardhat ignition deploy ignition/modules/PayID.ts --network moonriver --parameters ignition/parameters/moonriver.json  --deployment-id moonriver-v1",
+    "deploy:all-testnet": "bun run deploy:lisk-sepolia && bun run deploy:monad && bun run deploy:polygon-amoy && bun run deploy:sepolia && bun run deploy:base-sepolia && bun run deploy:moonbase"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.6",

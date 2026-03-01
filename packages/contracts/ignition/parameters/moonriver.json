@@ -1,0 +1,6 @@
+{
+  "$global": {
+    "useMockEAS": true,
+    "useMockOracle": true
+  }
+}
