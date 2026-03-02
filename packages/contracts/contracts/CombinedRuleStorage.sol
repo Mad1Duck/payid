@@ -216,12 +216,14 @@ contract CombinedRuleStorage {
         if (legacy) {
             bytes32 prev = activeRuleOf[msg.sender];
             if (prev != bytes32(0)) {
+                _unlock(prev);
                 rules[prev].active = false;
                 emit CombinedRuleDeactivated(prev);
             }
         } else {
             bytes32 prev = activeRuleOfByDirection[msg.sender][direction];
             if (prev != bytes32(0)) {
+                _unlock(prev);
                 rules[prev].active = false;
                 emit CombinedRuleDeactivated(prev);
             }

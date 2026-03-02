@@ -8,7 +8,7 @@ import {
 } from 'wagmi';
 import { createPayID } from 'payid/client';
 import type { Address, Hash, Abi } from 'viem';
-import { BrowserProvider, recoverAddress } from 'ethers';
+import { BrowserProvider } from 'ethers';
 
 import { usePayIDContext } from '../PayIDProvider';
 
@@ -51,46 +51,7 @@ const ERC20_ABI = [
   },
 ] as const;
 
-const EIP712_DEBUG_ABI = [
-  {
-    name: 'eip712Domain',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [
-      { name: 'fields', type: 'bytes1' },
-      { name: 'name', type: 'string' },
-      { name: 'version', type: 'string' },
-      { name: 'chainId', type: 'uint256' },
-      { name: 'verifyingContract', type: 'address' },
-      { name: 'salt', type: 'bytes32' },
-      { name: 'extensions', type: 'uint256[]' },
-    ],
-  },
-  {
-    name: 'hashDecision',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{
-      name: 'd', type: 'tuple', components: [
-        { name: 'version', type: 'bytes32' },
-        { name: 'payId', type: 'bytes32' },
-        { name: 'payer', type: 'address' },
-        { name: 'receiver', type: 'address' },
-        { name: 'asset', type: 'address' },
-        { name: 'amount', type: 'uint256' },
-        { name: 'contextHash', type: 'bytes32' },
-        { name: 'ruleSetHash', type: 'bytes32' },
-        { name: 'ruleAuthority', type: 'address' },
-        { name: 'issuedAt', type: 'uint64' },
-        { name: 'expiresAt', type: 'uint64' },
-        { name: 'nonce', type: 'bytes32' },
-        { name: 'requiresAttestation', type: 'bool' },
-      ],
-    }],
-    outputs: [{ type: 'bytes32' }],
-  },
-] as const;
+
 
 const ETH_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
 
@@ -186,16 +147,17 @@ async function loadRuleConfigs(
 
       const metadata: any = await res.json();
       log('loadRuleConfigs', `[${i}] metadata keys`, Object.keys(metadata));
+      log('loadRuleConfigs', `[${i}] metadata.rule (raw from IPFS)`, metadata.rule);
 
       if (!metadata.rule) {
         throw new Error(`Missing 'rule' in metadata for tokenId ${tokenId} (${url})`);
       }
 
-      log('loadRuleConfigs', `[${i}] metadata.rule`, metadata.rule);
       return metadata.rule;
     }),
   );
 }
+
 
 // Hook
 
@@ -267,10 +229,10 @@ export function usePayIDFlow(): PayIDFlowResult {
         });
         if (result) {
           activeHash = result as Hash;
-          log('step-1', 'CombinedRuleStorage activeHash', activeHash);
+          log('step-1', 'activeHash on-chain (ruleSetHash tersimpan)', activeHash);
         }
       } catch (e) {
-        warn('step-1', 'getActiveRuleOf failed (no active rule or revert)', e);
+        warn('step-1', 'getActiveRuleOf failed (receiver belum register rule atau NO_ACTIVE_RULE)', e);
       }
 
       if (activeHash) {
@@ -285,39 +247,40 @@ export function usePayIDFlow(): PayIDFlowResult {
           ruleRefs = ruleData[1];
           activeVersion = ruleData[2];
 
-          log('step-1', 'ruleRefs', ruleRefs.map(r => ({
+          log('step-1', 'ruleRefs dari on-chain', ruleRefs.map(r => ({
             ruleNFT: r.ruleNFT,
             tokenId: r.tokenId.toString(),
           })));
-          log('step-1', 'activeVersion', activeVersion.toString());
+          log('step-1', 'activeVersion dari on-chain (bigint)', activeVersion.toString());
+          log('step-1', 'activeVersion sebagai string (untuk hash)', String(activeVersion));
         } catch (e) {
           warn('step-1', 'getRuleByHash failed', e);
         }
-      }
-
-      if (!activeHash) {
+      } else {
         log('step-1', 'no active rule found → will use allow-all policy');
       }
 
-      // Step 2: fetch rule configs from IPFS
       log('step-2', 'loading rule configs from IPFS', { ruleRefsCount: ruleRefs.length, ipfsGateway });
 
       let authorityRule: any;
 
       if (ruleRefs.length > 0) {
         const ruleConfigs = await loadRuleConfigs(ruleRefs, publicClient, ipfsGateway);
+
         authorityRule = {
-          version: Number(activeVersion),
+          version: String(activeVersion),
           logic: 'AND' as const,
           rules: ruleConfigs,
         };
+
         log('step-2', 'authorityRule built', authorityRule);
+        log('step-2', '[DEBUG] activeHash on-chain ', activeHash);
+        log('step-2', '[DEBUG] expected: proof.ruleSetHash == activeHash jika hash konsisten');
       } else {
         authorityRule = { logic: 'AND' as const, rules: [] };
         log('step-2', 'no ruleRefs — using allow-all policy');
       }
 
-      // Step 3: get signer + detect chainId dari MetaMask langsung
       setStatus('evaluating');
 
       const ethereum = (globalThis as any).ethereum;
@@ -326,16 +289,15 @@ export function usePayIDFlow(): PayIDFlowResult {
       const provider = new BrowserProvider(ethereum);
       const signer = await provider.getSigner();
 
-      // wagmi chainId bisa berbeda kalau MetaMask belum switch network
       const signerNetwork = await provider.getNetwork();
       const signerChainId = Number(signerNetwork.chainId);
 
       log('step-3', 'signer address', await signer.getAddress());
       log('step-3', 'wagmi chainId', chainId);
-      log('step-3', 'signer chainId', signerChainId);
+      log('step-3', 'signer chainId (dari MetaMask)', signerChainId);
 
       if (signerChainId !== chainId) {
-        warn('step-3', `chainId mismatch: MetaMask=${signerChainId}, wagmi=${chainId}`);
+        warn('step-3', `⚠️ chainId MISMATCH: MetaMask=${signerChainId}, wagmi=${chainId} → domain separator akan salah!`);
       }
 
       const context = {
@@ -344,7 +306,7 @@ export function usePayIDFlow(): PayIDFlowResult {
           receiver: params.receiver,
           asset: params.asset,
           amount: params.amount.toString(),
-          chainId: signerChainId,  // ✅ pakai chainId dari signer
+          chainId: signerChainId,
         },
         env: { timestamp: Math.floor(Date.now() / 1000) },
         state: {
@@ -356,7 +318,6 @@ export function usePayIDFlow(): PayIDFlowResult {
 
       log('step-3', 'evaluation context', context);
 
-      // Step 4: evaluate + prove
       setStatus('proving');
       log('step-4', 'calling sdk.evaluateAndProve', {
         payId: params.payId,
@@ -378,225 +339,20 @@ export function usePayIDFlow(): PayIDFlowResult {
         signer,
         verifyingContract: contracts.payIDVerifier,
         ruleAuthority: activeHash ? ruleAuthorityAddr : ETH_ADDRESS,
+        ruleSetHashOverride: activeHash ?? undefined,
         chainId: signerChainId,
         blockTimestamp: Math.floor(Date.now() / 1000),
       });
 
       log('step-4', 'sdk result', { decision: result.decision, reason: (result as any).reason });
-      log('step-4', 'proof', proof ? { hasPayload: !!proof.payload, hasSignature: !!proof.signature } : null);
 
-      // DEBUG: verify signature sebelum submit
-      const [domain, contractHash] = await Promise.all([
-        publicClient.readContract({
-          address: contracts.payIDVerifier,
-          abi: EIP712_DEBUG_ABI,
-          functionName: 'eip712Domain',
-        }),
-        publicClient.readContract({
-          address: contracts.payIDVerifier,
-          abi: EIP712_DEBUG_ABI,
-          functionName: 'hashDecision',
-          args: [proof!.payload as any],
-        }),
-      ]);
+      if (proof) {
+        log('step-4', 'proof.payload.ruleSetHash (dari SDK)', proof.payload.ruleSetHash);
+        log('step-4', 'activeHash on-chain               ', activeHash);
+        log('step-4', '[CHECK] ruleSetHash match?', proof.payload.ruleSetHash === activeHash);
 
-      const recovered = recoverAddress(contractHash, proof!.signature);
-      const signerMatch = recovered.toLowerCase() === payer?.toLowerCase();
 
-      console.log('[DEBUG:domain] contract:', {
-        name: domain[1], version: domain[2],
-        chainId: domain[3].toString(), verifyingContract: domain[4],
-      });
-      console.log('[DEBUG:domain] signerChainId:', signerChainId, '| contract chainId:', domain[3].toString());
-      console.log('[DEBUG:domain] chainId match:', signerChainId === Number(domain[3]));
-      console.log('[DEBUG:domain] recovered:', recovered);
-      console.log('[DEBUG:domain] payer:    ', payer);
-      console.log('[DEBUG:domain] signer match:', signerMatch);
-
-      const REQUIRE_ALLOWED_DEBUG_ABI = [
-        {
-          name: 'trustedAuthorities',
-          type: 'function',
-          stateMutability: 'view',
-          inputs: [{ name: '', type: 'address' }],
-          outputs: [{ type: 'bool' }],
-        },
-        {
-          name: 'getRuleByHash',
-          type: 'function',
-          stateMutability: 'view',
-          inputs: [{ name: 'ruleSetHash', type: 'bytes32' }],
-          outputs: [
-            { name: 'owner', type: 'address' },
-            {
-              name: 'ruleRefs', type: 'tuple[]', components: [
-                { name: 'ruleNFT', type: 'address' },
-                { name: 'tokenId', type: 'uint256' },
-              ]
-            },
-            { name: 'version', type: 'uint64' },
-          ],
-        },
-        {
-          name: 'ruleExpiry',
-          type: 'function',
-          stateMutability: 'view',
-          inputs: [{ name: 'tokenId', type: 'uint256' }],
-          outputs: [{ type: 'uint256' }],
-        },
-        {
-          name: 'ownerOf',
-          type: 'function',
-          stateMutability: 'view',
-          inputs: [{ name: 'tokenId', type: 'uint256' }],
-          outputs: [{ type: 'address' }],
-        },
-      ] as const;
-
-      const isTrusted = await publicClient.readContract({
-        address: contracts.payIDVerifier,
-        abi: REQUIRE_ALLOWED_DEBUG_ABI,
-        functionName: 'trustedAuthorities',
-        args: [ruleAuthorityAddr],
-      });
-      console.log('[DEBUG:require] 1. isTrusted:', isTrusted);
-
-      const [ruleOwner, ruleRefsOnChain] = await publicClient.readContract({
-        address: contracts.combinedRuleStorage,
-        abi: REQUIRE_ALLOWED_DEBUG_ABI,
-        functionName: 'getRuleByHash',
-        args: [proof!.payload.ruleSetHash as `0x${string}`],
-      }) as [string, Array<{ ruleNFT: string, tokenId: bigint; }>, bigint];
-      console.log('[DEBUG:require] 2. ruleOwner:  ', ruleOwner);
-      console.log('[DEBUG:require] 2. receiver:   ', params.receiver);
-      console.log('[DEBUG:require] 2. owner==recv:', ruleOwner.toLowerCase() === params.receiver.toLowerCase());
-
-      for (const ref of ruleRefsOnChain) {
-        const [expiry, nftOwner] = await Promise.all([
-          publicClient.readContract({
-            address: ref.ruleNFT as Address,
-            abi: REQUIRE_ALLOWED_DEBUG_ABI,
-            functionName: 'ruleExpiry',
-            args: [ref.tokenId],
-          }) as Promise<bigint>,
-          publicClient.readContract({
-            address: ref.ruleNFT as Address,
-            abi: REQUIRE_ALLOWED_DEBUG_ABI,
-            functionName: 'ownerOf',
-            args: [ref.tokenId],
-          }) as Promise<string>,
-        ]);
-        const now = BigInt(Math.floor(Date.now() / 1000));
-        console.log(`[DEBUG:require] 3. tokenId ${ref.tokenId} expiry:`, expiry.toString(), '| now:', now.toString(), '| expired:', expiry < now);
-        console.log(`[DEBUG:require] 4. tokenId ${ref.tokenId} ownerOf:`, nftOwner, '| ruleOwner:', ruleOwner, '| match:', nftOwner.toLowerCase() === ruleOwner.toLowerCase());
       }
-
-      // Tambah ini setelah [DEBUG:domain] signer match, sebelum setDecision
-      // Cek semua require di requireAllowed secara langsung
-
-      const LICENSE_ABI = [
-        {
-          name: 'ruleExpiry',
-          type: 'function',
-          stateMutability: 'view',
-          inputs: [{ name: 'tokenId', type: 'uint256' }],
-          outputs: [{ type: 'uint256' }],
-        },
-        {
-          name: 'ownerOf',
-          type: 'function',
-          stateMutability: 'view',
-          inputs: [{ name: 'tokenId', type: 'uint256' }],
-          outputs: [{ type: 'address' }],
-        },
-        {
-          name: 'subscriptionExpiry',
-          type: 'function',
-          stateMutability: 'view',
-          inputs: [{ name: 'user', type: 'address' }],
-          outputs: [{ type: 'uint256' }],
-        },
-        {
-          name: 'isSubscribed',
-          type: 'function',
-          stateMutability: 'view',
-          inputs: [{ name: 'user', type: 'address' }],
-          outputs: [{ type: 'bool' }],
-        },
-      ] as const;
-
-      const COMBINED_READ_ABI = [{
-        name: 'getRuleByHash',
-        type: 'function',
-        stateMutability: 'view',
-        inputs: [{ name: 'ruleSetHash', type: 'bytes32' }],
-        outputs: [
-          { name: 'owner', type: 'address' },
-          {
-            name: 'ruleRefs', type: 'tuple[]', components: [
-              { name: 'ruleNFT', type: 'address' },
-              { name: 'tokenId', type: 'uint256' },
-            ]
-          },
-          { name: 'version', type: 'uint64' },
-        ],
-      }] as const;
-
-      const TRUSTED_ABI = [{
-        name: 'trustedAuthorities',
-        type: 'function',
-        stateMutability: 'view',
-        inputs: [{ name: '', type: 'address' }],
-        outputs: [{ type: 'bool' }],
-      }] as const;
-
-      const now = BigInt(Math.floor(Date.now() / 1000));
-
-      console.log('[DEBUG:require] 2. ruleOwner:', ruleOwner);
-      console.log('[DEBUG:require] 2. receiver: ', params.receiver);
-      console.log('[DEBUG:require] 2. match:    ', ruleOwner.toLowerCase() === params.receiver.toLowerCase());
-
-      // Check 3 & 4: expiry dan ownerOf per ruleRef
-      for (const ref of ruleRefsOnChain) {
-        const [expiry, nftOwner, subExpiry, isSubbed] = await Promise.all([
-          publicClient.readContract({
-            address: ref.ruleNFT as Address,
-            abi: LICENSE_ABI,
-            functionName: 'ruleExpiry',
-            args: [ref.tokenId],
-          }) as Promise<bigint>,
-          publicClient.readContract({
-            address: ref.ruleNFT as Address,
-            abi: LICENSE_ABI,
-            functionName: 'ownerOf',
-            args: [ref.tokenId],
-          }) as Promise<string>,
-          publicClient.readContract({
-            address: ref.ruleNFT as Address,
-            abi: LICENSE_ABI,
-            functionName: 'subscriptionExpiry',
-            args: [ruleOwner as Address],
-          }) as Promise<bigint>,
-          publicClient.readContract({
-            address: ref.ruleNFT as Address,
-            abi: LICENSE_ABI,
-            functionName: 'isSubscribed',
-            args: [ruleOwner as Address],
-          }) as Promise<boolean>,
-        ]);
-
-        console.log(`[DEBUG:require] 3. tokenId ${ref.tokenId}:`);
-        console.log(`   ruleExpiry:        ${expiry.toString()}`);
-        console.log(`   now:               ${now.toString()}`);
-        console.log(`   EXPIRED:           ${expiry < now}  ← kalau true ini penyebabnya`);
-        console.log(`   subscriptionExpiry:${subExpiry.toString()}`);
-        console.log(`   isSubscribed:      ${isSubbed}`);
-        console.log(`[DEBUG:require] 4. ownerOf:   ${nftOwner}`);
-        console.log(`   ruleOwner:         ${ruleOwner}`);
-        console.log(`   OWNER_CHANGED:     ${nftOwner.toLowerCase() !== ruleOwner.toLowerCase()}  ← kalau true ini penyebabnya`);
-      }
-      // END DEBUG
-      // END DEBUG
 
       setDecision(result.decision as 'ALLOW' | 'DENY');
 
@@ -610,7 +366,6 @@ export function usePayIDFlow(): PayIDFlowResult {
 
       const isETH = params.asset === ETH_ADDRESS;
 
-      // Step 4.5: ERC20 approve jika bukan ETH
       if (!isETH) {
         log('step-4.5', 'ERC20 detected, checking allowance', {
           token: params.asset,
@@ -650,7 +405,6 @@ export function usePayIDFlow(): PayIDFlowResult {
         }
       }
 
-      // Step 5: submit pay tx
       setStatus('awaiting-wallet');
 
       const d = proof.payload;
@@ -658,9 +412,11 @@ export function usePayIDFlow(): PayIDFlowResult {
 
       log('step-5', 'submitting tx', {
         isETH,
-        token: params.asset,
+        asset: params.asset,
         amount: params.amount.toString(),
         contract: contracts.payWithPayID,
+        ruleSetHash: d.ruleSetHash,
+        ruleAuthority: d.ruleAuthority,
       });
 
       const hash = await writeContractAsync(

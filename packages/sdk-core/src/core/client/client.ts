@@ -15,25 +15,15 @@ function isRuleSource(rule: RuleConfig | RuleSource): rule is RuleSource {
 }
 
 export class PayIDClient {
-  // Preload promise — WASM mulai di-fetch saat createPayID() dipanggil,
-  // bukan saat evaluate() pertama. Hasilnya di-cache di wasm.ts.
   private readonly _ready: Promise<void>;
 
   constructor(
     private readonly debugTrace?: boolean,
     private readonly wasm?: Uint8Array,
   ) {
-    // Kick off WASM load immediately — tidak block constructor
     this._ready = loadWasm(this.wasm).then(() => { }).catch(() => { });
   }
 
-  /**
-   * Tunggu sampai WASM siap. Opsional — evaluate() akan menunggu sendiri,
-   * tapi bisa di-await eksplisit untuk warmup:
-   *
-   *   const client = createPayID();
-   *   await client.ready(); // WASM pasti sudah loaded setelah ini
-   */
   async ready(): Promise<void> {
     return this._ready;
   }
@@ -61,6 +51,7 @@ export class PayIDClient {
     signer: ethers.Signer;
     verifyingContract: string;
     ruleAuthority: string;
+    ruleSetHashOverride?: string;
     ttlSeconds?: number;
     chainId: number;
     blockTimestamp: number;
@@ -103,6 +94,7 @@ export class PayIDClient {
       amount: params.amount,
       context: params.context,
       ruleConfig: authorityConfig,
+      ruleSetHashOverride: params.ruleSetHashOverride,
       signer: params.signer,
       verifyingContract: params.verifyingContract,
       ruleAuthority: params.ruleAuthority,

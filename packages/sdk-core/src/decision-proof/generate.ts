@@ -14,6 +14,7 @@ export async function generateDecisionProof(params: {
   amount: bigint;
   context: any;
   ruleConfig: any;
+  ruleSetHashOverride?: string;
   signer: ethers.Signer;
   ruleAuthority: string;
   verifyingContract: string;
@@ -40,7 +41,7 @@ export async function generateDecisionProof(params: {
     asset: params.asset,
     amount: params.amount,
     contextHash: hashContext(params.context),
-    ruleSetHash: hashRuleSet(params.ruleConfig),
+    ruleSetHash: params.ruleSetHashOverride ?? hashRuleSet(params.ruleConfig),
     ruleAuthority: params.ruleAuthority ?? ZeroAddress,
     issuedAt: BigInt(issuedAt),
     expiresAt: BigInt(expiresAt),

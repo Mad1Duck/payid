@@ -98,7 +98,7 @@ async function debugDomain(verifierContract: ethers.Contract) {
 async function main() {
   const RECEIVER = reciverAddress;
   // const AMOUNT = 150_000_000n;
-  const AMOUNT = 6_000_000n;
+  const AMOUNT = 666_000_000n;
 
   // Check RPC chainId
   const network = await provider.getNetwork();
@@ -176,6 +176,7 @@ async function main() {
     ttlSeconds: 300,
     verifyingContract: PAYID_VERIFIER,
     ruleAuthority: COMBINED_RULE_STORAGE,
+    ruleSetHashOverride: activeRuleSet.ruleSetHash,
     chainId: contractDomain.chainId,
     blockTimestamp: blockTs
   });
@@ -185,14 +186,25 @@ async function main() {
   if (!proof) throw new Error(`PAY.ID rejected: ${result.reason ?? result.code}`);
   console.log("  ✅ Proof generated");
 
+  // DEBUG: bandingkan ruleSetHash
+  console.log("\n[DEBUG] ruleSetHash comparison:");
+  console.log("  activeRuleSet.ruleSetHash (on-chain):", activeRuleSet.ruleSetHash);
+  console.log("  proof.payload.ruleSetHash (SDK)     :", proof.payload.ruleSetHash);
+  console.log("  MATCH?", activeRuleSet.ruleSetHash.toLowerCase() === proof.payload.ruleSetHash.toLowerCase());
+
   console.log("\n[4/5] Checking USDC allowance...");
   const usdc = new ethers.Contract(USDC, usdcAbi.abi, payerWallet);
   const allowance: bigint = await usdc.getFunction("allowance")(payerWallet.address, PAY_CONTRACT);
+  const payerBalance: bigint = await usdc.getFunction("balanceOf")(payerWallet.address);
+  console.log("  payer balance :", payerBalance.toString(), "| AMOUNT:", AMOUNT.toString());
+  console.log("  allowance     :", allowance.toString(), "| PAY_CONTRACT:", PAY_CONTRACT);
+  console.log("  balance OK?   ", payerBalance >= AMOUNT);
   if (allowance < AMOUNT) {
     console.log("  Approving USDC...");
     const approveTx = await usdc.getFunction("approve").send(PAY_CONTRACT, AMOUNT);
     await approveTx.wait();
-    console.log("  ✅ Approved");
+    const newAllowance: bigint = await usdc.getFunction("allowance")(payerWallet.address, PAY_CONTRACT);
+    console.log("  ✅ Approved — new allowance:", newAllowance.toString());
   } else {
     console.log("  Allowance sufficient, skip");
   }
@@ -256,7 +268,20 @@ async function main() {
     throw new Error("verifyDecision returned false — cek domain debug di atas");
   }
 
+  // DEBUG: staticCall dulu untuk dapat revert reason yang jelas
   const payContract = new ethers.Contract(PAY_CONTRACT, PayWithPayIDAbi.abi, payerWallet);
+  try {
+    await payContract.getFunction("payERC20").staticCall(
+      proof.payload,
+      proof.signature,
+      []
+    );
+    console.log("  ✅ staticCall simulation passed");
+  } catch (simErr: any) {
+    console.error("  ❌ staticCall REVERT reason:", simErr?.revert?.args ?? simErr?.reason ?? simErr?.message);
+    throw new Error("Simulation failed: " + (simErr?.revert?.args ?? simErr?.reason ?? simErr?.message));
+  }
+
   const tx = await payContract.getFunction("payERC20").send(
     proof.payload,
     proof.signature,

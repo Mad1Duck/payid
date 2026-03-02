@@ -81,12 +81,12 @@ if (rootElement && !rootElement.innerHTML) {
           <PayIDProvider
             contracts={{
               31337: {
-                ruleAuthority: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
-                ruleItemERC721: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
+                ruleAuthority: '0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB',
+                ruleItemERC721: '0x9E545E3C0baAB3E08CdfD552C960A1050f373042',
                 combinedRuleStorage:
-                  '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
-                payIDVerifier: '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707',
-                payWithPayID: '0x0165878A594ca255338adfa4d48449f69242Eb8F',
+                  '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F',
+                payIDVerifier: '0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E',
+                payWithPayID: '0xc3e53F4d16Ae77Db1c982e75a937B9f60FE63690',
               },
             }}
           >

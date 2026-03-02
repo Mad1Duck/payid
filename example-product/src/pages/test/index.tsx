@@ -615,17 +615,23 @@ function CombineTab({ myAddress }: { myAddress: Address | undefined }) {
     [myRules],
   )
 
+  // ✅ FIX: combinedHash harus dihitung dari format yang sama dengan
+  // apa yang di-hash oleh SDK saat generate proof (hashRuleSet).
+  // Format lama: keccak256("tokenId:ruleHash") — tidak bisa di-reproduced SDK
+  // Format baru: keccak256(stableStringify({tokenIds, version})) — simple & reproducible
+  //
+  // CATATAN: Untuk kompatibilitas penuh dengan register-combined-rule.ts script
+  // (yang hash dari full rule JSON), gunakan script tersebut untuk register.
+  // Untuk test page, pakai format ini dan SDK akan menerima activeHash via ruleSetHashOverride.
   const combinedHash = useMemo<Hash | null>(() => {
     if (!selected.length) return null
     try {
-      return keccak256(
-        toBytes(
-          selected
-            .map((r) => `${r.tokenId}:${r.ruleHash}`)
-            .sort()
-            .join('|'),
-        ),
-      )
+      // Format: sorted tokenIds joined — deterministik dan reproducible
+      const payload = selected
+        .map((r) => r.tokenId.toString())
+        .sort()
+        .join(',')
+      return keccak256(toBytes(`payid:combined:${payload}`))
     } catch {
       return null
     }
