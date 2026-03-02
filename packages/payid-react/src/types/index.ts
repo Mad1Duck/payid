@@ -1,7 +1,5 @@
 import type { Address, Hash } from 'viem';
 
-// Contract Addresses
-
 export interface PayIDContracts {
   ruleAuthority: Address;
   ruleItemERC721: Address;
@@ -9,8 +7,6 @@ export interface PayIDContracts {
   payIDVerifier: Address;
   payWithPayID: Address;
 }
-
-// RuleAuthority types
 
 export interface RuleRef {
   ruleNFT: Address;
@@ -26,8 +22,6 @@ export interface RuleSet {
   refCount: bigint;
   ruleRefs: RuleRef[];
 }
-
-// RuleItemERC721 types
 
 export interface RuleDefinition {
   ruleId: bigint;
@@ -49,8 +43,6 @@ export interface SubscriptionInfo {
   maxSlots: number;       // 1 tanpa sub, 3 dengan sub
 }
 
-// CombinedRuleStorage types
-
 export enum RuleDirection {
   INBOUND = 0,
   OUTBOUND = 1,
@@ -64,8 +56,6 @@ export interface CombinedRule {
   ruleRefs: RuleRef[];
   direction?: RuleDirection;
 }
-
-// Context (PAY.ID SDK)
 
 export interface PayIDContext {
   provider: object;  // injected wagmi/viem provider

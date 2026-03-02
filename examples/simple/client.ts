@@ -1,10 +1,4 @@
-/**
- * CLIENT EXAMPLE — Fully Serverless Payer Flow
- */
-
 import { ethers } from "ethers";
-import fs from "fs";
-import path from "path";
 import { createPayID } from "payid/client";
 import { envData } from "../config/config";
 import PayWithPayIDAbi from "../shared/PayIDModule#PayWithPayID.json";
@@ -71,7 +65,6 @@ async function loadRuleConfigs(rules: { ruleNFT: string; tokenId: string; }[]) {
   );
 }
 
-// Debug helper: print full EIP-712 domain dari contract 
 async function debugDomain(verifierContract: ethers.Contract) {
   try {
     const d = await verifierContract.getFunction("eip712Domain")();
@@ -100,7 +93,6 @@ async function main() {
   // const AMOUNT = 150_000_000n;
   const AMOUNT = 666_000_000n;
 
-  // Check RPC chainId
   const network = await provider.getNetwork();
   console.log("RPC chainId:", network.chainId.toString());
 
@@ -151,7 +143,6 @@ async function main() {
   //   authorityRule
   // );
   // console.log("[DEBUG] WASM result:", testResult);
-  console.log(authorityRule, "=====authorityRule=====");
 
   // Get actual domain from contract BEFORE signing 
   console.log("\n[DEBUG] Using domain for signing:", contractDomain);
@@ -186,7 +177,6 @@ async function main() {
   if (!proof) throw new Error(`PAY.ID rejected: ${result.reason ?? result.code}`);
   console.log("  ✅ Proof generated");
 
-  // DEBUG: bandingkan ruleSetHash
   console.log("\n[DEBUG] ruleSetHash comparison:");
   console.log("  activeRuleSet.ruleSetHash (on-chain):", activeRuleSet.ruleSetHash);
   console.log("  proof.payload.ruleSetHash (SDK)     :", proof.payload.ruleSetHash);
@@ -211,7 +201,6 @@ async function main() {
 
   console.log("\n[5/5] Sending payERC20...");
 
-  // DEBUG: compare contract hash vs SDK hash 
   const contractHash = await verifierContract.getFunction("hashDecision")(proof.payload);
   console.log("\n[DEBUG] Hash comparison:");
   console.log("  contractHash :", contractHash);
@@ -268,7 +257,6 @@ async function main() {
     throw new Error("verifyDecision returned false — cek domain debug di atas");
   }
 
-  // DEBUG: staticCall dulu untuk dapat revert reason yang jelas
   const payContract = new ethers.Contract(PAY_CONTRACT, PayWithPayIDAbi.abi, payerWallet);
   try {
     await payContract.getFunction("payERC20").staticCall(
