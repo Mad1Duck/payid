@@ -1,13 +1,21 @@
 {
   "name": "payid-attestation",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "private": false,
   "type": "module",
+  "main": "./dist/verify.js",
+  "types": "./dist/verify.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/verify.js",
+      "types": "./dist/verify.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/verify.ts --format esm --dts --clean"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"

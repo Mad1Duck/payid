@@ -1,58 +1,57 @@
 {
   "name": "payid",
-  "version": "0.5.3",
+  "version": "0.5.7",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",
-  "types": "./dist/types.d.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./sessionPolicy": {
-      "import": "./dist/sessionPolicy/index.js",
-      "types": "./dist/sessionPolicy/index.d.ts"
+      "types": "./dist/sessionPolicy/index.d.ts",
+      "import": "./dist/sessionPolicy/index.js"
     },
     "./rule": {
-      "import": "./dist/rule/index.js",
-      "types": "./dist/rule/index.d.ts"
+      "types": "./dist/rule/index.d.ts",
+      "import": "./dist/rule/index.js"
     },
     "./issuer": {
-      "import": "./dist/issuer/index.js",
-      "types": "./dist/issuer/index.d.ts"
+      "types": "./dist/issuer/index.d.ts",
+      "import": "./dist/issuer/index.js"
     },
     "./context": {
-      "import": "./dist/context/index.js",
-      "types": "./dist/context/index.d.ts"
+      "types": "./dist/context/index.d.ts",
+      "import": "./dist/context/index.js"
     },
     "./client": {
-      "import": "./dist/core/client/index.js",
-      "types": "./dist/core/client/index.d.ts"
+      "types": "./dist/core/client/index.d.ts",
+      "import": "./dist/core/client/index.js"
     },
     "./server": {
-      "import": "./dist/core/server/index.js",
-      "types": "./dist/core/server/index.d.ts"
+      "types": "./dist/core/server/index.d.ts",
+      "import": "./dist/core/server/index.js"
     }
-  },
-  "dependencies": {
-    "ethers": "^6.16.0",
-    "payid-rule-engine": "^0.3.1",
-    "payid-types": "^0.2.0"
   },
   "files": [
     "dist"
   ],
+  "dependencies": {
+    "ethers": "^6.16.0",
+    "payid-rule-engine": "^0.3.3",
+    "payid-types": "^0.2.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean",
-    "build2": "tsup src/index.ts src/sessionPolicy/index.ts src/rule/index.ts src/issuer/index.ts src/context/index.ts src/core/client/index.ts src/core/server/index.ts --format esm --dts --clean"
+    "build": "tsup"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "tsup": "^8.5.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5.9.3"
   },
   "description": "pay-policy",
   "repository": {
