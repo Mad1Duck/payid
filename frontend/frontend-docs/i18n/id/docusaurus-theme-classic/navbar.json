@@ -1,0 +1,18 @@
+{
+  "title": {
+    "message": "PAY.ID",
+    "description": "The title in the navbar"
+  },
+  "item.label.Docs": {
+    "message": "Docs",
+    "description": "Navbar item with label Docs"
+  },
+  "item.label.Playground": {
+    "message": "Mulai Cepat",
+    "description": "Navbar item with label Playground"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  }
+}

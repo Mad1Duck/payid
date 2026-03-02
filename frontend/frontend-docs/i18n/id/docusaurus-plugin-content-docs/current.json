@@ -1,0 +1,26 @@
+{
+  "sidebar.tutorialSidebar.category.Getting Started": {
+    "message": "Mulai",
+    "description": "The label for category Getting Started"
+  },
+  "sidebar.tutorialSidebar.category.Core Concepts": {
+    "message": "Konsep Dasar",
+    "description": "The label for category Core Concepts"
+  },
+  "sidebar.tutorialSidebar.category.Rules": {
+    "message": "Rules",
+    "description": "The label for category Rules"
+  },
+  "sidebar.tutorialSidebar.category.Examples": {
+    "message": "Contoh",
+    "description": "The label for category Examples"
+  },
+  "sidebar.tutorialSidebar.category.Integration": {
+    "message": "Integrasi",
+    "description": "The label for category Integration"
+  },
+  "sidebar.tutorialSidebar.category.Reference": {
+    "message": "Referensi",
+    "description": "The label for category Reference"
+  }
+}

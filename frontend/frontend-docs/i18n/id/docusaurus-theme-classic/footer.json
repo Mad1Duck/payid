@@ -1,0 +1,50 @@
+{
+  "link.title.Docs": {
+    "message": "Dokumentasi",
+    "description": "Footer docs section"
+  },
+  "link.title.Examples": {
+    "message": "Contoh",
+    "description": "Footer examples section"
+  },
+  "link.title.Reference": {
+    "message": "Referensi",
+    "description": "Footer reference section"
+  },
+  "link.item.label.Introduction": {
+    "message": "Pengenalan",
+    "description": "Footer link Introduction"
+  },
+  "link.item.label.Quick Start": {
+    "message": "Mulai Cepat",
+    "description": "Footer link Quick Start"
+  },
+  "link.item.label.Core Concepts": {
+    "message": "Konsep Dasar",
+    "description": "Footer link Core Concepts"
+  },
+  "link.item.label.Client Flow": {
+    "message": "Flow Client",
+    "description": "Footer link Client Flow"
+  },
+  "link.item.label.Server Flow": {
+    "message": "Flow Server",
+    "description": "Footer link Server Flow"
+  },
+  "link.item.label.React Integration": {
+    "message": "Integrasi React",
+    "description": "Footer link React Integration"
+  },
+  "link.item.label.SDK Reference": {
+    "message": "Referensi SDK",
+    "description": "Footer link SDK Reference"
+  },
+  "link.item.label.Contract Addresses": {
+    "message": "Alamat Contract",
+    "description": "Footer link Contract Addresses"
+  },
+  "link.item.label.Smart Contracts": {
+    "message": "Smart Contracts",
+    "description": "Footer link Smart Contracts"
+  }
+}
