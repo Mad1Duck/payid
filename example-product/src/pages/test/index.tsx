@@ -22,7 +22,7 @@ import {
   usePayIDFlow,
   useRules,
   useSubscription,
-} from '../../../../payId-sdk/packages/payid-react/dist'
+} from 'payid-react'
 import { CREATE_RULE_CSS, CreateRuleTab } from './CreateRuleTab'
 import { RuleNFTCard } from './RuleNFTCard'
 import type { Address, Hash, WriteContractParameters } from 'viem'
@@ -33,7 +33,7 @@ import type {
   PayIDFlowStatus,
   RuleDefinition,
   RuleRef,
-} from '../../../../payId-sdk/packages/payid-react/dist'
+} from 'payid-react'
 import type { Connector } from 'wagmi'
 
 const CSS = `

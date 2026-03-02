@@ -490,6 +490,112 @@ export function usePayIDFlow(): PayIDFlowResult {
         console.log(`[DEBUG:require] 3. tokenId ${ref.tokenId} expiry:`, expiry.toString(), '| now:', now.toString(), '| expired:', expiry < now);
         console.log(`[DEBUG:require] 4. tokenId ${ref.tokenId} ownerOf:`, nftOwner, '| ruleOwner:', ruleOwner, '| match:', nftOwner.toLowerCase() === ruleOwner.toLowerCase());
       }
+
+      // Tambah ini setelah [DEBUG:domain] signer match, sebelum setDecision
+      // Cek semua require di requireAllowed secara langsung
+
+      const LICENSE_ABI = [
+        {
+          name: 'ruleExpiry',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [{ name: 'tokenId', type: 'uint256' }],
+          outputs: [{ type: 'uint256' }],
+        },
+        {
+          name: 'ownerOf',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [{ name: 'tokenId', type: 'uint256' }],
+          outputs: [{ type: 'address' }],
+        },
+        {
+          name: 'subscriptionExpiry',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [{ name: 'user', type: 'address' }],
+          outputs: [{ type: 'uint256' }],
+        },
+        {
+          name: 'isSubscribed',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [{ name: 'user', type: 'address' }],
+          outputs: [{ type: 'bool' }],
+        },
+      ] as const;
+
+      const COMBINED_READ_ABI = [{
+        name: 'getRuleByHash',
+        type: 'function',
+        stateMutability: 'view',
+        inputs: [{ name: 'ruleSetHash', type: 'bytes32' }],
+        outputs: [
+          { name: 'owner', type: 'address' },
+          {
+            name: 'ruleRefs', type: 'tuple[]', components: [
+              { name: 'ruleNFT', type: 'address' },
+              { name: 'tokenId', type: 'uint256' },
+            ]
+          },
+          { name: 'version', type: 'uint64' },
+        ],
+      }] as const;
+
+      const TRUSTED_ABI = [{
+        name: 'trustedAuthorities',
+        type: 'function',
+        stateMutability: 'view',
+        inputs: [{ name: '', type: 'address' }],
+        outputs: [{ type: 'bool' }],
+      }] as const;
+
+      const now = BigInt(Math.floor(Date.now() / 1000));
+
+      console.log('[DEBUG:require] 2. ruleOwner:', ruleOwner);
+      console.log('[DEBUG:require] 2. receiver: ', params.receiver);
+      console.log('[DEBUG:require] 2. match:    ', ruleOwner.toLowerCase() === params.receiver.toLowerCase());
+
+      // Check 3 & 4: expiry dan ownerOf per ruleRef
+      for (const ref of ruleRefsOnChain) {
+        const [expiry, nftOwner, subExpiry, isSubbed] = await Promise.all([
+          publicClient.readContract({
+            address: ref.ruleNFT as Address,
+            abi: LICENSE_ABI,
+            functionName: 'ruleExpiry',
+            args: [ref.tokenId],
+          }) as Promise<bigint>,
+          publicClient.readContract({
+            address: ref.ruleNFT as Address,
+            abi: LICENSE_ABI,
+            functionName: 'ownerOf',
+            args: [ref.tokenId],
+          }) as Promise<string>,
+          publicClient.readContract({
+            address: ref.ruleNFT as Address,
+            abi: LICENSE_ABI,
+            functionName: 'subscriptionExpiry',
+            args: [ruleOwner as Address],
+          }) as Promise<bigint>,
+          publicClient.readContract({
+            address: ref.ruleNFT as Address,
+            abi: LICENSE_ABI,
+            functionName: 'isSubscribed',
+            args: [ruleOwner as Address],
+          }) as Promise<boolean>,
+        ]);
+
+        console.log(`[DEBUG:require] 3. tokenId ${ref.tokenId}:`);
+        console.log(`   ruleExpiry:        ${expiry.toString()}`);
+        console.log(`   now:               ${now.toString()}`);
+        console.log(`   EXPIRED:           ${expiry < now}  ← kalau true ini penyebabnya`);
+        console.log(`   subscriptionExpiry:${subExpiry.toString()}`);
+        console.log(`   isSubscribed:      ${isSubbed}`);
+        console.log(`[DEBUG:require] 4. ownerOf:   ${nftOwner}`);
+        console.log(`   ruleOwner:         ${ruleOwner}`);
+        console.log(`   OWNER_CHANGED:     ${nftOwner.toLowerCase() !== ruleOwner.toLowerCase()}  ← kalau true ini penyebabnya`);
+      }
+      // END DEBUG
       // END DEBUG
 
       setDecision(result.decision as 'ALLOW' | 'DENY');

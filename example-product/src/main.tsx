@@ -9,7 +9,7 @@ import {
 import { WagmiProvider, createConfig, http } from 'wagmi'
 import { hardhat, liskSepolia } from 'wagmi/chains'
 import { injected, metaMask } from 'wagmi/connectors'
-import { PayIDProvider } from '../../payId-sdk/packages/payid-react/dist'
+import { PayIDProvider } from 'payid-react'
 
 // routes
 import HomeRoute from './routes/home/index.tsx'
