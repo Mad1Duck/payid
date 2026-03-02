@@ -6,154 +6,276 @@ sidebar_label: React Integration
 
 # React Integration
 
+PAY.ID provides a dedicated React package — `payid-react` — with hooks and a provider that handle all the complex state management for you.
+
+The full working example is in `example-product/src/pages/test/index.tsx`.
+
+---
+
 ## Install
 
 ```bash
-npm install @payid/sdk-core ethers
+npm install payid-react wagmi viem @tanstack/react-query
+# or
+bun add payid-react wagmi viem @tanstack/react-query
 ```
 
-## Config
+---
 
-```ts
-export const PAYID_CONTRACTS = {
-  CHAIN_ID: 4202,
-  RPC_URL: "https://rpc.sepolia-api.lisk.com",
-  RULE_ITEM_ERC721:      "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
-  COMBINED_RULE_STORAGE: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-  PAYID_VERIFIER:        "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-  PAY_WITH_PAYID:        "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
-  USDC:                  "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-} as const;
-```
+## Setup: Wrap Your App with Providers
 
-## Hook: `usePayID`
-
-The SDK is initialized once, cached at instance level.
-
-```ts
-import { useState, useEffect } from "react";
-import { createPayID } from "payid/client";
-
-export function usePayID() {
-  const [payid, setPayid] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    try { setPayid(createPayID({})); }
-    finally { setLoading(false); }
-  }, []);
-
-  return { payid, loading };
-}
-```
-
-## Hook: `useWallet`
-
-```ts
-import { useState, useCallback } from "react";
-import { BrowserProvider } from "ethers";
-
-export function useWallet() {
-  const [address, setAddress] = useState(null);
-  const [signer, setSigner] = useState(null);
-
-  const connect = useCallback(async () => {
-    const provider = new BrowserProvider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    await provider.send("wallet_switchEthereumChain", [
-      { chainId: `0x${PAYID_CONTRACTS.CHAIN_ID.toString(16)}` }
-    ]);
-    const s = await provider.getSigner();
-    setSigner(s);
-    setAddress(await s.getAddress());
-  }, []);
-
-  return { address, signer, connect };
-}
-```
-
-## Hook: `usePayment`
-
-```ts
-type Step = "idle"|"loading-rules"|"evaluating"|"approving"|"sending"|"done"|"error";
-
-export function usePayment() {
-  const [step, setStep] = useState<Step>("idle");
-  const [txHash, setTxHash] = useState(null);
-  const [error, setError] = useState(null);
-
-  async function pay({ payid, signer, merchantAddress, amountUsdc, payIdName }) {
-    const AMOUNT = BigInt(Math.round(amountUsdc * 1_000_000));
-    const payerAddress = await signer.getAddress();
-    const provider = signer.provider;
-
-    setStep("loading-rules");
-    const [, ruleRefs, version] = await combined.getFunction("getRuleByHash")(
-      await combined.getFunction("activeRuleOf")(merchantAddress)
-    );
-    const ruleConfigs = await Promise.all(ruleRefs.map(fetchRule));
-    const authorityRule = { version: version.toString(), logic: "AND" as const, rules: ruleConfigs };
-
-    setStep("evaluating");
-    const { result, proof } = await payid.evaluateAndProve({
-      context: buildContext(payerAddress, merchantAddress, AMOUNT, payIdName),
-      authorityRule,
-      payId: payIdName, payer: payerAddress, receiver: merchantAddress,
-      asset: PAYID_CONTRACTS.USDC, amount: AMOUNT,
-      signer, ttlSeconds: 300,
-      verifyingContract: PAYID_CONTRACTS.PAYID_VERIFIER,
-      ruleAuthority: PAYID_CONTRACTS.COMBINED_RULE_STORAGE,
-      chainId: PAYID_CONTRACTS.CHAIN_ID,
-    });
-
-    if (!proof) throw new Error(`Rejected: ${result.reason ?? result.code}`);
-
-    setStep("approving");
-    const allowance = await usdc.getFunction("allowance")(payerAddress, PAYID_CONTRACTS.PAY_WITH_PAYID);
-    if (allowance < AMOUNT) await (await usdc.getFunction("approve").send(PAYID_CONTRACTS.PAY_WITH_PAYID, AMOUNT)).wait();
-
-    setStep("sending");
-    const tx = await payContract.getFunction("payERC20").send(proof.payload, proof.signature, []);
-    await tx.wait();
-    setTxHash(tx.hash);
-    setStep("done");
-  }
-
-  return { pay, step, txHash, error };
-}
-```
-
-## Component: PaymentButton
+PAY.ID React works with wagmi. Wrap your app:
 
 ```tsx
-export function PaymentButton({ merchantAddress, amountUsdc, payIdName = "pay.id/merchant", onSuccess }) {
-  const { payid, loading } = usePayID();
-  const { address, signer, connect } = useWallet();
-  const { pay, step, txHash, error } = usePayment();
+// main.tsx
+import { WagmiProvider } from 'wagmi'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { PayIDProvider } from 'payid-react'
+import { wagmiConfig, queryClient } from './config'
 
-  if (!address) return <button onClick={connect}>Connect Wallet</button>;
+export default function App() {
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <PayIDProvider>
+          <YourApp />
+        </PayIDProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  )
+}
+```
 
-  const labels = { idle: `Pay ${amountUsdc} USDC`, "loading-rules": "Loading...",
-    evaluating: "Evaluating...", approving: "Approving...", sending: "Sending...",
-    done: "✅ Done!", error: "Retry" };
+---
+
+## The `usePayIDFlow` Hook — Simplest Way to Pay
+
+`usePayIDFlow` handles the entire payment flow in one hook. It manages loading states, errors, and the multi-step process automatically.
+
+```tsx
+import { usePayIDFlow } from 'payid-react'
+
+function PayButton({ receiver, amount }) {
+  const { execute, status, isPending, error, decision, txHash } = usePayIDFlow()
+
+  const handlePay = () => {
+    execute({
+      receiver: receiver,       // Receiver's wallet address
+      asset: USDC_ADDRESS,     // Token address (or zero address for ETH)
+      amount: BigInt(amount * 1_000_000), // Amount in token units
+      payId: 'pay.id/merchant', // Optional PAY.ID identifier
+    })
+  }
 
   return (
     <div>
-      <button onClick={() => pay({ payid, signer, merchantAddress, amountUsdc, payIdName }).then(h => onSuccess?.(h))}
-        disabled={["loading-rules","evaluating","approving","sending"].includes(step) || loading}>
-        {labels[step]}
+      <button onClick={handlePay} disabled={isPending}>
+        {status === 'idle' && 'Pay Now'}
+        {status === 'fetching-rule' && 'Loading rules...'}
+        {status === 'evaluating' && 'Checking rules...'}
+        {status === 'proving' && 'Generating proof...'}
+        {status === 'approving' && 'Approving token...'}
+        {status === 'awaiting-wallet' && 'Confirm in wallet...'}
+        {status === 'confirming' && 'Confirming...'}
+        {status === 'success' && '✅ Payment sent!'}
+        {status === 'denied' && '❌ Payment denied'}
+        {status === 'error' && 'Retry'}
       </button>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {txHash && <a href={`https://sepolia-blockscout.lisk.com/tx/${txHash}`} target="_blank">View TX →</a>}
+
+      {status === 'denied' && <p>Reason: {denyReason}</p>}
+      {status === 'success' && <a href={`https://sepolia-blockscout.lisk.com/tx/${txHash}`}>View TX →</a>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
     </div>
-  );
+  )
 }
 ```
 
+### Flow Status Values
+
+| Status | What's Happening |
+|---|---|
+| `idle` | Waiting to start |
+| `fetching-rule` | Loading merchant's rules from chain + IPFS |
+| `evaluating` | Running rules through WASM engine |
+| `proving` | Generating EIP-712 proof (wallet signature requested) |
+| `approving` | Waiting for ERC20 approve TX (auto-triggered if needed) |
+| `awaiting-wallet` | Waiting for user to confirm payment in wallet |
+| `confirming` | Transaction submitted, waiting for blockchain confirmation |
+| `success` | Payment confirmed on-chain ✅ |
+| `denied` | Rules rejected the payment ❌ |
+| `error` | Something went wrong 🔴 |
+
+---
+
+## Other Useful Hooks
+
+### `useSubscription(address?)` — Check Subscription Status
+
+```tsx
+import { useSubscription } from 'payid-react'
+
+function SubscriptionStatus() {
+  const { address } = useAccount()
+  const { data: sub } = useSubscription(address)
+
+  return (
+    <div>
+      <p>Status: {sub?.isActive ? 'Active ✅' : 'Inactive ❌'}</p>
+      <p>Slots used: {sub?.logicalRuleCount} / {sub?.maxSlots}</p>
+      <p>Expires: {sub?.expiry ? new Date(Number(sub.expiry) * 1000).toLocaleDateString() : 'N/A'}</p>
+    </div>
+  )
+}
+```
+
+### `useMyRules()` — Fetch Your Rule NFTs
+
+```tsx
+import { useMyRules } from 'payid-react'
+
+function MyRules() {
+  const { data: rules = [], isLoading } = useMyRules()
+
+  if (isLoading) return <div>Loading...</div>
+
+  return (
+    <ul>
+      {rules.map(rule => (
+        <li key={rule.ruleId.toString()}>
+          Rule #{rule.ruleId.toString()} — 
+          {rule.active ? '✅ Active' : '⏳ Not activated'}
+        </li>
+      ))}
+    </ul>
+  )
+}
+```
+
+### `useActiveCombinedRule(address?)` — Read Merchant's Active Policy
+
+```tsx
+import { useActiveCombinedRule } from 'payid-react'
+
+function MerchantPolicy({ merchantAddress }) {
+  const { data: policy } = useActiveCombinedRule(merchantAddress)
+
+  if (!policy) return <p>No active policy — all payments allowed</p>
+
+  return (
+    <div>
+      <p>Policy version: {policy.version.toString()}</p>
+      <p>Number of rules: {policy.ruleRefs.length}</p>
+    </div>
+  )
+}
+```
+
+### `useRules({ creator })` — Filter Rules by Creator
+
+```tsx
+import { useRules } from 'payid-react'
+
+function CreatorRules({ creator }) {
+  const { data: rules = [] } = useRules({ creator })
+  // Returns only rules created by this address
+}
+```
+
+### `useAllCombinedRules()` — List All Registered Policies
+
+```tsx
+import { useAllCombinedRules } from 'payid-react'
+
+function AllPolicies() {
+  const { data: allRules = [] } = useAllCombinedRules()
+  // Returns all CombinedRule objects on-chain
+}
+```
+
+### `usePayIDContext()` — Access Contract Addresses
+
+```tsx
+import { usePayIDContext } from 'payid-react'
+
+function MyComponent() {
+  const { contracts } = usePayIDContext()
+  // contracts.ruleItemERC721
+  // contracts.combinedRuleStorage
+  // contracts.payWithPayId
+  // contracts.payIdVerifier
+}
+```
+
+---
+
+## Full Working Example
+
+The complete implementation is in `example-product/src/pages/test/index.tsx`. It includes:
+
+- **Rule NFTs tab** — view all rules, filter by mine/active, activate rules
+- **Create Rule tab** — build and mint new Rule NFTs from the browser
+- **Combine tab** — select rules and register a combined policy
+- **Subscription tab** — subscribe, check status, extend subscription
+- **Pay tab** — full payment flow using `usePayIDFlow`
+
+### The Pay Tab (TransactTab)
+
+Key parts of the Pay tab from `test/index.tsx`:
+
+```tsx
+function TransactTab({ myAddress }) {
+  const [receiver, setReceiver] = useState('')
+  const [amount, setAmount] = useState('')
+
+  const { execute, reset, status, isPending, error, decision, txHash } = usePayIDFlow()
+
+  const handlePay = () => {
+    execute({
+      receiver: receiver as Address,
+      asset: USDC_ADDRESS,
+      amount: BigInt(Math.round(parseFloat(amount) * 1_000_000)),
+      payId: `pay.id/${receiver.slice(2, 10).toLowerCase()}`,
+    })
+  }
+
+  return (
+    <div>
+      <input placeholder="Receiver address 0x..." value={receiver} onChange={e => setReceiver(e.target.value)} />
+      <input type="number" placeholder="Amount" value={amount} onChange={e => setAmount(e.target.value)} />
+      <button onClick={handlePay} disabled={isPending || !receiver || !amount}>
+        {status === 'idle' ? '→ Execute Payment' : status}
+      </button>
+    </div>
+  )
+}
+```
+
+### The Create Rule Tab
+
+From `test/CreateRuleTab.tsx`, this lets you create Rule NFTs from the browser. It builds the rule JSON and calls:
+
+```tsx
+// From CreateRuleTab.tsx
+const ruleHash = keccak256(toBytes(canonicalize(ruleObject)))
+
+// 1. Subscribe (if not already)
+await tx.send({ functionName: 'subscribe', value: subPrice })
+
+// 2. Create rule on-chain
+await tx.send({ functionName: 'createRule', args: [ruleHash, ipfsUri] })
+
+// 3. Activate (mint NFT)
+await tx.send({ functionName: 'activateRule', args: [ruleId] })
+```
+
+---
+
 ## Tips
 
-**Initialize the SDK once.** Use the `usePayID` hook as a singleton.
+**Initialize PayIDProvider once.** The `<PayIDProvider>` wraps your whole app and manages the SDK lifecycle.
 
-**Never cache a proof.** Generate a new one every time the user wants to pay.
+**Never cache a proof.** `usePayIDFlow` generates a fresh proof every time. Never store and reuse proofs — they expire in 5 minutes.
 
-**Check expiry before fetching.** An expired Rule NFT will revert on-chain — better to detect it early client-side.
+**Check subscription before activating rules.** Use `useSubscription(address)` to verify the user's subscription status before letting them create rules.
+
+**Preview the receiver's policy.** Use `useActiveCombinedRule(receiver)` before payment to show the user what rules will be checked.
