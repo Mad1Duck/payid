@@ -681,4 +681,4 @@ For chains not in the list, pass addresses via `<PayIDProvider contracts={...}>`
 
 ## License
 
-MIT
+-

@@ -3,17 +3,19 @@ import { useChainId } from 'wagmi';
 import type { PayIDContracts } from './types';
 import { PAYID_CONTRACTS } from './contracts/addresses';
 
-// Context
+//  Constants
+export const DEFAULT_IPFS_GATEWAY = 'https://gateway.pinata.cloud/ipfs/';
 
+//  Context
 export interface PayIDContextValue {
   contracts: PayIDContracts;
   chainId: number;
+  ipfsGateway: string;
 }
 
 const PayIDContext = createContext<PayIDContextValue | null>(null);
 
-// Provider
-
+//  Provider
 interface PayIDProviderProps {
   children: ReactNode;
   /**
@@ -32,21 +34,27 @@ interface PayIDProviderProps {
    * }}>
    */
   contracts?: Partial<Record<number, PayIDContracts>>;
+  /**
+   * IPFS gateway URL untuk fetch metadata rule.
+   * Kalau kosong, fallback ke Pinata public gateway.
+   *
+   * @example
+   * <PayIDProvider ipfsGateway="https://ipfs.io/ipfs/">
+   * <PayIDProvider ipfsGateway="https://cloudflare-ipfs.com/ipfs/">
+   * <PayIDProvider> // → pakai https://gateway.pinata.cloud/ipfs/
+   */
+  ipfsGateway?: string;
 }
 
-export function PayIDProvider({ children, contracts: overrides }: PayIDProviderProps) {
+export function PayIDProvider({ children, contracts: overrides, ipfsGateway }: PayIDProviderProps) {
   const chainId = useChainId();
 
-  // Priority: overrides[chainId] → PAYID_CONTRACTS[chainId] → zero addresses
-  // OLD BUG: wrapped in try/catch so overrides were silently ignored when
-  // chainId existed in PAYID_CONTRACTS but had zero addresses.
   const defaults = PAYID_CONTRACTS[chainId];
   const override = overrides?.[chainId];
 
   const contracts: PayIDContracts = override
-    ? { ...defaults, ...override } // merge: override wins per-key
+    ? { ...defaults, ...override }
     : (defaults ?? {
-        // fallback to zeros, never throws
         ruleAuthority: '0x0000000000000000000000000000000000000000',
         ruleItemERC721: '0x0000000000000000000000000000000000000000',
         combinedRuleStorage: '0x0000000000000000000000000000000000000000',
@@ -54,19 +62,25 @@ export function PayIDProvider({ children, contracts: overrides }: PayIDProviderP
         payWithPayID: '0x0000000000000000000000000000000000000000',
       });
 
-  return <PayIDContext.Provider value={{ contracts, chainId }}>{children}</PayIDContext.Provider>;
+  const resolvedGateway =
+    ipfsGateway && ipfsGateway.trim().length > 0 ? ipfsGateway : DEFAULT_IPFS_GATEWAY;
+
+  return (
+    <PayIDContext.Provider value={{ contracts, chainId, ipfsGateway: resolvedGateway }}>
+      {children}
+    </PayIDContext.Provider>
+  );
 }
 
 // Hook
-
 /**
- * Access the current chain's resolved contract addresses and chainId.
+ * Access the current chain's resolved contract addresses, chainId, and ipfsGateway.
  * Must be called inside <PayIDProvider>.
  *
  * @example
- * const { contracts, chainId } = usePayIDContext()
- * contracts.ruleItemERC721   // → '0x2279...'
- * contracts.payWithPayID     // → '0x0165...'
+ * const { contracts, chainId, ipfsGateway } = usePayIDContext()
+ * contracts.ruleItemERC721  // → '0x2279...'
+ * ipfsGateway               // → 'https://gateway.pinata.cloud/ipfs/'
  */
 export function usePayIDContext(): PayIDContextValue {
   const ctx = useContext(PayIDContext);

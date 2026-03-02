@@ -12,10 +12,14 @@ function stableStringify(obj: any): string {
   return JSON.stringify(obj);
 }
 
+function toUtf8Bytes(str: string): Uint8Array {
+  return new TextEncoder().encode(str);
+}
+
 export function hashContext(context: any): string {
-  return keccak256(Buffer.from(stableStringify(context)));
+  return keccak256(toUtf8Bytes(stableStringify(context)));
 }
 
 export function hashRuleSet(ruleConfig: any): string {
-  return keccak256(Buffer.from(stableStringify(ruleConfig)));
+  return keccak256(toUtf8Bytes(stableStringify(ruleConfig)));
 }

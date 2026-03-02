@@ -1,4 +1,4 @@
-import { Wallet, keccak256, toUtf8Bytes } from "ethers";
+import { Wallet, keccak256, toUtf8Bytes, getBytes } from "ethers";
 import type { Attestation } from "payid-types";
 
 export async function signAttestation(
@@ -14,7 +14,7 @@ export async function signAttestation(
   );
 
   const signature = await issuerWallet.signMessage(
-    Buffer.from(hash.slice(2), "hex")
+    getBytes(hash)
   );
 
   return {
