@@ -21,5 +21,8 @@ export function hashContext(context: any): string {
 }
 
 export function hashRuleSet(ruleConfig: any): string {
+  // WAJIB gunakan stableStringify (key-sorted) agar hash konsisten
+  // dengan register-combined-rule.ts yang juga menggunakan canonicalize()
+  // JSON.stringify() menghasilkan key order yang berbeda → hash mismatch → RULE_NOT_ACTIVE revert
   return keccak256(toUtf8Bytes(stableStringify(ruleConfig)));
 }

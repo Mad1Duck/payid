@@ -2,41 +2,36 @@
 import { keccak256, toUtf8Bytes } from "ethers";
 
 /**
+ * Canonical JSON serializer — identical to canonicalize.ts di backend.
+ * Kunci diurutkan secara alfabetis agar output selalu deterministik
+ * terlepas dari urutan key saat object dibuat.
+ */
+function stableStringify(obj: any): string {
+  if (Array.isArray(obj)) {
+    return `[${obj.map(stableStringify).join(",")}]`;
+  }
+  if (obj && typeof obj === "object") {
+    return `{${Object.keys(obj).sort().map(
+      k => `"${k}":${stableStringify(obj[k])}`
+    ).join(",")}}`;
+  }
+  return JSON.stringify(obj);
+}
+
+/**
  * Compute a deterministic hash of a canonicalized rule set.
  *
- * This function produces the `ruleSetHash` used to:
- * - Reference authoritative rules in on-chain registries
- * - Bind decision proofs to a specific rule configuration
- * - Ensure integrity between off-chain evaluation and on-chain verification
+ * PENTING: Fungsi ini HARUS menggunakan stableStringify (bukan JSON.stringify)
+ * agar menghasilkan hash yang sama dengan:
+ * - register-combined-rule.ts (canonicalize + keccak256)
+ * - decision-proof/hash.ts (hashRuleSet)
+ * - CombinedRuleStorage.sol (ruleSetHash tersimpan on-chain)
  *
- * ## Canonicalization requirement
- *
- * - The input rule set MUST already be canonicalized using
- *   `canonicalizeRuleSet`.
- * - Hashing a non-canonical rule set may result in inconsistent
- *   hashes for semantically identical rules.
- *
- * ## Security model
- *
- * - The hash represents the exact structure of the rule set at the
- *   time of hashing.
- * - Any mutation (key order, rule order, value change) will produce
- *   a different hash.
- *
- * ## Invariants
- *
- * - This function does NOT perform canonicalization.
- * - This function is pure and deterministic.
- * - The same canonical rule set will always yield the same hash.
- *
- * @param ruleSet
- *   A canonicalized rule configuration object.
- *
- * @returns
- *   A `bytes32` hex string (keccak256) uniquely identifying the rule set.
+ * Menggunakan JSON.stringify biasa akan menghasilkan key order berbeda
+ * → hash berbeda → getRuleByHash revert dengan RULE_NOT_ACTIVE.
  */
 export function hashRuleSet(ruleSet: any): string {
   return keccak256(
-    toUtf8Bytes(JSON.stringify(ruleSet))
+    toUtf8Bytes(stableStringify(ruleSet))
   );
 }
