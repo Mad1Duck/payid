@@ -1,12 +1,10 @@
+// tsup.config.ts
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["index.ts"],
+  entry: ["src/index.ts"],
   format: ["esm"],
   dts: true,
   clean: true,
-  outDir: 'dist',
-  loader: {
-    ".wasm": "copy",
-  },
+  outDir: "dist",
 });

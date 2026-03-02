@@ -6,6 +6,8 @@ import usdcAbi from "../shared/PayIDModule#MockUSDC.json";
 import ruleNFTAbi from "../shared/PayIDModule#RuleItemERC721.json";
 import combinedAbi from "../shared/PayIDModule#CombinedRuleStorage.json";
 import payIdVerifierAbi from "../shared/PayIDModule#PayIDVerifier.json";
+import fs from "fs";
+import path from "path";
 
 const {
   rpcUrl: RPC_URL,
@@ -22,11 +24,14 @@ const provider = new ethers.JsonRpcProvider(RPC_URL);
 const payerWallet = new ethers.Wallet(SENDER_PRIVATE_KEY, provider);
 console.log("Payer:", payerWallet.address);
 
-// const wasm = new Uint8Array(
-//   fs.readFileSync(path.join(__dirname, "../rule_engine.wasm"))
-// );
+console.log(path.join(__dirname, "../wasm/rule_engine.wasm"));
+const wasm = new Uint8Array(
+  fs.readFileSync(path.join(__dirname, "../wasm/rule_engine.wasm"))
+);
 
-const payid = createPayID({});
+
+
+const payid = createPayID({ wasm, debugTrace: true });
 
 async function getActiveRuleSet(receiver: string) {
   const combined = new ethers.Contract(COMBINED_RULE_STORAGE, combinedAbi.abi, provider);

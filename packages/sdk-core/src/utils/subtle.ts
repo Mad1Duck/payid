@@ -1,3 +1,2 @@
-export const subtleCrypto: SubtleCrypto =
-  globalThis.crypto?.subtle ??
-  require("crypto").webcrypto.subtle;
+
+export const subtleCrypto = globalThis.crypto.subtle;

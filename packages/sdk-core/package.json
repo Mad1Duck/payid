@@ -1,6 +1,6 @@
 {
   "name": "payid",
-  "version": "0.5.7",
+  "version": "0.5.9",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",
@@ -40,7 +40,7 @@
   ],
   "dependencies": {
     "ethers": "^6.16.0",
-    "payid-rule-engine": "^0.3.3",
+    "payid-rule-engine": "^0.3.4",
     "payid-types": "^0.2.2"
   },
   "peerDependencies": {

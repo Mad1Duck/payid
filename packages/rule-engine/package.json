@@ -1,6 +1,6 @@
 {
   "name": "payid-rule-engine",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",
@@ -20,7 +20,7 @@
   "dependencies": {
     "@types/lodash": "^4.17.21",
     "lodash": "^4.17.21",
-    "payid-attestation": "^0.1.6",
+    "payid-attestation": "^0.1.7",
     "payid-types": "^0.2.2",
     "wasi": "^0.0.6"
   },
