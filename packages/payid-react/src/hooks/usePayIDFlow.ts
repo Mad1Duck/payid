@@ -8,16 +8,14 @@ import {
 } from 'wagmi';
 import { createPayID } from 'payid/client';
 import type { Address, Hash, Abi } from 'viem';
-import { BrowserProvider } from 'ethers';
+import { BrowserProvider, recoverAddress } from 'ethers';
 
 import { usePayIDContext } from '../PayIDProvider';
 
 import CombinedRuleStorageArtifact from '../abis/PayIDModule#CombinedRuleStorage.json';
-import RuleAuthorityArtifact from '../abis/PayIDModule#RuleAuthority.json';
 import PayWithPayIDArtifact from '../abis/PayIDModule#PayWithPayID.json';
 
 const CombinedRuleStorageABI = CombinedRuleStorageArtifact.abi as Abi;
-const RuleAuthorityABI = RuleAuthorityArtifact.abi as Abi;
 const PayWithPayIDABI = PayWithPayIDArtifact.abi as Abi;
 
 const TOKEN_URI_ABI = [
@@ -30,7 +28,6 @@ const TOKEN_URI_ABI = [
   },
 ] as const;
 
-// ERC20 ABI — approve + allowance
 const ERC20_ABI = [
   {
     name: 'allowance',
@@ -51,6 +48,47 @@ const ERC20_ABI = [
       { name: 'amount', type: 'uint256' },
     ],
     outputs: [{ type: 'bool' }],
+  },
+] as const;
+
+const EIP712_DEBUG_ABI = [
+  {
+    name: 'eip712Domain',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [
+      { name: 'fields', type: 'bytes1' },
+      { name: 'name', type: 'string' },
+      { name: 'version', type: 'string' },
+      { name: 'chainId', type: 'uint256' },
+      { name: 'verifyingContract', type: 'address' },
+      { name: 'salt', type: 'bytes32' },
+      { name: 'extensions', type: 'uint256[]' },
+    ],
+  },
+  {
+    name: 'hashDecision',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{
+      name: 'd', type: 'tuple', components: [
+        { name: 'version', type: 'bytes32' },
+        { name: 'payId', type: 'bytes32' },
+        { name: 'payer', type: 'address' },
+        { name: 'receiver', type: 'address' },
+        { name: 'asset', type: 'address' },
+        { name: 'amount', type: 'uint256' },
+        { name: 'contextHash', type: 'bytes32' },
+        { name: 'ruleSetHash', type: 'bytes32' },
+        { name: 'ruleAuthority', type: 'address' },
+        { name: 'issuedAt', type: 'uint64' },
+        { name: 'expiresAt', type: 'uint64' },
+        { name: 'nonce', type: 'bytes32' },
+        { name: 'requiresAttestation', type: 'bool' },
+      ],
+    }],
+    outputs: [{ type: 'bytes32' }],
   },
 ] as const;
 
@@ -193,15 +231,6 @@ export function usePayIDFlow(): PayIDFlowResult {
   }, []);
 
   const execute = useCallback(async (params: PayIDFlowParams) => {
-    log('execute', 'start', {
-      receiver: params.receiver,
-      asset: params.asset,
-      amount: params.amount.toString(),
-      payId: params.payId,
-      chainId,
-      ipfsGateway,
-    });
-
     if (!payer) {
       warn('execute', 'wallet not connected');
       setError('Wallet not connected');
@@ -210,7 +239,7 @@ export function usePayIDFlow(): PayIDFlowResult {
     }
 
     if (!publicClient) {
-      warn('execute', 'publicClient unavailable — check wagmi transport config');
+      warn('execute', 'publicClient unavailable');
       setError('RPC client not available. Check wagmi transport config.');
       setStatus('error');
       return;
@@ -219,15 +248,15 @@ export function usePayIDFlow(): PayIDFlowResult {
     try {
       reset();
 
-      // Step 1: fetch active rule hash
       setStatus('fetching-rule');
       log('step-1', 'fetching active rule hash for receiver', params.receiver);
+
+      const ruleAuthorityAddr: Address =
+        params.ruleAuthorityAddress ?? contracts.combinedRuleStorage;
 
       let activeHash: Hash | null = null;
       let activeVersion: bigint = 1n;
       let ruleRefs: Array<{ ruleNFT: Address; tokenId: bigint; }> = [];
-      let ruleAuthorityAddr: Address =
-        params.ruleAuthorityAddress ?? contracts.combinedRuleStorage;
 
       try {
         const result = await publicClient.readContract({
@@ -266,40 +295,6 @@ export function usePayIDFlow(): PayIDFlowResult {
         }
       }
 
-      // Fallback ke RuleAuthority
-      if (!activeHash && contracts.ruleAuthority) {
-        log('step-1', 'falling back to RuleAuthority', contracts.ruleAuthority);
-        try {
-          const hashes = (await publicClient.readContract({
-            address: contracts.ruleAuthority,
-            abi: RuleAuthorityABI,
-            functionName: 'getOwnerRuleSets',
-            args: [params.receiver],
-          })) as Hash[];
-
-          log('step-1', 'RuleAuthority hashes', hashes);
-
-          if (hashes.length > 0) {
-            activeHash = hashes[hashes.length - 1]!;
-            ruleAuthorityAddr = contracts.ruleAuthority;
-            log('step-1', 'using last hash from RuleAuthority', activeHash);
-
-            const ruleData = (await publicClient.readContract({
-              address: contracts.ruleAuthority,
-              abi: RuleAuthorityABI,
-              functionName: 'getRuleByHash',
-              args: [activeHash],
-            })) as [string, Array<{ ruleNFT: Address; tokenId: bigint; }>, bigint];
-
-            ruleRefs = ruleData[1];
-            activeVersion = ruleData[2];
-            log('step-1', 'RuleAuthority ruleRefs', ruleRefs);
-          }
-        } catch (e) {
-          warn('step-1', 'RuleAuthority fallback failed', e);
-        }
-      }
-
       if (!activeHash) {
         log('step-1', 'no active rule found → will use allow-all policy');
       }
@@ -322,8 +317,26 @@ export function usePayIDFlow(): PayIDFlowResult {
         log('step-2', 'no ruleRefs — using allow-all policy');
       }
 
-      // Step 3: evaluate
+      // Step 3: get signer + detect chainId dari MetaMask langsung
       setStatus('evaluating');
+
+      const ethereum = (globalThis as any).ethereum;
+      if (!ethereum) throw new Error('No injected wallet found');
+
+      const provider = new BrowserProvider(ethereum);
+      const signer = await provider.getSigner();
+
+      // wagmi chainId bisa berbeda kalau MetaMask belum switch network
+      const signerNetwork = await provider.getNetwork();
+      const signerChainId = Number(signerNetwork.chainId);
+
+      log('step-3', 'signer address', await signer.getAddress());
+      log('step-3', 'wagmi chainId', chainId);
+      log('step-3', 'signer chainId', signerChainId);
+
+      if (signerChainId !== chainId) {
+        warn('step-3', `chainId mismatch: MetaMask=${signerChainId}, wagmi=${chainId}`);
+      }
 
       const context = {
         tx: {
@@ -331,7 +344,7 @@ export function usePayIDFlow(): PayIDFlowResult {
           receiver: params.receiver,
           asset: params.asset,
           amount: params.amount.toString(),
-          chainId,
+          chainId: signerChainId,  // ✅ pakai chainId dari signer
         },
         env: { timestamp: Math.floor(Date.now() / 1000) },
         state: {
@@ -343,14 +356,7 @@ export function usePayIDFlow(): PayIDFlowResult {
 
       log('step-3', 'evaluation context', context);
 
-      const ethereum = (globalThis as any).ethereum;
-      if (!ethereum) throw new Error('No injected wallet found');
-
-      const provider = new BrowserProvider(ethereum);
-      const signer = await provider.getSigner();
-      log('step-3', 'signer address', await signer.getAddress());
-
-      // Step 4: prove
+      // Step 4: evaluate + prove
       setStatus('proving');
       log('step-4', 'calling sdk.evaluateAndProve', {
         payId: params.payId,
@@ -358,7 +364,7 @@ export function usePayIDFlow(): PayIDFlowResult {
         receiver: params.receiver,
         ruleAuthority: activeHash ? ruleAuthorityAddr : ETH_ADDRESS,
         verifyingContract: contracts.payIDVerifier,
-        chainId,
+        chainId: signerChainId,
       });
 
       const { result, proof } = await sdk.evaluateAndProve({
@@ -372,27 +378,119 @@ export function usePayIDFlow(): PayIDFlowResult {
         signer,
         verifyingContract: contracts.payIDVerifier,
         ruleAuthority: activeHash ? ruleAuthorityAddr : ETH_ADDRESS,
-        chainId,
+        chainId: signerChainId,
         blockTimestamp: Math.floor(Date.now() / 1000),
       });
 
-      log('step-4', 'sdk result', {
-        decision: result.decision, reason: (result as any).reason, prove: {
-          context,
-          authorityRule,
-          payId: params.payId,
-          payer,
-          receiver: params.receiver,
-          asset: params.asset,
-          amount: params.amount,
-          signer,
-          verifyingContract: contracts.payIDVerifier,
-          ruleAuthority: activeHash ? ruleAuthorityAddr : ETH_ADDRESS,
-          chainId,
-          blockTimestamp: Math.floor(Date.now() / 1000),
-        }
-      });
+      log('step-4', 'sdk result', { decision: result.decision, reason: (result as any).reason });
       log('step-4', 'proof', proof ? { hasPayload: !!proof.payload, hasSignature: !!proof.signature } : null);
+
+      // DEBUG: verify signature sebelum submit
+      const [domain, contractHash] = await Promise.all([
+        publicClient.readContract({
+          address: contracts.payIDVerifier,
+          abi: EIP712_DEBUG_ABI,
+          functionName: 'eip712Domain',
+        }),
+        publicClient.readContract({
+          address: contracts.payIDVerifier,
+          abi: EIP712_DEBUG_ABI,
+          functionName: 'hashDecision',
+          args: [proof!.payload as any],
+        }),
+      ]);
+
+      const recovered = recoverAddress(contractHash, proof!.signature);
+      const signerMatch = recovered.toLowerCase() === payer?.toLowerCase();
+
+      console.log('[DEBUG:domain] contract:', {
+        name: domain[1], version: domain[2],
+        chainId: domain[3].toString(), verifyingContract: domain[4],
+      });
+      console.log('[DEBUG:domain] signerChainId:', signerChainId, '| contract chainId:', domain[3].toString());
+      console.log('[DEBUG:domain] chainId match:', signerChainId === Number(domain[3]));
+      console.log('[DEBUG:domain] recovered:', recovered);
+      console.log('[DEBUG:domain] payer:    ', payer);
+      console.log('[DEBUG:domain] signer match:', signerMatch);
+
+      const REQUIRE_ALLOWED_DEBUG_ABI = [
+        {
+          name: 'trustedAuthorities',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [{ name: '', type: 'address' }],
+          outputs: [{ type: 'bool' }],
+        },
+        {
+          name: 'getRuleByHash',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [{ name: 'ruleSetHash', type: 'bytes32' }],
+          outputs: [
+            { name: 'owner', type: 'address' },
+            {
+              name: 'ruleRefs', type: 'tuple[]', components: [
+                { name: 'ruleNFT', type: 'address' },
+                { name: 'tokenId', type: 'uint256' },
+              ]
+            },
+            { name: 'version', type: 'uint64' },
+          ],
+        },
+        {
+          name: 'ruleExpiry',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [{ name: 'tokenId', type: 'uint256' }],
+          outputs: [{ type: 'uint256' }],
+        },
+        {
+          name: 'ownerOf',
+          type: 'function',
+          stateMutability: 'view',
+          inputs: [{ name: 'tokenId', type: 'uint256' }],
+          outputs: [{ type: 'address' }],
+        },
+      ] as const;
+
+      const isTrusted = await publicClient.readContract({
+        address: contracts.payIDVerifier,
+        abi: REQUIRE_ALLOWED_DEBUG_ABI,
+        functionName: 'trustedAuthorities',
+        args: [ruleAuthorityAddr],
+      });
+      console.log('[DEBUG:require] 1. isTrusted:', isTrusted);
+
+      const [ruleOwner, ruleRefsOnChain] = await publicClient.readContract({
+        address: contracts.combinedRuleStorage,
+        abi: REQUIRE_ALLOWED_DEBUG_ABI,
+        functionName: 'getRuleByHash',
+        args: [proof!.payload.ruleSetHash as `0x${string}`],
+      }) as [string, Array<{ ruleNFT: string, tokenId: bigint; }>, bigint];
+      console.log('[DEBUG:require] 2. ruleOwner:  ', ruleOwner);
+      console.log('[DEBUG:require] 2. receiver:   ', params.receiver);
+      console.log('[DEBUG:require] 2. owner==recv:', ruleOwner.toLowerCase() === params.receiver.toLowerCase());
+
+      for (const ref of ruleRefsOnChain) {
+        const [expiry, nftOwner] = await Promise.all([
+          publicClient.readContract({
+            address: ref.ruleNFT as Address,
+            abi: REQUIRE_ALLOWED_DEBUG_ABI,
+            functionName: 'ruleExpiry',
+            args: [ref.tokenId],
+          }) as Promise<bigint>,
+          publicClient.readContract({
+            address: ref.ruleNFT as Address,
+            abi: REQUIRE_ALLOWED_DEBUG_ABI,
+            functionName: 'ownerOf',
+            args: [ref.tokenId],
+          }) as Promise<string>,
+        ]);
+        const now = BigInt(Math.floor(Date.now() / 1000));
+        console.log(`[DEBUG:require] 3. tokenId ${ref.tokenId} expiry:`, expiry.toString(), '| now:', now.toString(), '| expired:', expiry < now);
+        console.log(`[DEBUG:require] 4. tokenId ${ref.tokenId} ownerOf:`, nftOwner, '| ruleOwner:', ruleOwner, '| match:', nftOwner.toLowerCase() === ruleOwner.toLowerCase());
+      }
+      // END DEBUG
 
       setDecision(result.decision as 'ALLOW' | 'DENY');
 
@@ -406,7 +504,7 @@ export function usePayIDFlow(): PayIDFlowResult {
 
       const isETH = params.asset === ETH_ADDRESS;
 
-      // ✅ Step 4.5: ERC20 approve jika bukan ETH
+      // Step 4.5: ERC20 approve jika bukan ETH
       if (!isETH) {
         log('step-4.5', 'ERC20 detected, checking allowance', {
           token: params.asset,
@@ -424,11 +522,7 @@ export function usePayIDFlow(): PayIDFlowResult {
         log('step-4.5', 'current allowance', allowance.toString());
 
         if (allowance < params.amount) {
-          log('step-4.5', 'allowance insufficient, requesting approve', {
-            need: params.amount.toString(),
-            have: allowance.toString(),
-          });
-
+          log('step-4.5', 'allowance insufficient, requesting approve');
           setStatus('approving');
 
           const approveTx = await writeContractAsync({
@@ -439,11 +533,8 @@ export function usePayIDFlow(): PayIDFlowResult {
           });
 
           log('step-4.5', 'approve tx submitted', approveTx);
-
-          // Tunggu approve confirmed sebelum lanjut
-          // Buat client baru untuk polling receipt
           const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveTx });
-          log('step-4.5', 'approve confirmed', { status: approveReceipt.status, block: approveReceipt.blockNumber.toString() });
+          log('step-4.5', 'approve confirmed', { status: approveReceipt.status });
 
           if (approveReceipt.status !== 'success') {
             throw new Error('ERC20 approve transaction failed');
