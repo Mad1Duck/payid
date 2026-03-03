@@ -22,9 +22,9 @@ const config: Config = {
       },
     };
   },],
-  future: {
-    v4: true,
-  },
+  // future: {
+  //   v4: true,
+  // },
 
   url: 'https://docs.pay.id',
   baseUrl: '/',
