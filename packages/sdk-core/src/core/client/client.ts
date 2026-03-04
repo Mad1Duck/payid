@@ -1,12 +1,14 @@
+// src/core/client/client.ts
 import type { RuleConfig, RuleContext, RuleResult, RuleResultDebug } from "payid-types";
 import { evaluate } from "../../evaluate";
 import { loadWasm } from "payid-rule-engine";
 import { combineRules } from "../../rule/combine";
-import { decodeSessionPolicy } from "../../sessionPolicy/decode";
+import { decodeSessionPolicy, decodeSessionPolicyV2 } from "../../sessionPolicy/decode";
 import { ethers } from "ethers";
 import { generateDecisionProof } from "../../decision-proof/generate";
 import type { DecisionProof } from "../../decision-proof/types";
 import type { PayIDSessionPolicyPayloadV1 } from "../../sessionPolicy";
+import type { SessionPolicyV2 } from "../../sessionPolicy/types";
 import type { RuleSource } from "../../resolver/types";
 import { resolveRule } from "../../resolver/resolver";
 
@@ -42,7 +44,12 @@ export class PayIDClient {
     context: RuleContext;
     authorityRule: RuleConfig | RuleSource;
     evaluationRule?: RuleConfig;
+
+    // V1 legacy session policy
     sessionPolicy?: PayIDSessionPolicyPayloadV1;
+    // V2 Channel A session policy
+    sessionPolicyV2?: SessionPolicyV2;
+
     payId: string;
     payer: string;
     receiver: string;
@@ -63,17 +70,29 @@ export class PayIDClient {
       ? (await resolveRule(params.authorityRule)).config
       : params.authorityRule;
 
+    // Determine rule config to evaluate against:
+    //   evaluationRule     → explicit override, use as-is
+    //   sessionPolicyV2    → verify EIP-712 signature, then use chain rule (no injection)
+    //   sessionPolicy (V1) → legacy, combine chain rule + policy inline rule
+    //   (none)             → use authority rule directly
     const evalConfig =
       params.evaluationRule ??
-      (params.sessionPolicy
-        ? combineRules(
-          authorityConfig,
-          decodeSessionPolicy(
-            params.sessionPolicy,
-            Math.floor(Date.now() / 1000)
-          ).rules
-        )
-        : authorityConfig);
+      (params.sessionPolicyV2
+        ? (() => {
+          // Throws if expired or signature invalid
+          decodeSessionPolicyV2(params.sessionPolicyV2!, params.blockTimestamp);
+          // V2 does NOT inject new rules — rule is already committed on-chain via ruleSetHash
+          return authorityConfig;
+        })()
+        : params.sessionPolicy
+          ? combineRules(
+            authorityConfig,
+            decodeSessionPolicy(
+              params.sessionPolicy,
+              Math.floor(Date.now() / 1000)
+            ).rules
+          )
+          : authorityConfig);
 
     const result = await evaluate(
       params.context,

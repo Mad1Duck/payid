@@ -77,7 +77,12 @@ export async function generateDecisionProof(params: {
   const signature = await params.signer.signTypedData(domain, types, payload);
   const recovered = ethers.verifyTypedData(domain, types, payload, signature);
 
-  if (recovered.toLowerCase() !== params.payer.toLowerCase()) {
+  // Verify against actual signer address — NOT hardcoded to payer.
+  // In Channel A: signer = receiver (signs on behalf of their policy).
+  // In Channel B/server: signer = server wallet.
+  // In legacy client mode: signer = payer.
+  const signerAddress = await params.signer.getAddress();
+  if (recovered.toLowerCase() !== signerAddress.toLowerCase()) {
     throw new Error("SIGNATURE_MISMATCH");
   }
 

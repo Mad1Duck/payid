@@ -39,6 +39,14 @@ interface IRuleAuthority {
  *   1. Deploy via CREATE2 → address sama di semua chain
  *   2. Call initialize(owner) per chain
  *   3. Call setTrustedAuthority() untuk whitelist RuleAuthority per chain
+ *
+ * Trusted Authority:
+ *   Selain dipakai untuk whitelist RuleAuthority (on-chain rule registry),
+ *   trustedAuthorities juga dipakai di verifyDecision() untuk memvalidasi
+ *   signer Decision Proof. Ini memungkinkan:
+ *     - Channel A: receiver di-whitelist, sign proof atas nama payer
+ *     - Channel B: server wallet di-whitelist, sign proof server-side
+ *     - Legacy:    payer sign sendiri (selalu valid, tanpa whitelist)
  */
 contract PayIDVerifier is EIP712 {
     using ECDSA for bytes32;
@@ -81,20 +89,10 @@ contract PayIDVerifier is EIP712 {
 
     /* ===================== CONSTRUCTOR ===================== */
 
-    /**
-     * @dev EIP712 constructor dipanggil dengan domain name + version
-     *      chainId di-include otomatis oleh EIP712 parent — tidak perlu di-hardcode
-     *      Ini berarti domain separator AKAN berbeda per chain (correct behavior)
-     *      tapi address contract SAMA di semua chain (via CREATE2)
-     */
     constructor() EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) {}
 
     /* ===================== INITIALIZE ===================== */
 
-    /**
-     * @notice Set initial owner — dipanggil sekali setelah deploy
-     * @param initialOwner  Address yang akan jadi owner (biasanya multisig)
-     */
     function initialize(address initialOwner) external {
         if (_initialized) revert AlreadyInitialized();
         if (initialOwner == address(0)) revert ZeroAddress();
@@ -196,7 +194,13 @@ contract PayIDVerifier is EIP712 {
         if (d.receiver == address(0))      return false;
 
         address recovered = hashDecision(d).recover(sig);
-        return recovered == d.payer;
+
+        // Signer valid jika:
+        //   1. payer sign sendiri (legacy / selalu backward-compatible)
+        //   2. trusted authority sign atas nama payer
+        //      Channel A: receiver di-whitelist via setTrustedAuthority()
+        //      Channel B: server wallet di-whitelist
+        return recovered == d.payer || trustedAuthorities[recovered];
     }
 
     /* ===================== ENFORCEMENT ===================== */
@@ -252,10 +256,6 @@ contract PayIDVerifier is EIP712 {
         return _initialized;
     }
 
-    /**
-     * @notice Return domain separator untuk chain ini
-     * @dev Berguna untuk debugging cross-chain signature issues
-     */
     function domainSeparator() external view returns (bytes32) {
         return _domainSeparatorV4();
     }
