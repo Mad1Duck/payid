@@ -95,8 +95,8 @@ async function debugDomain(verifierContract: ethers.Contract) {
 
 async function main() {
   const RECEIVER = reciverAddress;
-  // const AMOUNT = 150_000_000n;
-  const AMOUNT = 666_000_000n;
+  const AMOUNT = 150_000_000n;
+  // const AMOUNT = 666_000_000n;
 
   const network = await provider.getNetwork();
   console.log("RPC chainId:", network.chainId.toString());
@@ -151,9 +151,15 @@ async function main() {
 
   // Get actual domain from contract BEFORE signing 
   console.log("\n[DEBUG] Using domain for signing:", contractDomain);
+  const latestBlock = await provider.getBlock("latest");
+  const latestTs = latestBlock!.timestamp;
   const nowTs = Math.floor(Date.now() / 1000);
-  await provider.send("evm_setNextBlockTimestamp", [nowTs]);
-  await provider.send("evm_mine", []);
+
+  // Hanya advance jika nowTs lebih besar dari block terakhir
+  if (nowTs > latestTs) {
+    await provider.send("evm_setNextBlockTimestamp", [nowTs]);
+    await provider.send("evm_mine", []);
+  }
 
   const block = await provider.getBlock("latest");
   const blockTs = block!.timestamp;
