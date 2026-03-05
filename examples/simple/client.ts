@@ -175,7 +175,7 @@ async function main() {
     asset: USDC,
     amount: AMOUNT,
     signer: payerWallet,
-    ttlSeconds: 300,
+    ttlSeconds: 1800,
     verifyingContract: PAYID_VERIFIER,
     ruleAuthority: COMBINED_RULE_STORAGE,
     ruleSetHashOverride: activeRuleSet.ruleSetHash,
