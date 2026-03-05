@@ -10,12 +10,12 @@
 import { ethers } from "ethers";
 import { createPayID } from "payid/client";
 import { decodeSessionPolicyV2, decodeSessionPolicyV2QR } from "payid/sessionPolicy";
-import { envData } from "../config/config";
-import PayWithPayIDAbi from "../shared/PayIDModule#PayWithPayID.json";
-import usdcAbi from "../shared/PayIDModule#MockUSDC.json";
-import ruleNFTAbi from "../shared/PayIDModule#RuleItemERC721.json";
-import combinedAbi from "../shared/PayIDModule#CombinedRuleStorage.json";
-import payIdVerifierAbi from "../shared/PayIDModule#PayIDVerifier.json";
+import { envData } from "../../config/config";
+import PayWithPayIDAbi from "../../shared/PayIDModule#PayWithPayID.json";
+import usdcAbi from "../../shared/PayIDModule#MockUSDC.json";
+import ruleNFTAbi from "../../shared/PayIDModule#RuleItemERC721.json";
+import combinedAbi from "../../shared/PayIDModule#CombinedRuleStorage.json";
+import payIdVerifierAbi from "../../shared/PayIDModule#PayIDVerifier.json";
 import fs from "fs";
 import path from "path";
 
