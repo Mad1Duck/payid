@@ -53,8 +53,6 @@ contract AttestationVerifier {
 
     /* ===================== STORAGE ===================== */
 
-    // CHANGED: dari immutable ke storage variable
-    // immutable di-inline ke bytecode → bytecode beda tiap chain → CREATE2 address beda
     IEAS public eas;
 
     mapping(bytes32 => bool) public trustedSchemas;
@@ -63,7 +61,6 @@ contract AttestationVerifier {
 
     address public owner;
 
-    // Initialization guard
     bool private _initialized;
 
     /* ===================== EVENTS ===================== */
@@ -85,15 +82,6 @@ contract AttestationVerifier {
 
     /* ===================== INITIALIZE ===================== */
 
-    /**
-     * @notice Ganti constructor — dipanggil sekali setelah deploy
-     * @dev Bytecode kontrak ini identik di semua chain → CREATE2 address sama
-     *      easAddress berbeda per chain tapi di-set SETELAH deploy
-     *
-     * @param easAddress       EAS contract address sesuai chain
-     * @param initialSchemas   List schema UID yang diizinkan
-     * @param initialAttesters List attester yang diizinkan
-     */
     function initialize(
         address          easAddress,
         bytes32[] memory initialSchemas,
@@ -177,6 +165,9 @@ contract AttestationVerifier {
         _verifyEASAttestation(attestationUID, payer);
     }
 
+    /**
+     * @notice Verify a single attestation and mark it as used (anti-replay).
+     */
     function verifyAttestationOnce(bytes32 attestationUID, address payer)
         external
     {
@@ -185,6 +176,10 @@ contract AttestationVerifier {
         usedAttestations[attestationUID] = true;
     }
 
+    /**
+     * @notice Verify multiple attestations (read-only, replay allowed).
+     * @dev Gunakan ini jika attestation UIDs bisa dipakai berkali-kali.
+     */
     function verifyAttestationBatch(
         bytes32[] calldata attestationUIDs,
         address            payer
@@ -192,6 +187,36 @@ contract AttestationVerifier {
         uint256 len = attestationUIDs.length;
         for (uint256 i = 0; i < len; ) {
             _verifyEASAttestation(attestationUIDs[i], payer);
+            unchecked { ++i; }
+        }
+    }
+
+    /**
+     * @notice Verify multiple attestations dan mark semua sebagai used (anti-replay).
+     * @dev FIX: Fungsi ini tidak ada sebelumnya. verifyAttestationBatch tidak
+     *      mencegah replay — attestation UIDs yang sama bisa di-pass berulang
+     *      ke payETH/payERC20. Gunakan fungsi ini jika attestation UIDs
+     *      seharusnya one-time use per transaksi.
+     *
+     *      Checks-effects pattern: semua check dulu sebelum write state,
+     *      untuk mencegah partial-replay pada batch yang gagal di tengah.
+     */
+    function verifyAttestationBatchOnce(
+        bytes32[] calldata attestationUIDs,
+        address            payer
+    ) external {
+        uint256 len = attestationUIDs.length;
+
+        // Phase 1: verify all (read-only checks, termasuk replay check)
+        for (uint256 i = 0; i < len; ) {
+            if (usedAttestations[attestationUIDs[i]]) revert ReplayAttestation();
+            _verifyEASAttestation(attestationUIDs[i], payer);
+            unchecked { ++i; }
+        }
+
+        // Phase 2: mark all as used (write state hanya setelah semua check lolos)
+        for (uint256 i = 0; i < len; ) {
+            usedAttestations[attestationUIDs[i]] = true;
             unchecked { ++i; }
         }
     }

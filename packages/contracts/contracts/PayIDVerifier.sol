@@ -192,6 +192,8 @@ contract PayIDVerifier is EIP712 {
         if (d.issuedAt > block.timestamp)  return false;
         if (d.amount == 0)                 return false;
         if (d.receiver == address(0))      return false;
+        if (d.payer == address(0))         return false;
+        if (d.nonce == bytes32(0))         return false;
 
         address recovered = hashDecision(d).recover(sig);
 

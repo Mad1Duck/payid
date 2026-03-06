@@ -41,7 +41,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     uint8   public constant MAX_SLOT = 3;
     uint256 public constant SUB_DURATION = 30 days;
 
-    // $0.35 ≈ Rp 5.000
+    // $0.35 = 35 cents — harga langganan dalam USD cents
     uint256 public subscriptionUsdCents = 35;
 
     AggregatorV3Interface public ethUsdFeed;
@@ -70,8 +70,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     mapping(uint256 => uint256)        public ruleExpiry;   // tokenId  => expiry
     mapping(uint256 => uint256)        public ruleTokenId;
 
-    // track tokens authorized for internal burn
-    // to distinguish internal burns from external transfer attempts
     mapping(uint256 => bool) private _pendingBurn;
 
     /* ===================== EVENTS ===================== */
@@ -84,6 +82,8 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     event RuleActivated(uint256 indexed ruleId, uint256 indexed tokenId);
     event RuleDeprecated(uint256 indexed ruleId);
     event Subscribed(address indexed user, uint256 expiry);
+    event RuleExpiryExtended(uint256 indexed tokenId, uint256 newExpiry);
+    event SubscriptionUsdCentsUpdated(uint256 newCents);
 
     /* ===================== CONSTRUCTOR ===================== */
     constructor(
@@ -101,6 +101,24 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     }
 
     /* ===================================================== */
+    /* ================= ADMIN ============================= */
+    /* ===================================================== */
+
+    /**
+     * @notice Update harga langganan dalam USD cents.
+     * @dev Hanya ADMIN yang bisa update — access control yang sebelumnya
+     *      tidak ada di subscriptionUsdCents.
+     */
+    function setSubscriptionUsdCents(uint256 newCents)
+        external
+        onlyRole(ADMIN_ROLE)
+    {
+        require(newCents > 0, "INVALID_PRICE");
+        subscriptionUsdCents = newCents;
+        emit SubscriptionUsdCentsUpdated(newCents);
+    }
+
+    /* ===================================================== */
     /* ================= SUBSCRIPTION ====================== */
     /* ===================================================== */
 
@@ -108,7 +126,50 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         return subscriptionExpiry[user] >= block.timestamp;
     }
 
-    function subscriptionPriceETH() public pure returns (uint256) {
+    /**
+     * @notice Hitung harga langganan dalam ETH berdasarkan oracle Chainlink.
+     * @dev FIX: Sebelumnya hardcoded 0.0001 ether — oracle ethUsdFeed dan
+     *      subscriptionUsdCents tidak dipakai sama sekali. Sekarang harga
+     *      dihitung secara dinamis dari USD cents / ETH-USD rate.
+     *
+     *      Formula: (subscriptionUsdCents * 1e18) / (ethUsdPrice * 100)
+     *
+     *      Fallback ke harga hardcoded jika oracle bermasalah (stale/invalid)
+     *      agar fungsi tidak revert dan subscriber tidak terblokir.
+     */
+    function subscriptionPriceETH() public view returns (uint256) {
+        try ethUsdFeed.latestRoundData() returns (
+            uint80,
+            int256 answer,
+            uint256,
+            uint256 updatedAt,
+            uint80
+        ) {
+            if (answer <= 0 || block.timestamp - updatedAt > 1 hours) {
+                return _fallbackPrice();
+            }
+
+            // Chainlink ETH/USD memiliki 8 desimal
+            // answer = harga ETH dalam USD × 1e8
+            // subscriptionUsdCents = harga dalam cent (1 USD = 100 cent)
+            //
+            // priceInETH = (usdCents * 1e18) / (answer * 100 / 1e8)
+            //            = (usdCents * 1e18 * 1e8) / (answer * 100)
+            //            = (usdCents * 1e24) / (uint256(answer) * 100)
+            uint256 priceInETH = (subscriptionUsdCents * 1e24) /
+                (uint256(answer) * 100);
+
+            return priceInETH;
+        } catch {
+            return _fallbackPrice();
+        }
+    }
+
+    /**
+     * @dev Harga fallback jika oracle tidak tersedia.
+     *      ~$0.35 saat ETH ~$3500 = 0.0001 ETH
+     */
+    function _fallbackPrice() internal pure returns (uint256) {
         return 0.0001 ether;
     }
 
@@ -136,7 +197,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     /* ================= RULE CREATION ===================== */
     /* ===================================================== */
 
-    /// Create ROOT rule (v1)
     function createRule(
         bytes32 ruleHash,
         string calldata uri
@@ -164,7 +224,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         emit RuleCreated(ruleId, ruleId, 0, 1);
     }
 
-    /// Create NEW VERSION of a rule
     function createRuleVersion(
         uint256 parentRuleId,
         bytes32 newHash,
@@ -202,7 +261,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     /* =========== SLOT-AWARE VERSION ACTIVATION =========== */
     /* ===================================================== */
 
-    /// Activate a rule version — auto-deactivates previous version
     function activateRule(uint256 ruleId)
         external
         whenNotPaused
@@ -214,10 +272,9 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         require(!r.deprecated, "RULE_DEPRECATED");
         require(r.tokenId == 0, "ALREADY_ACTIVE");
 
-        uint256 root     = rootRuleOf[ruleId];
+        uint256 root      = rootRuleOf[ruleId];
         uint256 oldActive = activeRuleOf[root];
 
-        // Deactivate previous version
         if (oldActive != 0) {
             uint256 oldToken = rules[oldActive].tokenId;
             if (oldToken != 0) {
@@ -225,12 +282,11 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
                 _burn(oldToken);
                 delete tokenRule[oldToken];
             }
-            rules[oldActive].tokenId  = 0;
+            rules[oldActive].tokenId    = 0;
             rules[oldActive].deprecated = true;
             emit RuleDeprecated(oldActive);
         }
 
-        // Activate new version
         tokenId = ++nextTokenId;
         r.tokenId            = tokenId;
         tokenRule[tokenId]   = ruleId;
@@ -256,7 +312,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         uint256 ruleId = tokenRule[tokenId];
         uint256 root   = rootRuleOf[ruleId];
 
-        // mark as pending burn before calling _burn
         _pendingBurn[tokenId] = true;
         _burn(tokenId);
         delete tokenRule[tokenId];
@@ -268,24 +323,34 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         rules[ruleId].tokenId = 0;
     }
 
-    /// Extend rule license expiry
+    /**
+     * @notice Perpanjang expiry satu rule NFT tertentu.
+     * @dev FIX: Sebelumnya secara salah memodifikasi subscriptionExpiry[msg.sender]
+     *      sebagai side effect. Fungsi ini seharusnya hanya memperpanjang
+     *      ruleExpiry[tokenId] — bukan subscription global user.
+     *
+     *      Jika user ingin perpanjang subscription, mereka harus memanggil
+     *      subscribe() secara eksplisit.
+     *
+     *      Harga tetap sama dengan subscription untuk konsistensi,
+     *      tapi tidak mengubah subscriptionExpiry.
+     */
     function extendRuleExpiry(
         uint256 tokenId,
         uint256 newExpiry
     ) external payable {
         require(ownerOf(tokenId) == msg.sender, "NOT_RULE_OWNER");
         require(newExpiry > ruleExpiry[tokenId], "EXPIRY_NOT_EXTENDED");
+        require(
+            newExpiry <= block.timestamp + 365 days,
+            "EXPIRY_TOO_FAR"
+        );
 
         uint256 price = subscriptionPriceETH();
         require(msg.value >= price, "INSUFFICIENT_PAYMENT");
 
-        uint256 expiry = subscriptionExpiry[msg.sender];
-        subscriptionExpiry[msg.sender] =
-            expiry < block.timestamp
-                ? block.timestamp + SUB_DURATION
-                : expiry + SUB_DURATION;
+        ruleExpiry[tokenId] = newExpiry;
 
-        // transfer exact price, refund excess — sama seperti subscribe()
         (bool ok, ) = deployer.call{value: price}("");
         require(ok, "DEPLOYER_TRANSFER_FAILED");
 
@@ -293,7 +358,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
             payable(msg.sender).transfer(msg.value - price);
         }
 
-        ruleExpiry[tokenId] = newExpiry;
+        emit RuleExpiryExtended(tokenId, newExpiry);
     }
 
     /* ===================== _update OVERRIDE ===================== */
@@ -306,9 +371,8 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         from = super._update(to, tokenId, auth);
 
         if (to == address(0)) {
-            // burn hanya boleh dari internal (_pendingBurn)
             require(_pendingBurn[tokenId], "BURN_ONLY_VIA_EXPIRY_OR_ACTIVATION");
-            _pendingBurn[tokenId] = false; // reset flag
+            _pendingBurn[tokenId] = false;
             return from;
         }
 
@@ -336,7 +400,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         RuleDefinition memory r = rules[ruleId];
         require(r.ruleHash != bytes32(0), "RULE_NOT_EXIST");
 
-        uint256 root    = rootRuleOf[ruleId];
+        uint256 root     = rootRuleOf[ruleId];
         bool    isActive = activeRuleOf[root] == ruleId;
 
         return (r.ruleHash, r.uri, r.creator, root, r.version, r.deprecated, isActive);

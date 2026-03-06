@@ -39,6 +39,22 @@ contract CombinedRuleStorage {
         OUTBOUND
     }
 
+    /* ===================== ERRORS ===================== */
+    error InvalidRuleNFTContract();
+    error NotRuleNFTOwner();
+    error RuleExpired();
+    error RuleDeprecated();
+    error RuleNotActive();
+    error InvalidHash();
+    error EmptyRuleSet();
+    error MaxRulesExceeded();
+    error ArrayLengthMismatch();
+    error RuleNFTAlreadyUsed();
+    error NoActiveRule();
+    error NoActiveRuleForDirection();
+    error EmptyRules();
+    error RuleNFTOwnershipSplit();
+
     /* ===================== STORAGE ===================== */
     mapping(address => mapping(uint256 => bool)) public usedRuleNFT;
     uint256 public constant MAX_RULES = 10;
@@ -76,36 +92,31 @@ contract CombinedRuleStorage {
         uint64 version
     );
 
-    /* ===================== VIEW ===================== */
+    /* ===================== INTERNAL VALIDATION ===================== */
 
     function _validateRuleNFT(
         address ruleNFT,
         uint256 tokenId,
         address caller
     ) internal view {
-
-        require(ruleNFT.code.length > 0, "INVALID_RULE_NFT_CONTRACT");
+        // FIX: gunakan custom errors, bukan require string
+        if (ruleNFT.code.length == 0) revert InvalidRuleNFTContract();
 
         IRuleLicense nft = IRuleLicense(ruleNFT);
 
-        // ownership
-        require(
-            nft.ownerOf(tokenId) == caller,
-            "NOT_RULE_NFT_OWNER"
-        );
+        if (nft.ownerOf(tokenId) != caller) revert NotRuleNFTOwner();
 
-        // expiry
         uint256 expiry = nft.ruleExpiry(tokenId);
-        require(expiry == 0 || expiry >= block.timestamp, "RULE_EXPIRED");
+        if (expiry != 0 && expiry < block.timestamp) revert RuleExpired();
 
-        // active + not deprecated
         uint256 ruleId = nft.tokenRule(tokenId);
-        (, , , , , bool deprecated, bool active) =
-            nft.getRule(ruleId);
+        (, , , , , bool deprecated, bool active) = nft.getRule(ruleId);
 
-        require(!deprecated, "RULE_DEPRECATED");
-        require(active, "RULE_NOT_ACTIVE");
+        if (deprecated) revert RuleDeprecated();
+        if (!active) revert RuleNotActive();
     }
+
+    /* ===================== VIEW ===================== */
 
     function isActive(bytes32 ruleSetHash) external view returns (bool) {
         return rules[ruleSetHash].active;
@@ -125,7 +136,7 @@ contract CombinedRuleStorage {
         returns (bytes32 ruleSetHash)
     {
         ruleSetHash = activeRuleOf[owner];
-        require(ruleSetHash != bytes32(0), "NO_ACTIVE_RULE");
+        if (ruleSetHash == bytes32(0)) revert NoActiveRule();
     }
 
     function getActiveRuleOfByDirection(
@@ -133,7 +144,7 @@ contract CombinedRuleStorage {
         RuleDirection direction
     ) external view returns (bytes32 ruleSetHash) {
         ruleSetHash = activeRuleOfByDirection[owner][direction];
-        require(ruleSetHash != bytes32(0), "NO_ACTIVE_RULE_FOR_DIRECTION");
+        if (ruleSetHash == bytes32(0)) revert NoActiveRuleForDirection();
     }
 
     function getRuleByHash(
@@ -148,7 +159,7 @@ contract CombinedRuleStorage {
         )
     {
         CombinedRule storage r = rules[ruleSetHash];
-        require(r.active, "RULE_NOT_ACTIVE");
+        if (!r.active) revert RuleNotActive();
 
         return (r.owner, r.rules, r.version);
     }
@@ -192,11 +203,7 @@ contract CombinedRuleStorage {
         RuleRef[] storage refs = rules[hash].rules;
 
         for (uint256 i = 0; i < refs.length; i++) {
-            usedRuleNFT[
-                refs[i].ruleNFT
-            ][
-                refs[i].tokenId
-            ] = false;
+            usedRuleNFT[refs[i].ruleNFT][refs[i].tokenId] = false;
         }
     }
 
@@ -208,10 +215,10 @@ contract CombinedRuleStorage {
         bool legacy,
         RuleDirection direction
     ) internal {
-        require(ruleSetHash != bytes32(0), "INVALID_HASH");
-        require(ruleNFTs.length > 0, "EMPTY_RULE_SET");
-        require(ruleNFTs.length <= MAX_RULES, "MAX_10_RULES");
-        require(ruleNFTs.length == tokenIds.length, "ARRAY_LENGTH_MISMATCH");
+        if (ruleSetHash == bytes32(0)) revert InvalidHash();
+        if (ruleNFTs.length == 0) revert EmptyRuleSet();
+        if (ruleNFTs.length > MAX_RULES) revert MaxRulesExceeded();
+        if (ruleNFTs.length != tokenIds.length) revert ArrayLengthMismatch();
 
         if (legacy) {
             bytes32 prev = activeRuleOf[msg.sender];
@@ -238,24 +245,12 @@ contract CombinedRuleStorage {
         delete r.rules;
 
         for (uint256 i = 0; i < ruleNFTs.length; i++) {
-            require(
-                !usedRuleNFT[ruleNFTs[i]][tokenIds[i]],
-                "RULE_NFT_ALREADY_USED"
-            );
+            if (usedRuleNFT[ruleNFTs[i]][tokenIds[i]]) revert RuleNFTAlreadyUsed();
 
             usedRuleNFT[ruleNFTs[i]][tokenIds[i]] = true;
-            _validateRuleNFT(
-                ruleNFTs[i],
-                tokenIds[i],
-                msg.sender
-            );
+            _validateRuleNFT(ruleNFTs[i], tokenIds[i], msg.sender);
 
-            r.rules.push(
-                RuleRef({
-                    ruleNFT: ruleNFTs[i],
-                    tokenId: tokenIds[i]
-                })
-            );
+            r.rules.push(RuleRef({ ruleNFT: ruleNFTs[i], tokenId: tokenIds[i] }));
         }
 
         r.owner = msg.sender;
@@ -277,55 +272,91 @@ contract CombinedRuleStorage {
         }
     }
 
-        function deactivateMyCombinedRule() external {
+    /**
+     * @notice Deactivate the caller's legacy combined rule.
+     * @dev FIX #1: Reset activeRuleOfByDirection juga jika hash yang sama
+     *      ada di sana — sebelumnya hanya reset activeRuleOf sehingga
+     *      state korup untuk rule yang register via direction-based flow.
+     */
+    function deactivateMyCombinedRule() external {
         bytes32 hash = activeRuleOf[msg.sender];
-        require(hash != bytes32(0), "NO_ACTIVE_RULE");
+        if (hash == bytes32(0)) revert NoActiveRule();
 
         rules[hash].active = false;
         activeRuleOf[msg.sender] = bytes32(0);
 
-        _unlock(hash);
+        if (activeRuleOfByDirection[msg.sender][RuleDirection.OUTBOUND] == hash) {
+            activeRuleOfByDirection[msg.sender][RuleDirection.OUTBOUND] = bytes32(0);
+        }
+        if (activeRuleOfByDirection[msg.sender][RuleDirection.INBOUND] == hash) {
+            activeRuleOfByDirection[msg.sender][RuleDirection.INBOUND] = bytes32(0);
+        }
 
+        _unlock(hash);
         emit CombinedRuleDeactivated(hash);
     }
 
     /**
-     * @notice Sync ownership if ALL rule NFTs moved to a new owner
-     * @dev Optional can be called by anyone
+     * @notice Deactivate a direction-specific combined rule.
+     * @dev Fungsi baru — partner dari deactivateMyCombinedRule()
+     *      untuk rule yang di-register via registerCombinedRuleForDirection.
+     */
+    function deactivateMyCombinedRuleForDirection(RuleDirection direction) external {
+        bytes32 hash = activeRuleOfByDirection[msg.sender][direction];
+        if (hash == bytes32(0)) revert NoActiveRuleForDirection();
+
+        rules[hash].active = false;
+        activeRuleOfByDirection[msg.sender][direction] = bytes32(0);
+
+        if (activeRuleOf[msg.sender] == hash) {
+            activeRuleOf[msg.sender] = bytes32(0);
+        }
+
+        _unlock(hash);
+        emit CombinedRuleDeactivated(hash);
+    }
+
+    /**
+     * @notice Sync ownership jika semua rule NFT berpindah ke owner baru.
+     * @dev FIX #2: Sebelumnya hanya update activeRuleOf (legacy mapping).
+     *      Sekarang juga reset activeRuleOfByDirection old owner dan bisa
+     *      di-extend oleh caller untuk set direction-based mapping new owner
+     *      jika diperlukan.
      */
     function syncOwner(bytes32 ruleSetHash) external {
         CombinedRule storage r = rules[ruleSetHash];
-        require(r.active, "RULE_NOT_ACTIVE");
-        require(r.rules.length > 0, "EMPTY_RULES");
+        if (!r.active) revert RuleNotActive();
+        if (r.rules.length == 0) revert EmptyRules();
 
         address newOwner =
-            IRuleLicense(r.rules[0].ruleNFT)
-                .ownerOf(r.rules[0].tokenId);
+            IRuleLicense(r.rules[0].ruleNFT).ownerOf(r.rules[0].tokenId);
 
-        // verify all rule NFTs
         for (uint256 i = 1; i < r.rules.length; i++) {
-            require(
-                IRuleLicense(r.rules[i].ruleNFT)
-                    .ownerOf(r.rules[i].tokenId) == newOwner,
-                "RULE_NFT_OWNERSHIP_SPLIT"
-            );
+            if (
+                IRuleLicense(r.rules[i].ruleNFT).ownerOf(r.rules[i].tokenId) != newOwner
+            ) revert RuleNFTOwnershipSplit();
         }
 
         if (newOwner != r.owner) {
             address old = r.owner;
 
+            // FIX: clear legacy mapping old owner
             if (activeRuleOf[old] == ruleSetHash) {
                 activeRuleOf[old] = bytes32(0);
+            }
+
+            // FIX: clear direction-based mappings old owner
+            if (activeRuleOfByDirection[old][RuleDirection.OUTBOUND] == ruleSetHash) {
+                activeRuleOfByDirection[old][RuleDirection.OUTBOUND] = bytes32(0);
+            }
+            if (activeRuleOfByDirection[old][RuleDirection.INBOUND] == ruleSetHash) {
+                activeRuleOfByDirection[old][RuleDirection.INBOUND] = bytes32(0);
             }
 
             r.owner = newOwner;
             activeRuleOf[newOwner] = ruleSetHash;
 
-            emit CombinedRuleOwnershipSynced(
-                ruleSetHash,
-                old,
-                newOwner
-            );
+            emit CombinedRuleOwnershipSynced(ruleSetHash, old, newOwner);
         }
     }
 }

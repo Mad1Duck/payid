@@ -10,12 +10,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  */
 contract MockUSDC is ERC20, Ownable {
     constructor() ERC20("USDC", "USDC") Ownable(msg.sender) {
-        // Mint initial supply to deployer
-        _mint(msg.sender, 1_000_000 * 10**6); // 1 million USDC
+        _mint(msg.sender, 1_000_000 * 10**6);
     }
     
     function decimals() public pure override returns (uint8) {
-        return 6; // USDC has 6 decimals
+        return 6;
     }
     
     function mint(address to, uint256 amount) external onlyOwner {
