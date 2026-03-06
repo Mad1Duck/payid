@@ -41,7 +41,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     uint8   public constant MAX_SLOT = 3;
     uint256 public constant SUB_DURATION = 30 days;
 
-    // $0.35 = 35 cents — harga langganan dalam USD cents
+    // $0.35 = harga langganan dalam USD cents ya bisa di ubah blm connect chain link mohon maap
     uint256 public subscriptionUsdCents = 35;
 
     AggregatorV3Interface public ethUsdFeed;
@@ -149,13 +149,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
                 return _fallbackPrice();
             }
 
-            // Chainlink ETH/USD memiliki 8 desimal
-            // answer = harga ETH dalam USD × 1e8
-            // subscriptionUsdCents = harga dalam cent (1 USD = 100 cent)
-            //
-            // priceInETH = (usdCents * 1e18) / (answer * 100 / 1e8)
-            //            = (usdCents * 1e18 * 1e8) / (answer * 100)
-            //            = (usdCents * 1e24) / (uint256(answer) * 100)
             uint256 priceInETH = (subscriptionUsdCents * 1e24) /
                 (uint256(answer) * 100);
 
@@ -376,7 +369,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
             return from;
         }
 
-        // Transfer: update expiry berdasarkan subscription owner baru
         ruleExpiry[tokenId] = subscriptionExpiry[to];
     }
 

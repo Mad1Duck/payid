@@ -207,14 +207,12 @@ contract AttestationVerifier {
     ) external {
         uint256 len = attestationUIDs.length;
 
-        // Phase 1: verify all (read-only checks, termasuk replay check)
         for (uint256 i = 0; i < len; ) {
             if (usedAttestations[attestationUIDs[i]]) revert ReplayAttestation();
             _verifyEASAttestation(attestationUIDs[i], payer);
             unchecked { ++i; }
         }
 
-        // Phase 2: mark all as used (write state hanya setelah semua check lolos)
         for (uint256 i = 0; i < len; ) {
             usedAttestations[attestationUIDs[i]] = true;
             unchecked { ++i; }

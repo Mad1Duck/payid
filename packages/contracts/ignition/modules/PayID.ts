@@ -10,7 +10,7 @@ export default buildModule("PayIDModule", (m) => {
   const mockUSDC = m.contract("MockUSDC");
   const mockEAS = m.contract("MockEAS");
 
-  // Core contracts — no constructor args
+  // Core contracts
   const attestationVerifier = m.contract("AttestationVerifier");
   const payIdVerifier = m.contract("PayIDVerifier");
   const payWithPayID = m.contract("PayWithPayID");

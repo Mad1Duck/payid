@@ -99,7 +99,6 @@ contract CombinedRuleStorage {
         uint256 tokenId,
         address caller
     ) internal view {
-        // FIX: gunakan custom errors, bukan require string
         if (ruleNFT.code.length == 0) revert InvalidRuleNFTContract();
 
         IRuleLicense nft = IRuleLicense(ruleNFT);
@@ -340,12 +339,10 @@ contract CombinedRuleStorage {
         if (newOwner != r.owner) {
             address old = r.owner;
 
-            // FIX: clear legacy mapping old owner
             if (activeRuleOf[old] == ruleSetHash) {
                 activeRuleOf[old] = bytes32(0);
             }
 
-            // FIX: clear direction-based mappings old owner
             if (activeRuleOfByDirection[old][RuleDirection.OUTBOUND] == ruleSetHash) {
                 activeRuleOfByDirection[old][RuleDirection.OUTBOUND] = bytes32(0);
             }

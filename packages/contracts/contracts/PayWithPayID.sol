@@ -21,7 +21,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 contract PayWithPayID {
 
-    // CHANGED: dari immutable ke storage
     // immutable di-encode ke bytecode → bytecode beda antar chain → CREATE2 address beda
     PayIDVerifier       public verifier;
     AttestationVerifier public attestationVerifier;
