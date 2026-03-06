@@ -8,64 +8,39 @@ sidebar_label: Server Payment Flow
 
 Source: `examples/simple/server.ts`
 
-Server mode digunakan saat rules membutuhkan **Context V2** — data sensitif yang harus ditandatangani oleh **trusted issuers**.
+Server mode menambahkan **Context V2** — data payment sensitif (timestamp terverifikasi, spend tracking, KYC, oracle) yang harus ditandatangani oleh **trusted issuers**.
 
 ---
 
-## Kapan Pakai Server Mode
-
-| Use Case | Mode |
-|---|---|
-| Rules hanya `tx.*` | Client ✅ |
-| `env.timestamp` dari server | **Server** |
-| Spent tracking dari database | **Server** |
-| KYC / oracle data | **Server** |
-| Rule dengan `requiresAttestation` | **Server** |
-
----
-
-## Jalankan
-
-```bash
-bun examples/simple/server.ts
-```
-
----
-
-## Perbedaan Utama: buildContextV2
-
-Context dibuat dengan `buildContextV2()` yang menambahkan **EIP-712 attestation signature** ke setiap field sensitif:
+## Perbedaan Utama: `buildContextV2`
 
 ```ts
 import { buildContextV2 } from "payid/context";
 
+// Signer-signer ini ada di BACKEND kamu — jangan expose private key ke client
 const contextV2 = await buildContextV2({
   baseContext: {
-    tx: { sender: payerWallet.address, receiver: RECEIVER, asset: "USDC", amount: AMOUNT.toString(), chainId: 4202 },
-    payId: { id: "pay.id/merchant", owner: RECEIVER },
+    tx: { sender: payerWallet.address, receiver: RECEIVER, asset: USDC_ADDRESS, amount: AMOUNT.toString(), chainId: 31337 },
+    env: { timestamp: Math.floor(Date.now() / 1000) },
   },
-  env:    { issuer: ENV_ISSUER },
-  state:  { issuer: STATE_ISSUER, spentToday: "0", period: "DAY" },
-  oracle: { issuer: ORACLE_ISSUER, data: { country: "ID", kycLevel: "2", fxRate: 15600 } },
-  risk:   { issuer: RISK_ISSUER, score: 25, category: "LOW", modelHash: "0xhash..." },
+  env:    { issuer: envSigner },
+  state:  { issuer: stateSigner, spentToday: await getSpentToday(payerWallet.address), period: new Date().toISOString().slice(0, 10) },
+  oracle: { issuer: oracleSigner, data: { country: "ID", kycLevel: "2" } },
 });
 ```
 
 ---
 
-## createPayID Server Mode
+## Inisialisasi SDK Server Mode
 
 ```ts
 import { createPayID } from "payid/server";
 
 const payid = createPayID({
-  trustedIssuers: new Set([ENV_ISSUER.address, STATE_ISSUER.address, ORACLE_ISSUER.address]),
+  trustedIssuers: new Set([envSigner.address, stateSigner.address, oracleSigner.address]),
 });
+await payid.ready();
 ```
-
-:::warning
-`new Set([])` = tidak ada issuer dipercaya → semua attestation ditolak.
-:::
 
 ---
 
@@ -73,15 +48,20 @@ const payid = createPayID({
 
 ```ts
 const { result, proof } = await payid.evaluateAndProve({
-  context: contextV2,  // ← Context V2
+  context:            contextV2,
   authorityRule,
-  payId: "pay.id/merchant",
-  payer: payerWallet.address, receiver: RECEIVER,
-  asset: USDC, amount: AMOUNT,
-  signer: payerWallet, ttlSeconds: 300,
-  verifyingContract: PAYID_VERIFIER,
-  ruleAuthority: COMBINED_RULE_STORAGE,
-  chainId: 4202,
+  payId:              "pay.id/merchant",
+  payer:              payerWallet.address,
+  receiver:           RECEIVER,
+  asset:              USDC_ADDRESS,
+  amount:             AMOUNT,
+  signer:             payerWallet,
+  verifyingContract:  process.env.PAYID_VERIFIER!,
+  ruleAuthority:      process.env.COMBINED_RULE_STORAGE!,
+  ruleSetHashOverride: ruleSetHash,
+  chainId:            31337,
+  blockTimestamp:     Math.floor(Date.now() / 1000),
+  ttlSeconds:         300,
 });
 ```
 
@@ -90,9 +70,32 @@ const { result, proof } = await payid.evaluateAndProve({
 ## Contoh Rule yang Butuh Server Mode
 
 ```json
-{ "version": "1", "logic": "AND", "requires": ["oracle", "risk"], "rules": [
-  { "id": "kyc_required", "if": { "field": "oracle.kycLevel", "op": ">=", "value": "2" } },
-  { "id": "low_risk_only", "if": { "field": "risk.score", "op": "<=", "value": 50 } },
-  { "id": "id_only", "if": { "field": "oracle.country", "op": "==", "value": "ID" } }
-]}
+{
+  "version": "1",
+  "logic": "AND",
+  "requires": ["oracle", "state"],
+  "rules": [
+    { "id": "kyc_required", "if": { "field": "oracle.kycLevel", "op": ">=", "value": "2" }, "message": "KYC level 2 dibutuhkan" },
+    { "id": "indonesia_only", "if": { "field": "oracle.country", "op": "==", "value": "ID" }, "message": "Hanya pengguna Indonesia" },
+    { "id": "daily_limit", "if": { "field": "state.spentToday", "op": "<=", "value": "500000000" }, "message": "Limit harian 500 USDC terlampaui" }
+  ]
+}
 ```
+
+---
+
+## Arsitektur Tipikal
+
+```
+[Browser client]                    [Backend server kamu]
+     │                                       │
+     │── POST /api/prepare-payment ─────────►│
+     │                                       │── buildContextV2()
+     │                                       │   (sign env, state, oracle)
+     │◄── { contextV2, ruleSetHash } ────────│
+     │
+     │── evaluateAndProve(contextV2, ...)   ← jalan di browser
+     │── payERC20(proof.payload, sig, [])
+```
+
+Backend lampirkan attestation. Payer tetap sign proof akhir dengan wallet mereka di browser — server tidak pernah menyentuh private key mereka.

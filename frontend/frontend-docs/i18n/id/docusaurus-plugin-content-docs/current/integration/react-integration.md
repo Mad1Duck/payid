@@ -6,39 +6,58 @@ sidebar_label: Integrasi React
 
 # Integrasi React
 
-PAY.ID menyediakan paket React khusus — `payid-react` — dengan hooks dan provider yang menangani semua state management yang kompleks untukmu.
-
-Contoh lengkap yang berjalan ada di `example-product/src/pages/test/index.tsx`.
+PAY.ID menyediakan paket React khusus — `payid-react` — yang dibangun di atas [wagmi](https://wagmi.sh). Menangani semua interaksi kontrak, koneksi wallet, dan state multi-step payment untukmu.
 
 ---
 
 ## Install
 
 ```bash
-npm install payid-react wagmi viem @tanstack/react-query
+npm install payid-react payid wagmi viem @tanstack/react-query ethers
 # atau
-bun add payid-react wagmi viem @tanstack/react-query
+bun add payid-react payid wagmi viem @tanstack/react-query ethers
+```
+
+Untuk render QR image (opsional — `payload` string selalu tersedia):
+
+```bash
+npm install qrcode
+npm install --save-dev @types/qrcode
 ```
 
 ---
 
-## Setup: Bungkus App-mu dengan Providers
-
-PAY.ID React bekerja dengan wagmi. Bungkus app-mu:
+## Setup Provider
 
 ```tsx
 // main.tsx
-import { WagmiProvider } from 'wagmi'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { WagmiProvider, createConfig, http } from 'wagmi'
+import { hardhat } from 'wagmi/chains'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PayIDProvider } from 'payid-react'
-import { wagmiConfig, queryClient } from './config'
 
-export default function App() {
+const wagmiConfig = createConfig({
+  chains: [hardhat],
+  transports: { [hardhat.id]: http() },
+})
+const queryClient = new QueryClient()
+
+export default function Root() {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <PayIDProvider>
-          <AppKamu />
+        <PayIDProvider
+          contracts={{
+            31337: {
+              ruleAuthority:       '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44',
+              ruleItemERC721:      '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f',
+              combinedRuleStorage: '0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE',
+              payIDVerifier:       '0x59b670e9fA9D0A427751Af201D676719a970857b',
+              payWithPayID:        '0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1',
+            },
+          }}
+        >
+          <App />
         </PayIDProvider>
       </QueryClientProvider>
     </WagmiProvider>
@@ -48,234 +67,212 @@ export default function App() {
 
 ---
 
-## Hook `usePayIDFlow` — Cara Termudah untuk Bayar
+## Ringkasan Hooks
 
-`usePayIDFlow` menangani seluruh flow pembayaran dalam satu hook. Ia mengelola loading state, error, dan proses multi-langkah secara otomatis.
+| Hook | Sisi | Fungsi |
+|---|---|---|
+| `usePayIDFlow` | Payer | Full payment flow — fetch rules, evaluasi, prove, submit |
+| `usePayIDQR` | Merchant | Generate QR code bertanda tangan |
+| `usePayETH` | Payer | Low-level: bayar dengan ETH |
+| `usePayERC20` | Payer | Low-level: bayar dengan ERC20 |
+| `useSubscribe` | Merchant | Subscribe untuk unlock slot rule |
+| `useCreateRule` | Merchant | Buat Rule NFT baru |
+| `useActivateRule` | Merchant | Aktifkan (mint) Rule NFT |
+| `useExtendRuleExpiry` | Merchant | Perpanjang expiry Rule NFT |
+| `useRegisterCombinedRule` | Merchant | Daftarkan kebijakan combined rule |
+| `useDeactivateCombinedRule` | Merchant | Nonaktifkan kebijakan aktif |
+| `useSubscription` | Read | Cek status subscription |
+| `useMyRules` | Read | Ambil Rule NFT milikmu |
+| `useActiveCombinedRule` | Read | Baca kebijakan aktif alamat manapun |
+| `useAllCombinedRules` | Read | List semua kebijakan terdaftar |
+
+---
+
+## `usePayIDFlow` — Full Payment Flow (Payer)
+
+Cara paling mudah untuk bayar. Menangani semua langkah: load rules dari chain + IPFS, evaluasi, sign proof, ERC20 approval, dan submit transaksi.
 
 ```tsx
 import { usePayIDFlow } from 'payid-react'
+import { parseUnits, zeroAddress } from 'viem'
 
-function TombolBayar({ receiver, amount }) {
-  const { execute, status, isPending, error, decision, txHash } = usePayIDFlow()
+const USDC_ADDRESS = '0xc6e7DF5E7b4f2A278906862b61205850344D4e7d'
 
-  const handleBayar = () => {
-    execute({
-      receiver: receiver,           // Alamat wallet receiver
-      asset: USDC_ADDRESS,         // Alamat token (atau zero address untuk ETH)
-      amount: BigInt(amount * 1_000_000), // Jumlah dalam unit token
-      payId: 'pay.id/merchant',    // PAY.ID identifier (opsional)
-    })
-  }
+function CheckoutButton({ merchantAddress }: { merchantAddress: `0x${string}` }) {
+  const { execute, reset, status, isPending, isSuccess, error, denyReason, txHash } =
+    usePayIDFlow()
 
   return (
     <div>
-      <button onClick={handleBayar} disabled={isPending}>
-        {status === 'idle' && 'Bayar Sekarang'}
-        {status === 'fetching-rule' && 'Memuat rules...'}
-        {status === 'evaluating' && 'Memeriksa rules...'}
-        {status === 'proving' && 'Membuat proof...'}
-        {status === 'approving' && 'Approve token...'}
-        {status === 'awaiting-wallet' && 'Konfirmasi di wallet...'}
-        {status === 'confirming' && 'Mengkonfirmasi...'}
-        {status === 'success' && '✅ Pembayaran terkirim!'}
-        {status === 'denied' && '❌ Pembayaran ditolak'}
-        {status === 'error' && 'Coba lagi'}
+      <button
+        onClick={() => execute({
+          receiver: merchantAddress,
+          asset:    USDC_ADDRESS,
+          amount:   parseUnits('50', 6),
+          payId:    'pay.id/merchant',
+        })}
+        disabled={isPending}
+      >
+        {status === 'idle'            && 'Bayar 50 USDC'}
+        {status === 'fetching-rule'   && 'Memuat rules...'}
+        {status === 'evaluating'      && 'Mengecek rules...'}
+        {status === 'proving'         && 'Tanda tangani proof di wallet...'}
+        {status === 'approving'       && 'Setujui USDC...'}
+        {status === 'awaiting-wallet' && 'Konfirmasi payment...'}
+        {status === 'confirming'      && 'Konfirmasi di chain...'}
+        {status === 'success'         && '✅ Berhasil!'}
+        {status === 'denied'          && '❌ Ditolak'}
+        {status === 'error'           && 'Coba lagi'}
       </button>
 
-      {status === 'denied' && <p>Alasan: {denyReason}</p>}
-      {status === 'success' && <a href={`https://sepolia-blockscout.lisk.com/tx/${txHash}`}>Lihat TX →</a>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {status === 'denied'  && <p>Alasan: {denyReason}</p>}
+      {status === 'success' && <p>TX: {txHash}</p>}
+      {error                && <p style={{ color: 'red' }}>{error}</p>}
     </div>
   )
 }
 ```
 
-### Nilai Status Flow
+### Payment ETH
 
-| Status | Yang Sedang Terjadi |
-|---|---|
-| `idle` | Menunggu untuk dimulai |
-| `fetching-rule` | Memuat rules merchant dari chain + IPFS |
-| `evaluating` | Menjalankan rules melalui WASM engine |
-| `proving` | Membuat proof EIP-712 (meminta tanda tangan wallet) |
-| `approving` | Menunggu TX approve ERC20 (otomatis dipicu jika diperlukan) |
-| `awaiting-wallet` | Menunggu pengguna konfirmasi pembayaran di wallet |
-| `confirming` | Transaksi dikirim, menunggu konfirmasi blockchain |
-| `success` | Pembayaran dikonfirmasi on-chain ✅ |
-| `denied` | Rules menolak pembayaran ❌ |
-| `error` | Ada yang salah 🔴 |
-
----
-
-## Hooks Berguna Lainnya
-
-### `useSubscription(address?)` — Cek Status Subscription
+Pass `zeroAddress` sebagai asset untuk ETH native:
 
 ```tsx
-import { useSubscription } from 'payid-react'
-
-function StatusSubscription() {
-  const { address } = useAccount()
-  const { data: sub } = useSubscription(address)
-
-  return (
-    <div>
-      <p>Status: {sub?.isActive ? 'Aktif ✅' : 'Tidak Aktif ❌'}</p>
-      <p>Slot terpakai: {sub?.logicalRuleCount} / {sub?.maxSlots}</p>
-      <p>Expired: {sub?.expiry ? new Date(Number(sub.expiry) * 1000).toLocaleDateString() : 'N/A'}</p>
-    </div>
-  )
-}
-```
-
-### `useMyRules()` — Ambil Rule NFT Milikmu
-
-```tsx
-import { useMyRules } from 'payid-react'
-
-function Rules saya() {
-  const { data: rules = [], isLoading } = useMyRules()
-
-  if (isLoading) return <div>Memuat...</div>
-
-  return (
-    <ul>
-      {rules.map(rule => (
-        <li key={rule.ruleId.toString()}>
-          Rule #{rule.ruleId.toString()} — 
-          {rule.active ? '✅ Aktif' : '⏳ Belum diaktifkan'}
-        </li>
-      ))}
-    </ul>
-  )
-}
-```
-
-### `useActiveCombinedRule(address?)` — Baca Policy Aktif Merchant
-
-```tsx
-import { useActiveCombinedRule } from 'payid-react'
-
-function PolicyMerchant({ merchantAddress }) {
-  const { data: policy } = useActiveCombinedRule(merchantAddress)
-
-  if (!policy) return <p>Tidak ada policy aktif — semua pembayaran diizinkan</p>
-
-  return (
-    <div>
-      <p>Versi policy: {policy.version.toString()}</p>
-      <p>Jumlah rules: {policy.ruleRefs.length}</p>
-    </div>
-  )
-}
-```
-
-### `useRules({ creator })` — Filter Rules Berdasarkan Pembuat
-
-```tsx
-import { useRules } from 'payid-react'
-
-function RulesPembuat({ creator }) {
-  const { data: rules = [] } = useRules({ creator })
-  // Kembalikan hanya rules yang dibuat oleh alamat ini
-}
-```
-
-### `useAllCombinedRules()` — Daftar Semua Policy Terdaftar
-
-```tsx
-import { useAllCombinedRules } from 'payid-react'
-
-function SemuaPolicy() {
-  const { data: allRules = [] } = useAllCombinedRules()
-  // Kembalikan semua objek CombinedRule on-chain
-}
-```
-
-### `usePayIDContext()` — Akses Alamat Kontrak
-
-```tsx
-import { usePayIDContext } from 'payid-react'
-
-function KomponentSaya() {
-  const { contracts } = usePayIDContext()
-  // contracts.ruleItemERC721
-  // contracts.combinedRuleStorage
-  // contracts.payWithPayId
-  // contracts.payIdVerifier
-}
+execute({ receiver: merchantAddress, asset: zeroAddress, amount: parseUnits('0.01', 18), payId: 'pay.id/merchant' })
 ```
 
 ---
 
-## Contoh Lengkap yang Berjalan
+## `usePayIDQR` — QR Code Generator (Merchant)
 
-Implementasi lengkap ada di `example-product/src/pages/test/index.tsx`. Isinya:
-
-- **Tab Rule NFTs** — lihat semua rules, filter berdasarkan milikku/aktif, aktifkan rules
-- **Tab Create Rule** — buat dan mint Rule NFT baru dari browser
-- **Tab Combine** — pilih rules dan daftarkan combined policy
-- **Tab Subscription** — subscribe, cek status, perpanjang subscription
-- **Tab Pay** — flow pembayaran lengkap menggunakan `usePayIDFlow`
-
-### Tab Pay (TransactTab)
-
-Bagian kunci dari tab Pay di `test/index.tsx`:
+Merchant pakai hook ini untuk generate QR code bertanda tangan yang discan pelanggan.
 
 ```tsx
-function TransactTab({ myAddress }) {
-  const [receiver, setReceiver] = useState('')
-  const [amount, setAmount] = useState('')
+import { usePayIDQR } from 'payid-react'
+import { parseUnits } from 'viem'
 
-  const { execute, reset, status, isPending, error, decision, txHash } = usePayIDFlow()
-
-  const handleBayar = () => {
-    execute({
-      receiver: receiver as Address,
-      asset: USDC_ADDRESS,
-      amount: BigInt(Math.round(parseFloat(amount) * 1_000_000)),
-      payId: `pay.id/${receiver.slice(2, 10).toLowerCase()}`,
-    })
-  }
+function MerchantQR() {
+  const { generate, reset, isPending, isReady, payload, qrDataUrl, error } = usePayIDQR()
 
   return (
     <div>
-      <input placeholder="Alamat receiver 0x..." value={receiver} onChange={e => setReceiver(e.target.value)} />
-      <input type="number" placeholder="Jumlah" value={amount} onChange={e => setAmount(e.target.value)} />
-      <button onClick={handleBayar} disabled={isPending || !receiver || !amount}>
-        {status === 'idle' ? '→ Kirim Pembayaran' : status}
+      <button
+        onClick={() => generate({
+          payId:        'pay.id/toko-ku',
+          allowedAsset: USDC_ADDRESS,
+          maxAmount:    parseUnits('100', 6),
+          expiresAt:    Math.floor(Date.now() / 1000) + 3600,
+        })}
+        disabled={isPending}
+      >
+        {isPending ? 'Membuat QR...' : 'Generate QR'}
       </button>
+
+      {/* PNG data URL kalau package 'qrcode' terinstall */}
+      {qrDataUrl && <img src={qrDataUrl} alt="Scan untuk bayar" width={256} />}
+
+      {/* Fallback: pakai library QR apapun dengan payload string */}
+      {payload && !qrDataUrl && <p style={{ wordBreak: 'break-all', fontSize: 11 }}>{payload}</p>}
+
+      {error   && <p style={{ color: 'red' }}>{error}</p>}
+      {isReady && <button onClick={reset}>QR Baru</button>}
     </div>
   )
 }
 ```
 
-### Tab Create Rule
+**Di sisi payer** setelah scan:
 
-Dari `test/CreateRuleTab.tsx`, ini memungkinkan kamu membuat Rule NFT dari browser. Ia membangun rule JSON dan memanggil:
+```ts
+import { decodeSessionPolicyV2QR } from 'payid/sessionPolicy'
+
+const policy = decodeSessionPolicyV2QR(scannedQRString)
+execute({
+  receiver: policy.receiver   as `0x${string}`,
+  asset:    policy.allowedAsset as `0x${string}`,
+  amount:   BigInt(policy.maxAmount),
+  payId:    policy.payId,
+})
+```
+
+---
+
+## Write Hooks Merchant
+
+### `useSubscribe` — Subscribe untuk unlock 3 slot rule
 
 ```tsx
-// Dari CreateRuleTab.tsx
-const ruleHash = keccak256(toBytes(canonicalize(ruleObject)))
+const { subscribe, isPending } = useSubscribe()
+// Ambil harga dari oracle dulu via useReadContract, lalu:
+subscribe(price as bigint)
+```
 
-// 1. Subscribe (kalau belum)
-await tx.send({ functionName: 'subscribe', value: subPrice })
+### `useCreateRule` + `useActivateRule`
 
-// 2. Buat rule on-chain
-await tx.send({ functionName: 'createRule', args: [ruleHash, ipfsUri] })
+```tsx
+const { createRule }   = useCreateRule()
+const { activateRule } = useActivateRule()
 
-// 3. Aktifkan (mint NFT)
-await tx.send({ functionName: 'activateRule', args: [ruleId] })
+createRule({ ruleHash: keccak256(toBytes(ruleJson)), uri: 'ipfs://Qm...' })
+activateRule(ruleId)  // ruleId dari RuleCreated event
+```
+
+### `useExtendRuleExpiry` — Perpanjang sebelum expired
+
+```tsx
+const { extendRuleExpiry } = useExtendRuleExpiry()
+
+extendRuleExpiry({
+  tokenId,
+  newExpiry:  BigInt(Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60),
+  priceInWei: 100_000_000_000_000n,
+})
+```
+
+### `useRegisterCombinedRule` — Aktifkan kebijakan payment
+
+```tsx
+const { registerCombinedRule } = useRegisterCombinedRule()
+
+registerCombinedRule({
+  ruleSetHash: keccak256(toBytes('my-policy-v1')),
+  ruleNFTs:    Array(tokenIds.length).fill(contracts.ruleItemERC721),
+  tokenIds,
+  version:     1n,
+})
+```
+
+---
+
+## Read Hooks
+
+### `useSubscription` — Status langganan
+
+```tsx
+const { data: sub } = useSubscription(address)
+// sub.isActive, sub.logicalRuleCount, sub.maxSlots, sub.expiry
+```
+
+### `useMyRules` — Rule NFT milikmu
+
+```tsx
+const { data: rules = [] } = useMyRules()
+// rules[].ruleId, rules[].active, rules[].tokenId
+```
+
+### `useActiveCombinedRule` — Kebijakan aktif merchant
+
+```tsx
+const { data: policy } = useActiveCombinedRule(merchantAddress)
+// policy.hash, policy.version, policy.ruleRefs
 ```
 
 ---
 
 ## Tips
 
-**Inisialisasi PayIDProvider sekali.** `<PayIDProvider>` membungkus seluruh app dan mengelola lifecycle SDK.
+**Jangan cache proof.** `usePayIDFlow` generate fresh proof setiap kali. Proof kedaluwarsa dalam `ttlSeconds` detik (default 300).
 
-**Jangan pernah cache proof.** `usePayIDFlow` menghasilkan proof baru setiap kali. Jangan simpan dan gunakan kembali proof — mereka expired dalam 5 menit.
+**Cek subscription sebelum buat rule.** Pakai `useSubscription(address)` untuk verifikasi user punya slot aktif.
 
-**Cek subscription sebelum aktifkan rules.** Gunakan `useSubscription(address)` untuk verifikasi status subscription pengguna sebelum biarkan mereka membuat rules.
-
-**Preview policy receiver.** Gunakan `useActiveCombinedRule(receiver)` sebelum pembayaran untuk menampilkan kepada pengguna rules apa yang akan dicek.
+**Kompatibel dengan semua wallet.** `usePayIDFlow` dan `usePayIDQR` pakai `useConnectorClient` dari wagmi — kompatibel dengan MetaMask, WalletConnect, Coinbase Wallet, Safe, dan connector wagmi lainnya.

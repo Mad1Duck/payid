@@ -95,7 +95,7 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://github.com/your-org/payid',
+          href: 'https://github.com/Mad1Duck/payid',
           label: 'GitHub',
           position: 'right',
         },

@@ -1,24 +1,23 @@
 ---
 id: create-nft-rule
 title: 'Contoh: Buat Rule NFT'
-sidebar_label: Create Rule NFT
+sidebar_label: Buat Rule NFT
 ---
 
 # Contoh: Buat Rule NFT
 
 Source: `examples/simple/rule.nft/create-rule-item.ts`
 
-Script ini melakukan 4 hal sekaligus: **subscribe → upload IPFS → createRule → activateRule**.
+Script ini melakukan 3 hal: **subscribe (kalau belum) → createRule → activateRule**.
 
 ---
 
 ## Step 1 — Definisikan Rule
 
 ```ts
-// examples/simple/rule.nft/currentRule.ts
 export const RULE_OBJECT = {
-  id: 'min_amount',
-  if: { field: 'tx.amount', op: '>=', value: '100000000' },
+  id:      'min_amount',
+  if:      { field: 'tx.amount', op: '>=', value: '100000000' },
   message: 'Minimum 100 USDC',
 };
 ```
@@ -31,39 +30,52 @@ export const RULE_OBJECT = {
 bun run setup:upload
 ```
 
-```
- Cache hit — skip Pinata upload
-   ruleHash : 0xabc...
-   tokenURI : ipfs://Qm...
-```
-
 ---
 
-## Step 3 — Subscribe + Create + Activate
+## Step 3 — Subscribe + Buat + Aktifkan
 
 ```bash
 bun run setup:create-rule
 ```
 
-```
-Using wallet: 0xRECEIVER...
-Already subscribed
- Cache hit — skip Pinata upload
-Creating rule...
-Activating rule...
-NFT Token ID: 1
-Rule expiry : 2025-03-23T00:00:00.000Z
-Days left   : 30
-DONE — Rule NFT Ready
+```ts
+// Cek subscription
+const hasActive = await ruleNFT.getFunction("hasActiveSubscription")(receiverWallet.address);
+if (!hasActive) {
+  const price = await ruleNFT.getFunction("subscriptionPriceETH")();
+  await (await ruleNFT.getFunction("subscribe").send({ value: price })).wait();
+}
+
+// createRule
+const ruleHash = keccak256(toUtf8Bytes(canonicalize(RULE_OBJECT)));
+const txCreate = await ruleNFT.getFunction("createRule").send(ruleHash, tokenURI);
+const receipt  = await txCreate.wait();
+// Extract ruleId dari event RuleCreated
+
+// activateRule → mint NFT
+await (await ruleNFT.getFunction("activateRule").send(ruleId)).wait();
+const tokenId = await ruleNFT.getFunction("ruleTokenId")(ruleId);
 ```
 
 ---
 
-## Batas Slot
+## Batas Slot Rule
 
-| Status              | Max Rule NFT      |
-| ------------------- | ----------------- |
-| Tanpa subscription  | 1 slot            |
-| Dengan subscription | 3 slot (MAX_SLOT) |
+| Status | Maksimal Rule NFT |
+|---|---|
+| Tanpa langganan | 1 slot |
+| Dengan langganan | 3 slot (`MAX_SLOT`) |
 
-Error `RULE_SLOT_FULL` muncul saat limit tercapai. Subscribe atau hapus rule lama untuk free slot.
+---
+
+## Step 4 — Perpanjang Expiry Rule
+
+```ts
+const newExpiry = BigInt(Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60);
+const price     = await ruleNFT.getFunction("subscriptionPriceETH")();
+await (await ruleNFT.getFunction("extendRuleExpiry").send(tokenId, newExpiry, { value: price })).wait();
+```
+
+:::warning Expiry ≠ Langganan
+Expiry Rule NFT dan expiry langganan adalah **hal yang terpisah**. Perpanjang langganan tidak otomatis memperpanjang Rule NFT — kamu harus panggil `extendRuleExpiry(tokenId, newExpiry)` untuk setiap token.
+:::

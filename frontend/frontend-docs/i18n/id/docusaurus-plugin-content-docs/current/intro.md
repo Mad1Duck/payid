@@ -8,51 +8,37 @@ slug: /
 
 # PAY.ID — Programmable Payment Policy
 
-> **One ID · Rule-based · Non-custodial · ERC-4337 Ready**
+> **One ID · Rule-based · Non-custodial · Enforced On-chain**
 
 ## Ide Sederhananya 💡
 
-Bayangkan kamu adalah seorang merchant. Kamu mau terima pembayaran, tapi hanya kalau:
+Bayangkan kamu seorang merchant. Kamu mau terima pembayaran, tapi hanya dengan syarat:
 - Hanya stablecoin (USDC, USDT)
 - Antara $10–$500 saja
 - Hanya di jam kerja
 - Hanya dari pelanggan yang sudah terverifikasi
 
-Biasanya, untuk enforce rules seperti ini kamu butuh server backend, database, dan kode yang rumit. **PAY.ID memungkinkan kamu mendefinisikan rules ini sebagai file JSON sederhana** — dan rules itu otomatis di-enforce di blockchain manapun, tanpa kamu harus jalankan server.
+Normalnya, enforcement rules seperti ini butuh backend server, database, dan code yang jalan sebelum setiap payment. **PAY.ID memungkinkan kamu mendefinisikan rules ini sebagai JSON sederhana — dan meng-enforce-nya otomatis di chain apapun, tanpa perlu server.**
 
-> **PAY.ID menjawab satu pertanyaan mendasar: "Apakah transaksi ini boleh terjadi?"**
+> **PAY.ID menjawab satu pertanyaan fundamental: "Apakah transaksi ini boleh dilanjutkan?"**
 
 ---
 
-## Cara Kerjanya — Gambaran Besar
-
-Bayangkan PAY.ID seperti **satpam pintar** untuk pembayaranmu:
-
-```
-[Payer mau kirim uang]
-        ↓
-[Satpam cek rules-mu]  ← Ini PAY.ID
-        ↓               ↓
-   [DIIZINKAN ✅]   [DIBLOKIR ❌]
-        ↓
-[Smart contract di blockchain]
-        ↓
-   [Uang berpindah]
-```
-
-Secara teknis lebih detailnya:
+## Cara Kerjanya
 
 ```
 Context → Rules (WASM) → Decision → Proof (EIP-712) → Verify (Solidity)
 ```
 
-| Langkah | Yang Terjadi |
+| Step | Yang Terjadi |
 |---|---|
-| **Context** | PAY.ID kumpulkan info: siapa yang bayar, token apa, berapa, kapan |
-| **Rules** | Rules-mu dievaluasi di WASM engine yang cepat dan aman |
-| **Decision** | Hasilnya ALLOW ✅ atau REJECT ❌ |
-| **Proof** | Kalau ALLOW, dibuatkan bukti kriptografis (ditandatangani wallet payer) |
-| **Verify** | Smart contract cek buktinya, lalu transfer uang atau revert |
+| **Context** | Detail pembayaran dikumpulkan: siapa yang bayar, token apa, berapa, kapan |
+| **Rules** | Rules kamu dievaluasi di sandboxed WASM engine — deterministik, auditable |
+| **Decision** | Hasilnya `ALLOW ✅` atau `REJECT ❌` |
+| **Proof** | Kalau ALLOW, EIP-712 signed proof dibuat — payer sign pakai wallet mereka sendiri |
+| **Verify** | Smart contract cek proof-nya, lalu transfer atau revert |
+
+Kontrak **tidak pernah mengeksekusi rules kamu on-chain** — cukup verifikasi signed proof. Ini membuat gas cost rendah dan kontrak mudah diaudit.
 
 ---
 
@@ -60,11 +46,11 @@ Context → Rules (WASM) → Decision → Proof (EIP-712) → Verify (Solidity)
 
 | ❌ Bukan | ✅ Tapi |
 | --- | --- |
-| Wallet | Policy layer untuk pembayaran |
-| Payment gateway | Generator bukti kriptografis |
-| Kustodian (nyimpan uangmu) | Identity + rules protocol |
-| DeFi protocol | Kompatibel dengan ERC-4337 |
-| Blockchain atau L2 | Berjalan di chain EVM manapun |
+| Wallet | Layer kebijakan untuk pembayaran |
+| Payment gateway | Generator cryptographic proof |
+| Kustodian (menyimpan dana) | Protokol identitas + rules |
+| Protokol DeFi | Bisa dipakai di chain EVM apapun |
+| Blockchain atau L2 | Kompatibel dengan ERC-4337 |
 
 ---
 
@@ -72,62 +58,81 @@ Context → Rules (WASM) → Decision → Proof (EIP-712) → Verify (Solidity)
 
 ### 🪪 1. Payment Identity
 
-`pay.id/namamu` adalah **payment identity** milikmu. Bukan sekadar alamat wallet — ia membawa rules pembayaranmu. Saat seseorang membayar kamu, rules yang melekat pada ID-mu otomatis dicek.
+`pay.id/namakamu` adalah **payment identity** kamu. Bukan cuma wallet address — tapi membawa rules pembayaranmu. Saat seseorang membayar kamu, rules yang melekat pada ID-mu otomatis dicek.
 
 ### 📋 2. Rule Engine
 
-Rules adalah **pure JSON config** yang dievaluasi di sandboxed WASM engine. Sifatnya:
+Rules adalah **konfigurasi JSON murni** yang dievaluasi di sandboxed WASM engine:
 - **Deterministik** — input yang sama selalu menghasilkan output yang sama
-- **Auditabel** — siapapun bisa baca rulesnya
-- **Immutable** — disimpan di IPFS + di-hash on-chain
+- **Auditable** — siapapun bisa membaca rules-nya
+- **Immutable** — disimpan di IPFS dengan hash-nya di-commit on-chain
 
-Ada 3 format rule: `SimpleRule`, `MultiConditionRule`, dan `NestedRule`. Lihat [Rule Basics →](./rules/rule-basics)
+Tiga format rule: `SimpleRule`, `MultiConditionRule`, dan `NestedRule`. Lihat [Rule Basics →](./rules/rule-basics).
 
 ### 🔐 3. Decision Proof
 
-Setiap evaluasi menghasilkan **EIP-712 signed proof** — sebuah bukti kriptografis yang menyatakan "pembayaran ini sudah dicek dan disetujui pada saat ini." Proof ditandatangani oleh wallet payer sendiri, sehingga tidak butuh pihak ketiga yang dipercaya.
+Setiap evaluasi payment menghasilkan **EIP-712 signed proof** — tanda terima kriptografis yang menyatakan "pembayaran ini sudah dicek dan disetujui saat ini." Proof ditandatangani oleh wallet payer sendiri, jadi tidak ada pihak ketiga yang dipercaya.
 
 ### ⛓️ 4. On-chain Enforcement
 
-Smart contracts hanya memverifikasi proof. Mereka **tidak pernah melihat atau menjalankan rules**. Ini membuat kontrak tetap sederhana, murah dijalankan, dan mudah diaudit.
+Smart contract hanya memverifikasi proof. **Tidak pernah melihat atau mengeksekusi rules.** Ini membuat kontrak sederhana, murah, dan mudah diaudit.
 
 ---
 
-## Contoh Kode Singkat
+## Preview Kode
+
+### Client Mode (React, browser, Node.js)
 
 ```ts
 import { createPayID } from 'payid/client';
 
-// 1. Buat SDK
 const payid = createPayID({});
+await payid.ready();
 
-// 2. Evaluasi rules dan buat proof (ditandatangani wallet payer)
 const { result, proof } = await payid.evaluateAndProve({
-  context,        // detail pembayaran (siapa, token apa, berapa)
-  authorityRule,  // rules merchant yang diload dari blockchain
-  payId: 'pay.id/merchant',
-  payer: '0xPAYER',
-  receiver: '0xRECEIVER',
-  asset: USDC_ADDRESS,
-  amount: 150_000_000n, // 150 USDC (6 desimal)
-  signer,
-  ttlSeconds: 300, // proof berlaku 5 menit
-  verifyingContract: PAYID_VERIFIER,
-  ruleAuthority: COMBINED_RULE_STORAGE,
-  chainId: 4202,
+  context: {
+    tx: { sender: payer, receiver: merchant, asset: usdcAddress, amount: '150000000', chainId: 1 },
+    env: { timestamp: Math.floor(Date.now() / 1000) },
+  },
+  authorityRule,
+  payId: 'pay.id/merchant', payer, receiver: merchant,
+  asset: usdcAddress, amount: 150_000_000n, signer,
+  verifyingContract: PAYID_VERIFIER, ruleAuthority: COMBINED_RULE_STORAGE,
+  chainId: 1, blockTimestamp: Math.floor(Date.now() / 1000), ttlSeconds: 300,
 });
 
-// 3. Kirim ke blockchain (hanya kalau rules lolos)
 if (proof) {
   await payContract.payERC20(proof.payload, proof.signature, []);
 }
 ```
 
+### React (payer — single hook)
+
+```tsx
+import { usePayIDFlow } from 'payid-react';
+
+const { execute, status, isPending, txHash } = usePayIDFlow();
+execute({ receiver, asset: usdcAddress, amount: 150_000_000n, payId: 'pay.id/merchant' });
+```
+
+### React (merchant QR)
+
+```tsx
+import { usePayIDQR } from 'payid-react';
+
+const { generate, payload, qrDataUrl } = usePayIDQR();
+generate({ payId: 'pay.id/toko-ku', allowedAsset: usdcAddress, maxAmount: 50_000_000n, expiresAt: ... });
+// payload = "payid-v2:eyJ..."  (pakai library QR apapun)
+// qrDataUrl = "data:image/png;base64,..."  (kalau package 'qrcode' terinstall)
+```
+
 ---
 
-## Mulai Dari Sini
+## Mulai dari Mana
 
 - [⚡ Quick Start →](./quickstart) — Dari nol ke payment pertama dalam 5 langkah
-- [🔧 Instalasi & Setup →](./installation/setup) — Setup environment lengkap
-- [📖 Konsep Dasar →](./core-concepts/overview) — Pahami building blocks-nya
-- [📋 Rule Basics →](./rules/rule-basics) — Pelajari cara nulis rules
+- [🔧 Instalasi & Setup →](./installation/setup) — Nama paket, konfigurasi env, struktur repo
+- [📖 Konsep Inti →](./core-concepts/overview) — Context, Rules, Decision, Proof dijelaskan
+- [📋 Rule Basics →](./rules/rule-basics) — Tulis rule pembayaran pertama kamu
+- [⚛️ Integrasi React →](./integration/react-integration) — Semua hooks dengan contoh
+- [📍 Contract Addresses →](./network/contracts-address) — Deploy ke network kamu
