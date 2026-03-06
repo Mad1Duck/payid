@@ -170,7 +170,6 @@ async function tryLoadQRCode(): Promise<{
   toDataURL: (text: string, opts: object) => Promise<string>;
 } | null> {
   try {
-    // Dynamic import — tidak crash kalau package tidak ada
     const mod = await import('qrcode');
     return mod.default ?? mod;
   } catch {
