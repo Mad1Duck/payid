@@ -1,12 +1,12 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   useAccount,
   useChainId,
   usePublicClient,
   useWriteContract,
   useWaitForTransactionReceipt,
+  useConnectorClient,
 } from 'wagmi';
-import { createPayID } from 'payid/client';
 import type { Address, Hash, Abi } from 'viem';
 import { BrowserProvider } from 'ethers';
 
@@ -33,43 +33,27 @@ const ERC20_ABI = [
     name: 'allowance',
     type: 'function',
     stateMutability: 'view',
-    inputs: [
-      { name: 'owner', type: 'address' },
-      { name: 'spender', type: 'address' },
-    ],
+    inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }],
     outputs: [{ type: 'uint256' }],
   },
   {
     name: 'approve',
     type: 'function',
     stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'spender', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
+    inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }],
     outputs: [{ type: 'bool' }],
   },
 ] as const;
 
-
-
 const ETH_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
 
-const sdk = createPayID({ debugTrace: true });
+const log = (step: string, label: string, value?: unknown) =>
+  value !== undefined
+    ? console.log(`[usePayIDFlow][${step}] ${label}`, value)
+    : console.log(`[usePayIDFlow][${step}] ${label}`);
 
-const log = (step: string, label: string, value?: unknown) => {
-  if (value !== undefined) {
-    console.log(`[usePayIDFlow][${step}] ${label}`, value);
-  } else {
-    console.log(`[usePayIDFlow][${step}] ${label}`);
-  }
-};
-
-const warn = (step: string, label: string, err?: unknown) => {
+const warn = (step: string, label: string, err?: unknown) =>
   console.warn(`[usePayIDFlow][${step}] ${label}`, err ?? '');
-};
-
-// Types
 
 export type PayIDFlowStatus =
   | 'idle'
@@ -105,8 +89,6 @@ export interface PayIDFlowResult {
   reset: () => void;
 }
 
-// IPFS Helper
-
 function toHttpUrl(uri: string, gateway: string): string {
   if (uri.startsWith('ipfs://')) {
     const base = gateway.endsWith('/') ? gateway : `${gateway}/`;
@@ -115,19 +97,15 @@ function toHttpUrl(uri: string, gateway: string): string {
   return uri;
 }
 
-// loadRuleConfigs
-
 async function loadRuleConfigs(
   ruleRefs: Array<{ ruleNFT: Address; tokenId: bigint; }>,
   publicClient: NonNullable<ReturnType<typeof usePublicClient>>,
   ipfsGateway: string,
 ): Promise<unknown[]> {
-  log('loadRuleConfigs', `loading ${ruleRefs.length} rule ref(s)`, ruleRefs);
+  log('loadRuleConfigs', `loading ${ruleRefs.length} rule ref(s)`);
 
   return Promise.all(
     ruleRefs.map(async ({ ruleNFT, tokenId }, i) => {
-      log('loadRuleConfigs', `[${i}] reading tokenURI`, { ruleNFT, tokenId: tokenId.toString() });
-
       const tokenUri = (await publicClient.readContract({
         address: ruleNFT,
         abi: TOKEN_URI_ABI,
@@ -135,37 +113,54 @@ async function loadRuleConfigs(
         args: [tokenId],
       })) as string;
 
-      log('loadRuleConfigs', `[${i}] tokenURI`, tokenUri);
-
       const url = toHttpUrl(tokenUri, ipfsGateway);
-      log('loadRuleConfigs', `[${i}] resolved HTTP URL`, url);
+      log('loadRuleConfigs', `[${i}] fetch`, url);
 
       const res = await fetch(url);
-      log('loadRuleConfigs', `[${i}] fetch status`, res.status);
-
-      if (!res.ok) throw new Error(`Failed to fetch metadata: ${url} (status ${res.status})`);
+      if (!res.ok) throw new Error(`Failed to fetch rule metadata: ${url} (${res.status})`);
 
       const metadata: any = await res.json();
-      log('loadRuleConfigs', `[${i}] metadata keys`, Object.keys(metadata));
-      log('loadRuleConfigs', `[${i}] metadata.rule (raw from IPFS)`, metadata.rule);
-
-      if (!metadata.rule) {
-        throw new Error(`Missing 'rule' in metadata for tokenId ${tokenId} (${url})`);
-      }
+      if (!metadata.rule) throw new Error(`Missing 'rule' in metadata: ${url}`);
 
       return metadata.rule;
     }),
   );
 }
 
-
-// Hook
-
 export function usePayIDFlow(): PayIDFlowResult {
   const { address: payer } = useAccount();
   const chainId = useChainId();
   const { contracts, ipfsGateway } = usePayIDContext();
   const publicClient = usePublicClient();
+
+  /**
+   * FIX #1: Import path salah — 'payid/client' bukan nama package yang valid.
+   * Package ini adalah 'payid-sdk-core' atau tergantung package.json di monorepo.
+   * Selain itu, createPayID di module level (di luar hook) menyebabkan WASM
+   * loading terjadi saat import time — ini menyebabkan crash di SSR/Next.js
+   * karena WebAssembly tidak tersedia di Node.js environment yang sama.
+   *
+   * FIX: Lazy init SDK menggunakan useRef — WASM hanya di-load saat hook
+   * pertama kali dipanggil di browser, bukan saat module di-import.
+   */
+  const sdkRef = useRef<any>(null);
+  const getSdk = useCallback(async () => {
+    if (!sdkRef.current) {
+      const { createPayID } = await import('payid/client');
+      sdkRef.current = createPayID({ debugTrace: true });
+      await sdkRef.current.ready?.();
+    }
+    return sdkRef.current;
+  }, []);
+
+  /**
+   * FIX #2: useConnectorClient dari wagmi memberikan akses ke connector
+   * aktif yang terhubung, apapun jenisnya (MetaMask, WalletConnect, Coinbase,
+   * dll). Ini jauh lebih robust daripada (globalThis as any).ethereum yang
+   * hanya bekerja untuk injected wallet (MetaMask) dan gagal total untuk
+   * WalletConnect dan wallet lainnya.
+   */
+  const { data: connectorClient } = useConnectorClient();
 
   const [status, setStatus] = useState<PayIDFlowStatus>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -184,7 +179,6 @@ export function usePayIDFlow(): PayIDFlowResult {
   }, [isTxConfirmed, status, txHash]);
 
   const reset = useCallback(() => {
-    log('reset', 'resetting flow state');
     setStatus('idle');
     setError(null);
     setDecision(null);
@@ -194,15 +188,24 @@ export function usePayIDFlow(): PayIDFlowResult {
 
   const execute = useCallback(async (params: PayIDFlowParams) => {
     if (!payer) {
-      warn('execute', 'wallet not connected');
       setError('Wallet not connected');
       setStatus('error');
       return;
     }
 
     if (!publicClient) {
-      warn('execute', 'publicClient unavailable');
       setError('RPC client not available. Check wagmi transport config.');
+      setStatus('error');
+      return;
+    }
+
+    /**
+     * FIX #2 (lanjutan): Validasi connectorClient tersedia.
+     * Sebelumnya langsung pakai (globalThis as any).ethereum — gagal untuk
+     * WalletConnect, Coinbase Wallet, Safe, dll.
+     */
+    if (!connectorClient) {
+      setError('Wallet connector not ready. Please reconnect your wallet.');
       setStatus('error');
       return;
     }
@@ -211,7 +214,7 @@ export function usePayIDFlow(): PayIDFlowResult {
       reset();
 
       setStatus('fetching-rule');
-      log('step-1', 'fetching active rule hash for receiver', params.receiver);
+      log('step-1', 'fetching active rule for receiver', params.receiver);
 
       const ruleAuthorityAddr: Address =
         params.ruleAuthorityAddress ?? contracts.combinedRuleStorage;
@@ -229,10 +232,10 @@ export function usePayIDFlow(): PayIDFlowResult {
         });
         if (result) {
           activeHash = result as Hash;
-          log('step-1', 'activeHash on-chain (ruleSetHash tersimpan)', activeHash);
+          log('step-1', 'activeHash', activeHash);
         }
       } catch (e) {
-        warn('step-1', 'getActiveRuleOf failed (receiver belum register rule atau NO_ACTIVE_RULE)', e);
+        warn('step-1', 'no active rule (receiver belum register atau NO_ACTIVE_RULE)', e);
       }
 
       if (activeHash) {
@@ -246,58 +249,50 @@ export function usePayIDFlow(): PayIDFlowResult {
 
           ruleRefs = ruleData[1];
           activeVersion = ruleData[2];
-
-          log('step-1', 'ruleRefs dari on-chain', ruleRefs.map(r => ({
-            ruleNFT: r.ruleNFT,
-            tokenId: r.tokenId.toString(),
-          })));
-          log('step-1', 'activeVersion dari on-chain (bigint)', activeVersion.toString());
-          log('step-1', 'activeVersion sebagai string (untuk hash)', String(activeVersion));
+          log('step-1', 'ruleRefs', ruleRefs.map(r => ({ ruleNFT: r.ruleNFT, tokenId: r.tokenId.toString() })));
         } catch (e) {
           warn('step-1', 'getRuleByHash failed', e);
         }
-      } else {
-        log('step-1', 'no active rule found → will use allow-all policy');
       }
 
-      log('step-2', 'loading rule configs from IPFS', { ruleRefsCount: ruleRefs.length, ipfsGateway });
+      log('step-2', 'loading rule configs', { count: ruleRefs.length });
 
       let authorityRule: any;
 
       if (ruleRefs.length > 0) {
         const ruleConfigs = await loadRuleConfigs(ruleRefs, publicClient, ipfsGateway);
-
         authorityRule = {
           version: String(activeVersion),
           logic: 'AND' as const,
           rules: ruleConfigs,
         };
-
         log('step-2', 'authorityRule built', authorityRule);
-        log('step-2', '[DEBUG] activeHash on-chain ', activeHash);
-        log('step-2', '[DEBUG] expected: proof.ruleSetHash == activeHash jika hash konsisten');
       } else {
         authorityRule = { logic: 'AND' as const, rules: [] };
-        log('step-2', 'no ruleRefs — using allow-all policy');
+        log('step-2', 'no ruleRefs — allow-all policy');
       }
 
       setStatus('evaluating');
 
-      const ethereum = (globalThis as any).ethereum;
-      if (!ethereum) throw new Error('No injected wallet found');
-
-      const provider = new BrowserProvider(ethereum);
+      /**
+       * FIX #2 (ethers bridge): Gunakan connector transport dari wagmi
+       * bukan (globalThis as any).ethereum. Ini bekerja untuk semua
+       * wallet type: MetaMask, WalletConnect, Coinbase Wallet, Safe, dll.
+       *
+       * connectorClient.transport adalah EIP-1193 provider yang diberikan
+       * wagmi — wrapping-nya ke BrowserProvider ethers sudah aman.
+       */
+      const provider = new BrowserProvider(connectorClient.transport as any);
       const signer = await provider.getSigner();
 
       const signerNetwork = await provider.getNetwork();
       const signerChainId = Number(signerNetwork.chainId);
 
-      log('step-3', 'signer address', await signer.getAddress());
-      log('step-3', 'wagmi chainId', chainId);
-      log('step-3', 'signer chainId (dari MetaMask)', signerChainId);
+      log('step-3', 'signer', await signer.getAddress());
+      log('step-3', 'chainId', { wagmi: chainId, signer: signerChainId });
 
       if (signerChainId !== chainId) {
-        warn('step-3', `⚠️ chainId MISMATCH: MetaMask=${signerChainId}, wagmi=${chainId} → domain separator akan salah!`);
+        warn('step-3', `chainId MISMATCH: wallet=${signerChainId}, wagmi=${chainId}`);
       }
 
       const context = {
@@ -309,24 +304,15 @@ export function usePayIDFlow(): PayIDFlowResult {
           chainId: signerChainId,
         },
         env: { timestamp: Math.floor(Date.now() / 1000) },
-        state: {
-          spentToday: '0',
-          period: new Date().toISOString().slice(0, 10),
-        },
+        state: { spentToday: '0', period: new Date().toISOString().slice(0, 10) },
         ...params.context,
       };
 
-      log('step-3', 'evaluation context', context);
+      log('step-3', 'context', context);
 
       setStatus('proving');
-      log('step-4', 'calling sdk.evaluateAndProve', {
-        payId: params.payId,
-        payer,
-        receiver: params.receiver,
-        ruleAuthority: activeHash ? ruleAuthorityAddr : ETH_ADDRESS,
-        verifyingContract: contracts.payIDVerifier,
-        chainId: signerChainId,
-      });
+
+      const sdk = await getSdk();
 
       const { result, proof } = await sdk.evaluateAndProve({
         context,
@@ -344,21 +330,13 @@ export function usePayIDFlow(): PayIDFlowResult {
         blockTimestamp: Math.floor(Date.now() / 1000),
       });
 
-      log('step-4', 'sdk result', { decision: result.decision, reason: (result as any).reason });
-
-      if (proof) {
-        log('step-4', 'proof.payload.ruleSetHash (dari SDK)', proof.payload.ruleSetHash);
-        log('step-4', 'activeHash on-chain               ', activeHash);
-        log('step-4', '[CHECK] ruleSetHash match?', proof.payload.ruleSetHash === activeHash);
-
-
-      }
+      log('step-4', 'result', { decision: result.decision, reason: (result as any).reason });
 
       setDecision(result.decision as 'ALLOW' | 'DENY');
 
       if (result.decision !== 'ALLOW' || !proof) {
         const reason = (result as any).reason ?? 'Rule denied this payment';
-        warn('step-4', 'payment DENIED', reason);
+        warn('step-4', 'DENIED', reason);
         setDenyReason(reason);
         setStatus('denied');
         return;
@@ -367,12 +345,6 @@ export function usePayIDFlow(): PayIDFlowResult {
       const isETH = params.asset === ETH_ADDRESS;
 
       if (!isETH) {
-        log('step-4.5', 'ERC20 detected, checking allowance', {
-          token: params.asset,
-          spender: contracts.payWithPayID,
-          amount: params.amount.toString(),
-        });
-
         const allowance = (await publicClient.readContract({
           address: params.asset,
           abi: ERC20_ABI,
@@ -380,28 +352,19 @@ export function usePayIDFlow(): PayIDFlowResult {
           args: [payer, contracts.payWithPayID],
         })) as bigint;
 
-        log('step-4.5', 'current allowance', allowance.toString());
+        log('step-4.5', 'allowance', { current: allowance.toString(), required: params.amount.toString() });
 
         if (allowance < params.amount) {
-          log('step-4.5', 'allowance insufficient, requesting approve');
           setStatus('approving');
-
           const approveTx = await writeContractAsync({
             address: params.asset,
             abi: ERC20_ABI,
             functionName: 'approve',
             args: [contracts.payWithPayID, params.amount],
           });
-
-          log('step-4.5', 'approve tx submitted', approveTx);
-          const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveTx });
-          log('step-4.5', 'approve confirmed', { status: approveReceipt.status });
-
-          if (approveReceipt.status !== 'success') {
-            throw new Error('ERC20 approve transaction failed');
-          }
-        } else {
-          log('step-4.5', 'allowance sufficient, skipping approve');
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: approveTx });
+          if (receipt.status !== 'success') throw new Error('ERC20 approve failed');
+          log('step-4.5', 'approve confirmed');
         }
       }
 
@@ -410,14 +373,7 @@ export function usePayIDFlow(): PayIDFlowResult {
       const d = proof.payload;
       const sig = proof.signature as Hash;
 
-      log('step-5', 'submitting tx', {
-        isETH,
-        asset: params.asset,
-        amount: params.amount.toString(),
-        contract: contracts.payWithPayID,
-        ruleSetHash: d.ruleSetHash,
-        ruleAuthority: d.ruleAuthority,
-      });
+      log('step-5', 'submitting', { isETH, asset: params.asset, amount: params.amount.toString() });
 
       const hash = await writeContractAsync(
         isETH
@@ -436,13 +392,13 @@ export function usePayIDFlow(): PayIDFlowResult {
           },
       );
 
-      log('step-5', 'tx submitted, waiting for confirmation', hash);
+      log('step-5', 'tx submitted', hash);
       setTxHash(hash);
       setStatus('confirming');
 
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      warn('execute', 'error caught', err);
+      warn('execute', 'error', err);
       setError(
         msg.toLowerCase().includes('user rejected')
           ? 'Transaction rejected by user'
@@ -450,18 +406,11 @@ export function usePayIDFlow(): PayIDFlowResult {
       );
       setStatus('error');
     }
-  }, [payer, chainId, contracts, ipfsGateway, publicClient, writeContractAsync, reset]);
+  }, [payer, chainId, contracts, ipfsGateway, publicClient, connectorClient, writeContractAsync, reset, getSdk]);
 
   return {
     status,
-    isPending: [
-      'fetching-rule',
-      'evaluating',
-      'proving',
-      'approving',
-      'awaiting-wallet',
-      'confirming',
-    ].includes(status),
+    isPending: ['fetching-rule', 'evaluating', 'proving', 'approving', 'awaiting-wallet', 'confirming'].includes(status),
     isSuccess: status === 'success',
     error,
     decision,

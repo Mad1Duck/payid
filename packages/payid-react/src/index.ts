@@ -9,10 +9,9 @@ export type {
   SubscriptionInfo,
   CombinedRule,
 } from './types';
-
 export { RuleDirection } from './types';
 
-//  Hooks: Rules 
+// Hooks: Rules (read)
 export {
   useRuleCount,
   useRule,
@@ -22,7 +21,7 @@ export {
   useSubscription,
 } from './hooks/useRules';
 
-//  Hooks: Combined Rules 
+// Hooks: Combined Rules (read)
 export {
   useAllCombinedRules,
   useActiveCombinedRule,
@@ -31,17 +30,32 @@ export {
   useMyRuleSets,
 } from './hooks/useCombinedRules';
 
-//  Hooks: Payment 
+// Hooks: Payment (read + write)
 export {
   useVerifyDecision,
   useNonceUsed,
   usePayETH,
   usePayERC20,
+  useSubscribe,
+  useCreateRule,
+  useCreateRuleVersion,
+  useActivateRule,
+  useExtendRuleExpiry,
+  useRegisterCombinedRule,
+  useDeactivateCombinedRule,
 } from './hooks/usePayID';
 
-//  Hook: Full Flow 
-export { usePayIDFlow } from './hooks/usePayIDFlow';
-export type { PayIDFlowParams, PayIDFlowResult, PayIDFlowStatus, } from './hooks/usePayIDFlow';
+// Hook: QR Code Generator (receiver/merchant side)
+export { usePayIDQR } from './hooks/usePayidQrCode';
+export type { PayIDQRParams, PayIDQRResult, PayIDQRStatus } from './hooks/usePayidQrCode';
 
-//  Contract addresses 
+// Hook: Full Flow (client-side evaluate + prove + submit)
+export { usePayIDFlow } from './hooks/usePayIDFlow';
+export type {
+  PayIDFlowParams,
+  PayIDFlowResult,
+  PayIDFlowStatus,
+} from './hooks/usePayIDFlow';
+
+// Contract addresses
 export { PAYID_CONTRACTS, getContracts } from './contracts/addresses';
