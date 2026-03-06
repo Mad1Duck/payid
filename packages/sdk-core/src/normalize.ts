@@ -5,9 +5,9 @@ export function normalizeContext(ctx: RuleContext): RuleContext {
     ...ctx,
     tx: {
       ...ctx.tx,
-      sender: ctx.tx.sender?.toLowerCase(),
-      receiver: ctx.tx.receiver?.toLowerCase(),
-      asset: ctx.tx.asset.toUpperCase()
+      sender: ctx.tx.sender,
+      receiver: ctx.tx.receiver,
+      asset: ctx.tx.asset
     }
   };
 }
