@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev Indonesian Rupiah-pegged token (2 decimals like IDR)
  * @custom:icon https://cryptologos.cc/logos/idrx-idrx-logo.png
  */
-contract IDRX is ERC20, Ownable {
+contract MockIDRX is ERC20, Ownable {
 
     // ─── Constants ───────────────────────────────────────────────────────────
 
