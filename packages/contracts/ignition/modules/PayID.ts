@@ -8,6 +8,7 @@ export default buildModule("PayIDModule", (m) => {
   // Infrastructure
   const mockOracle = m.contract("MockEthUsdOracle", [BigInt(2000 * 1e8)]);
   const mockUSDC = m.contract("MockUSDC");
+  const mockIDRX = m.contract("MockIDRX");
   const mockEAS = m.contract("MockEAS");
 
   // Core contracts
@@ -57,6 +58,7 @@ export default buildModule("PayIDModule", (m) => {
   return {
     mockOracle,
     mockUSDC,
+    mockIDRX,
     mockEAS,
     attestationVerifier,
     payIdVerifier,
