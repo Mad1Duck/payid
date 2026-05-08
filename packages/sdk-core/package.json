@@ -36,7 +36,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "src/rule/engine/rule_engine.wasm"
   ],
   "dependencies": {
     "ethers": "^6.16.0",

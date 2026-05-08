@@ -13,5 +13,8 @@ export default defineConfig({
   format: ["esm"],
   dts: true,
   clean: true,
-  outDir: "dist"
+  outDir: "dist",
+  loader: {
+    ".wasm": "copy"
+  }
 });
