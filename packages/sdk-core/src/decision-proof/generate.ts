@@ -21,6 +21,7 @@ export async function generateDecisionProof(params: {
   ttlSeconds?: number;
   chainId?: number;
   blockTimestamp?: number;
+  attestationUIDs?: string[];
 }): Promise<DecisionProof> {
   const now = params.blockTimestamp ?? Math.floor(Date.now() / 1000);
   const issuedAt = now - 30;
@@ -32,6 +33,10 @@ export async function generateDecisionProof(params: {
   const requiresAttestation =
     Array.isArray(params.ruleConfig?.requires) &&
     params.ruleConfig.requires.length > 0;
+
+  const attestationUIDsHash = params.attestationUIDs
+    ? ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(["bytes32[]"], [params.attestationUIDs]))
+    : ethers.ZeroHash;
 
   const payload: DecisionPayload = {
     version: hash("2"),
@@ -46,7 +51,8 @@ export async function generateDecisionProof(params: {
     issuedAt: BigInt(issuedAt),
     expiresAt: BigInt(expiresAt),
     nonce: randomHex(32),
-    requiresAttestation
+    requiresAttestation,
+    attestationUIDsHash
   };
 
   const domain = {
@@ -71,6 +77,7 @@ export async function generateDecisionProof(params: {
       { name: "expiresAt", type: "uint64" },
       { name: "nonce", type: "bytes32" },
       { name: "requiresAttestation", type: "bool" },
+      { name: "attestationUIDsHash", type: "bytes32" },
     ],
   };
 

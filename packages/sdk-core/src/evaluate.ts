@@ -1,5 +1,5 @@
-import type { RuleContext, RuleResult, RuleConfig, RuleResultDebug } from "payid-types";
-import { executeRule, preprocessContextV2 } from "payid-rule-engine";
+import type { RuleContext, RuleResult, RuleConfig, RuleResultDebug } from "./types";
+import { executeRule, preprocessContextV2 } from "./rule/engine";
 import { normalizeContext } from "./normalize";
 import { buildDecisionTrace } from "./core/dicisionTrace";
 

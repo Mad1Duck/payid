@@ -1,0 +1,87 @@
+# Security Audit Report: PayId-SDK Infrastructure
+
+**Status:** 🔴 CRITICAL VULNERABILITIES DETECTED  
+**Date:** May 8, 2026  
+**Auditor:** Antigravity (Advanced AI Coding Assistant)
+
+---
+
+## 1. Executive Summary
+
+PayId-SDK is a high-ambition infrastructure project combining Account Abstraction (ERC-4337) with Decentralized Attestations (EAS). While the modular architecture is sound, the **integration layer between components is fundamentally broken and insecure**. Multiple critical vulnerabilities exist that would allow for contract hijacking, payment bypass, and total system denial of service.
+
+---
+
+## 2. Critical Vulnerabilities (The "Holes")
+
+### 2.1 Front-Running Initializer (Contract Hijacking)
+
+- **Location:** `PayIDVerifier.sol`, `AttestationVerifier.sol`, `PayWithPayID.sol`
+- **Vulnerability:** The `initialize` functions are public and lack any access control or atomic deployment enforcement.
+- **Attack Vector:** An attacker monitors the mempool for deployment transactions. They front-run the `initialize` call on any chain, setting themselves as the `owner`.
+- **Impact:** Attacker gains total control over the payment gateway, can whitelist malicious authorities, and drain user funds.
+
+### 2.2 ReDoS: Regular Expression Denial of Service
+
+- **Location:** `payid-rule-engine/src/tsSandbox.ts` (Line 235)
+- **Vulnerability:** User-provided regex patterns are passed directly to `new RegExp().test()`.
+- **Attack Vector:** An attacker provides a catastrophic backtracking pattern (e.g., `(a+)+$`).
+- **Impact:** The Node.js event loop freezes at 100% CPU usage. The entire backend/verifier service becomes unresponsive (DDoS).
+
+### 2.3 Cryptographic Binding Failure (Signature Spoofing)
+
+- **Location:** `PayWithPayID.sol` (Line 95, 120)
+- **Vulnerability:** The `attestationUIDs` are verified but **not bound** to the signed `Decision` object.
+- **Attack Vector:** An attacker intercepts a valid signature for a user. They then provide a _different_ but valid EAS UID for that same user. Since the contract only checks if the UID belongs to the payer, it accepts it.
+- **Impact:** Bypass of specific attestation requirements. The "requiresAttestation" flag becomes a weak check rather than a strong cryptographic proof.
+
+---
+
+## 3. Implementation Errors (The "Wrong Logic")
+
+### 3.1 Identity as a Voucher (Anti-Replay Flaw)
+
+- **Location:** `AttestationVerifier.sol` (Line 176, 217)
+- **Error:** Marking identity-based UIDs (like KYC or Age) as `usedAttestations`.
+- **Impact:** A user can only use their identity to pay **once in their lifetime**. Subsequent payments will fail with `ReplayAttestation`. Identity UIDs should be reusable; only transaction-specific UIDs should be marked as used.
+
+### 3.2 "Ghost" WASM Implementation
+
+- **Location:** `payid-rule-engine/src/tsSandbox.ts` (Line 7-13)
+- **Error:** `runWasmRule` ignores the WASM binary and falls back to JSON logic.
+- **Impact:** Misleading architecture. Users expecting sandboxed code execution are actually running basic interpreted logic.
+
+### 3.3 Missing Enforcement in Verifier
+
+- **Location:** `PayIDVerifier.sol` (Line 210)
+- **Error:** The `requireAllowed` function completely ignores the `requiresAttestation` flag in the `Decision` struct.
+- **Impact:** If a user uses the `PayIDVerifier` directly (bypassing `PayWithPayID`), the attestation requirement is never enforced on-chain.
+
+---
+
+## 4. Architectural Gaps (The "Missing Parts")
+
+### 4.1 Gas Limit Guard (DOS via Loop)
+
+- **Location:** `PayIDVerifier.sol` (Line 237)
+- **Gap:** No limit on the number of `ruleRefs`.
+- **Impact:** An attacker can craft a rule set with thousands of references, causing `requireAllowed` to hit the block gas limit, effectively locking the payment for that receiver.
+
+### 4.2 Cross-Chain Nonce Management
+
+- **Location:** `PayIDVerifier.sol` (Line 66)
+- **Gap:** Nonces are per-chain. While domain separators prevent cross-chain replay, there is no mechanism to prevent a user from accidentally signing the same nonce for different purposes on different chains if the UI isn't perfectly managed.
+
+---
+
+## 5. Required Remediation Plan
+
+1.  **Atomic Initialization:** Move owner assignment to the `constructor` or use a Factory contract that calls `initialize` in the same transaction as `CREATE2`.
+2.  **Signature Hardening:** Update `DECISION_TYPEHASH` to include `bytes32 attestationsHash`. Force the user to sign the hash of the UIDs they are using.
+3.  **Sandbox Isolation:** Replace `new RegExp` with a safe-regex library or implement a timeout-based execution wrapper for rules.
+4.  **Refactor Anti-Replay:** Create two verification paths: `verifyPermanentAttestation` (no replay check) and `verifyEphemeralAttestation` (with replay check).
+5.  **Bind Verifiers:** `PayIDVerifier` must be made aware of the `AttestationVerifier` to enforce requirements at the lowest level possible.
+
+---
+
+_Report generated by Antigravity Protocol Audit Module._

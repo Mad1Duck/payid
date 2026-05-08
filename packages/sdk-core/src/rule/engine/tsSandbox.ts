@@ -2,7 +2,7 @@
 //
 // Tidak butuh compile Rust, tidak butuh WASI.
 
-import type { RuleContext, RuleResult } from "payid-types";
+import type { RuleContext, RuleResult } from "../../types";
 
 export async function runWasmRule(
   _wasmBinary: Buffer,

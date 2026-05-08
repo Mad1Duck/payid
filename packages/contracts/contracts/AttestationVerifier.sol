@@ -80,6 +80,12 @@ contract AttestationVerifier {
         _;
     }
 
+    /* ===================== CONSTRUCTOR ===================== */
+
+    constructor() {
+        _initialized = true; // Lock implementation contract
+    }
+
     /* ===================== INITIALIZE ===================== */
 
     function initialize(

@@ -1,4 +1,4 @@
-import type { RuleContext, RuleResult } from "payid-types";
+import type { RuleContext, RuleResult } from "../../types";
 import { loadWasm } from "./wasm";
 
 const enc = new TextEncoder();

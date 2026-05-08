@@ -1,11 +1,5 @@
 import type { ContextV1 } from "./context.v1";
-
-export interface Attestation {
-  issuer: string;
-  issuedAt: number;
-  expiresAt: number;
-  signature: string;
-}
+import type { Attestation } from "./attestation";
 
 /* ---- Extensions ---- */
 

@@ -7,7 +7,7 @@ let _loading: Promise<WebAssembly.Instance> | null = null;
  * Override URL tempat WASM di-fetch di browser.
  * Panggil sebelum createPayID() / createPayIDServer():
  *
- *   import { setWasmUrl } from 'payid-rule-engine';
+ *   import { setWasmUrl } from 'payid-sdk-core';
  *   setWasmUrl('https://gateway.pinata.cloud/ipfs/YOUR_CID');
  */
 export function setWasmUrl(url: string) {
@@ -52,7 +52,8 @@ export async function loadWasm(binary?: Buffer | Uint8Array): Promise<WebAssembl
       const { join, dirname } = await import(/* webpackIgnore: true */ 'path');
       const { fileURLToPath } = await import(/* webpackIgnore: true */ 'url');
       const __dir = dirname(fileURLToPath(import.meta.url));
-      const buf = readFileSync(join(__dir, 'wasm/rule_engine.wasm'));
+      // Note: adjust path for bundled output
+      const buf = readFileSync(join(__dir, 'rule_engine.wasm'));
       wasmBinary = new Uint8Array(buf);
     } else {
       const res = await fetch(_wasmUrl);

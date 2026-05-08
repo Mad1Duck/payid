@@ -1,5 +1,5 @@
 import { ethers, keccak256, toUtf8Bytes, verifyMessage, toBeArray } from "ethers";
-import type { Attestation } from "./types";
+import type { Attestation } from "../types/attestation";
 
 export function verifyAttestation(
   payload: object,

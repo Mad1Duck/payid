@@ -62,6 +62,7 @@ export class PayIDClient {
     ttlSeconds?: number;
     chainId: number;
     blockTimestamp: number;
+    attestationUIDs?: string[];
   }): Promise<{
     result: RuleResult;
     proof: DecisionProof | null;
@@ -120,6 +121,7 @@ export class PayIDClient {
       chainId: params.chainId ?? (params.context as any)?.tx?.chainId,
       ttlSeconds: params.ttlSeconds,
       blockTimestamp: params.blockTimestamp,
+      attestationUIDs: params.attestationUIDs,
     });
 
     return { result, proof };

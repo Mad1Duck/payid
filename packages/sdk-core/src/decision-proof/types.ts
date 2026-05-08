@@ -27,6 +27,7 @@ export interface DecisionPayload {
   // replay protection
   nonce: string;            // bytes32
   requiresAttestation: boolean;
+  attestationUIDsHash: string; // bytes32
 }
 
 export interface DecisionProof {

@@ -50,6 +50,12 @@ contract PayWithPayID {
         bytes32         nonce
     );
 
+    /* ===================== CONSTRUCTOR ===================== */
+
+    constructor() {
+        _initialized = true; // Lock implementation contract
+    }
+
     /* ===================== INITIALIZE ===================== */
 
     /**
@@ -92,6 +98,8 @@ contract PayWithPayID {
     ) external payable onlyInitialized {
         if (d.requiresAttestation) {
             require(attestationUIDs.length > 0, "ATTESTATION_REQUIRED");
+            // Bind attestations to the signed decision
+            require(keccak256(abi.encode(attestationUIDs)) == d.attestationUIDsHash, "INVALID_UID_HASH");
             attestationVerifier.verifyAttestationBatch(attestationUIDs, d.payer);
         }
 
@@ -117,6 +125,8 @@ contract PayWithPayID {
     ) external onlyInitialized {
         if (d.requiresAttestation) {
             require(attestationUIDs.length > 0, "ATTESTATION_REQUIRED");
+            // Bind attestations to the signed decision
+            require(keccak256(abi.encode(attestationUIDs)) == d.attestationUIDsHash, "INVALID_UID_HASH");
             attestationVerifier.verifyAttestationBatch(attestationUIDs, d.payer);
         }
 

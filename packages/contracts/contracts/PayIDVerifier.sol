@@ -58,7 +58,7 @@ contract PayIDVerifier is EIP712 {
 
     bytes32 public constant DECISION_TYPEHASH =
         keccak256(
-            "Decision(bytes32 version,bytes32 payId,address payer,address receiver,address asset,uint256 amount,bytes32 contextHash,bytes32 ruleSetHash,address ruleAuthority,uint64 issuedAt,uint64 expiresAt,bytes32 nonce,bool requiresAttestation)"
+            "Decision(bytes32 version,bytes32 payId,address payer,address receiver,address asset,uint256 amount,bytes32 contextHash,bytes32 ruleSetHash,address ruleAuthority,uint64 issuedAt,uint64 expiresAt,bytes32 nonce,bool requiresAttestation,bytes32 attestationUIDsHash)"
         );
 
     /* ===================== STORAGE ===================== */
@@ -67,6 +67,7 @@ contract PayIDVerifier is EIP712 {
     mapping(address => bool) public trustedAuthorities;
 
     address public owner;
+    address public attestationVerifier;
     bool    private _initialized;
 
     /* ===================== ERRORS ===================== */
@@ -89,16 +90,20 @@ contract PayIDVerifier is EIP712 {
 
     /* ===================== CONSTRUCTOR ===================== */
 
-    constructor() EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) {}
+    constructor() EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) {
+        _initialized = true; // Lock implementation contract
+    }
 
     /* ===================== INITIALIZE ===================== */
 
-    function initialize(address initialOwner) external {
+    function initialize(address initialOwner, address _attestationVerifier) external {
         if (_initialized) revert AlreadyInitialized();
         if (initialOwner == address(0)) revert ZeroAddress();
+        if (_attestationVerifier == address(0)) revert ZeroAddress();
 
         _initialized = true;
         owner = initialOwner;
+        attestationVerifier = _attestationVerifier;
 
         emit Initialized(initialOwner);
     }
@@ -155,6 +160,7 @@ contract PayIDVerifier is EIP712 {
 
         bytes32 nonce;
         bool    requiresAttestation;
+        bytes32 attestationUIDsHash;
     }
 
     /* ===================== HASHING ===================== */
@@ -176,7 +182,8 @@ contract PayIDVerifier is EIP712 {
                     d.issuedAt,
                     d.expiresAt,
                     d.nonce,
-                    d.requiresAttestation
+                    d.requiresAttestation,
+                    d.attestationUIDsHash
                 )
             )
         );
@@ -211,10 +218,15 @@ contract PayIDVerifier is EIP712 {
         Decision calldata d,
         bytes    calldata sig
     ) external {
+        if (!_initialized) revert NotInitialized();
         require(verifyDecision(d, sig), "PAYID: INVALID_PROOF");
 
         require(!usedNonce[d.payer][d.nonce], "NONCE_ALREADY_USED");
         usedNonce[d.payer][d.nonce] = true;
+
+        if (d.requiresAttestation) {
+            require(d.attestationUIDsHash != bytes32(0), "UID_HASH_REQUIRED");
+        }
 
         if (d.ruleAuthority != address(0)) {
             require(
