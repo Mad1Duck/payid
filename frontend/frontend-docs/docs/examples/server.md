@@ -83,9 +83,10 @@ const contextV2 = await buildContextV2({
 ## Initialize SDK in Server Mode
 
 ```ts
-import { createPayID } from "payid/server";
+import { createPayIDServer } from "payid/server";
 
-const payid = createPayID({
+const payid = createPayIDServer({
+  signer: serverWallet,   // server wallet that signs Decision Proofs
   // List every issuer address whose attestations you trust
   trustedIssuers: new Set([
     envSigner.address,
@@ -93,11 +94,15 @@ const payid = createPayID({
     oracleSigner.address,
   ]),
 });
-await payid.ready();
+// No ready() call needed — PayIDServer is always ready
 ```
 
 :::warning
 If an issuer address is not in `trustedIssuers`, the SDK will reject any attestation signed by that address — and evaluation will fail with `FIELD_NOT_FOUND` or `CONTEXT_OR_ENGINE_ERROR` for the affected fields.
+:::
+
+:::note Signer in constructor
+Unlike the client, `PayIDServer` receives its `signer` at construction time. This wallet signs all Decision Proofs — keep it on the server, never expose its private key to clients.
 :::
 
 ---
@@ -117,7 +122,7 @@ const { result, proof } = await payid.evaluateAndProve({
   receiver:           RECEIVER,
   asset:              USDC_ADDRESS,
   amount:             AMOUNT,
-  signer:             payerWallet,
+  // No `signer` here — server signer was injected in createPayIDServer()
   verifyingContract:  process.env.PAYID_VERIFIER!,
   ruleAuthority:      process.env.COMBINED_RULE_STORAGE!,
   ruleSetHashOverride: ruleSetHash,

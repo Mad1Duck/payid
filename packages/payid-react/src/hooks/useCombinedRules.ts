@@ -2,7 +2,14 @@ import { useReadContract, useReadContracts, useAccount } from 'wagmi';
 import { useMemo } from 'react';
 import type { Abi } from 'viem';
 import { usePayIDContext } from '../PayIDProvider';
-import type { CombinedRule, RuleRef } from '../types';
+import type { CombinedRule, RuleRef, RuleSet } from '../types';
+
+interface QueryListResult<T> {
+  data: T[];
+  isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
+}
 import { RuleDirection } from '../types';
 import CombinedRuleStorageArtifact from '../abis/PayIDModule#CombinedRuleStorage.json';
 import RuleAuthorityArtifact from '../abis/PayIDModule#RuleAuthority.json';
@@ -11,7 +18,7 @@ const CombinedRuleStorageABI = CombinedRuleStorageArtifact.abi as Abi;
 const RuleAuthorityABI = RuleAuthorityArtifact.abi as Abi;
 
 // useAllCombinedRules
-export function useAllCombinedRules(options?: { onlyActive?: boolean; }) {
+export function useAllCombinedRules(options?: { onlyActive?: boolean; }): QueryListResult<CombinedRule> {
   const { contracts } = usePayIDContext();
 
   const onlyActive = options?.onlyActive;
@@ -168,7 +175,7 @@ export function useActiveCombinedRuleByDirection(
 }
 
 // useOwnerRuleSets
-export function useOwnerRuleSets(owner: `0x${string}` | undefined) {
+export function useOwnerRuleSets(owner: `0x${string}` | undefined): QueryListResult<RuleSet> {
   const { contracts } = usePayIDContext();
 
   const { data: hashes, isLoading: loadingHashes } = useReadContract({
@@ -241,7 +248,7 @@ export function useOwnerRuleSets(owner: `0x${string}` | undefined) {
           ruleRefs,
         };
       })
-      .filter(Boolean);
+      .filter((r): r is RuleSet => r !== null);
   }, [result.data, refsResult.data, allHashes]);
 
   return {
@@ -253,7 +260,7 @@ export function useOwnerRuleSets(owner: `0x${string}` | undefined) {
 }
 
 // useMyRuleSets
-export function useMyRuleSets() {
+export function useMyRuleSets(): QueryListResult<RuleSet> {
   const { address } = useAccount();
   return useOwnerRuleSets(address);
 }

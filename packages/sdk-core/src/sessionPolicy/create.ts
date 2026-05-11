@@ -1,6 +1,6 @@
 // sessionPolicy/create.ts
 import { ethers } from "ethers";
-import type { RuleConfig } from "payid-types";
+import type { RuleConfig } from "../types";
 import { canonicalizeRuleSet } from "../rule/canonicalize";
 import { randomHex } from "../utils/randomHex";
 import type { PayIDSessionPolicyPayloadV1, SessionPolicyV2 } from "./types";
@@ -8,35 +8,22 @@ import type { PayIDSessionPolicyPayloadV1, SessionPolicyV2 } from "./types";
 // ─── V1 (legacy) ─────────────────────────────────────────────────────────────
 
 /**
- * Create and sign an ephemeral PayID session policy payload (V1).
- * @deprecated Use createSessionPolicyV2 for new implementations.
+ * @deprecated V1 session policies have no chain binding and are vulnerable to
+ * cross-chain signature replay attacks. Use createSessionPolicyV2 instead.
+ * This function now throws to prevent creation of new V1 policies.
  */
-export async function createSessionPolicyPayload(params: {
-  receiver: string;
-  rule: RuleConfig;
-  expiresAt: number;
-  signer: ethers.Signer;
-}): Promise<PayIDSessionPolicyPayloadV1> {
-
-  const issuedAt = Math.floor(Date.now() / 1000);
-  const nonce = randomHex(16);
-
-  const payload: Omit<PayIDSessionPolicyPayloadV1, "signature"> = {
-    version: "payid.session.policy.v1",
-    receiver: params.receiver,
-    rule: canonicalizeRuleSet(params.rule),
-    issuedAt,
-    expiresAt: params.expiresAt,
-    nonce
-  };
-
-  const message = ethers.keccak256(
-    ethers.toUtf8Bytes(JSON.stringify(payload))
+export async function createSessionPolicyPayload(
+  _params: {
+    receiver: string;
+    rule: RuleConfig;
+    expiresAt: number;
+    signer: ethers.Signer;
+  }
+): Promise<PayIDSessionPolicyPayloadV1> {
+  throw new Error(
+    "SESSION_POLICY_V1_DISABLED: V1 policies have no chainId binding and are " +
+    "vulnerable to cross-chain replay. Use createSessionPolicyV2() instead."
   );
-
-  const signature = await params.signer.signMessage(message);
-
-  return { ...payload, signature };
 }
 
 // ─── V2 (Channel A) ──────────────────────────────────────────────────────────
@@ -108,14 +95,22 @@ export async function createSessionPolicyV2(params: {
     maxAmount, expiresAt, payId, chainId, verifyingContract, signer,
   } = params;
 
+  const MIN_TTL_SECONDS = 60;        // minimum 1 menit
+  const MAX_TTL_SECONDS = 30 * 24 * 3600; // maksimum 30 hari
+
   if (!ethers.isAddress(receiver)) {
     throw new Error(`SESSION_POLICY_V2: receiver address tidak valid: ${receiver}`);
   }
   if (maxAmount <= 0n) {
     throw new Error("SESSION_POLICY_V2: maxAmount harus > 0");
   }
-  if (expiresAt <= Math.floor(Date.now() / 1000)) {
-    throw new Error("SESSION_POLICY_V2: expiresAt sudah lewat");
+
+  const now = Math.floor(Date.now() / 1000);
+  if (expiresAt <= now + MIN_TTL_SECONDS) {
+    throw new Error(`SESSION_POLICY_V2: expiresAt terlalu dekat — minimum ${MIN_TTL_SECONDS}s dari sekarang`);
+  }
+  if (expiresAt > now + MAX_TTL_SECONDS) {
+    throw new Error(`SESSION_POLICY_V2: expiresAt terlalu jauh — maksimum ${MAX_TTL_SECONDS / 86400} hari`);
   }
 
   const policyNonce = randomHex(32);

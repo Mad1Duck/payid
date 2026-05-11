@@ -36,17 +36,17 @@ bun examples/simple/client.ts
 ### Setup — Initialize the SDK
 
 ```ts
-import { createPayID } from "payid/client";
+import { createPayIDClient } from "payid/client";
 import { ethers } from "ethers";
 
 const provider    = new ethers.JsonRpcProvider(process.env.RPC_URL);
 const payerWallet = new ethers.Wallet(process.env.SENDER_PRIVATE_KEY!, provider);
 
-const payid = createPayID({});
-await payid.ready();  // wait for WASM to load
+const payid = createPayIDClient({});
+await payid.ready();  // wait for WASM to load (Node.js only — not needed in React)
 ```
 
-`createPayID({})` initializes the SDK in client mode with no trusted issuers.
+`createPayIDClient({})` initializes the SDK in client mode. `createPayID` is an alias kept for backwards compatibility.
 
 ---
 

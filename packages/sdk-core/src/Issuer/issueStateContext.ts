@@ -1,5 +1,5 @@
 import type { Wallet } from "ethers";
-import type { StateContext } from "payid-types";
+import type { StateContext } from "../types";
 import { signAttestation } from "./signAttestation";
 
 export async function issueStateContext(

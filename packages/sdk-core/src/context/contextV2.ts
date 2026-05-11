@@ -1,5 +1,5 @@
 import type { Wallet } from "ethers";
-import type { ContextV1, ContextV2 } from "payid-types";
+import type { ContextV1, ContextV2 } from "../types";
 import { issueEnvContext } from "../issuer/issueEnvContext";
 import { issueStateContext } from "../issuer/issueStateContext";
 import { issueOracleContext } from "../issuer/issueOracleContext";

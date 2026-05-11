@@ -9,6 +9,9 @@
   ],
   "scripts": {
     "build": "bun run --filter ./packages/* build",
+    "sync": "bun run --cwd packages/contracts sync",
+    "sync:local": "bun run --cwd packages/contracts sync:local",
+    "dev:example": "bun run --cwd frontend/example-product dev",
     "client": "bun run examples/simple/client.ts",
     "server": "bun run examples/simple/server.ts",
     "setup:upload": "bun run examples/simple/rule.nft/upload-rule-nft-to-pinata.ts",

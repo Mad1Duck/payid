@@ -1,7 +1,7 @@
 // sessionPolicy/decode.ts
 import { ethers } from "ethers";
 import type { PayIDSessionPolicyPayloadV1 } from "./types";
-import type { RuleConfig } from "payid-types";
+import type { RuleConfig } from "../types";
 import type { SessionPolicyV2 } from "./types";
 import { SESSION_POLICY_V2_TYPES, buildSessionPolicyV2Domain } from "./create";
 

@@ -31,13 +31,14 @@ export default buildModule("PayIDModule", (m) => {
     mockEAS, [], [issuer],
   ], { id: "initAttestationVerifier", from: admin });
 
+  // PayIDVerifier.initialize requires (initialOwner, _attestationVerifier)
   const initVerifier = m.call(payIdVerifier, "initialize", [
-    admin,
-  ], { id: "initPayIDVerifier", from: admin });
+    admin, attestationVerifier,
+  ], { id: "initPayIDVerifier", from: admin, after: [initAttestation] });
 
   const initPayWith = m.call(payWithPayID, "initialize", [
     payIdVerifier, attestationVerifier,
-  ], { id: "initPayWithPayID", from: admin });
+  ], { id: "initPayWithPayID", from: admin, after: [initVerifier] });
 
   const initAuthority = m.call(ruleAuthority, "initialize", [
     admin,

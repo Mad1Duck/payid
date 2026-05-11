@@ -57,7 +57,6 @@ export function PayIDProvider({ children, contracts: overrides, ipfsGateway }: P
     : (defaults ?? {
         ruleAuthority: '0x0000000000000000000000000000000000000000',
         ruleItemERC721: '0x0000000000000000000000000000000000000000',
-        combinedRuleStorage: '0x0000000000000000000000000000000000000000',
         payIDVerifier: '0x0000000000000000000000000000000000000000',
         payWithPayID: '0x0000000000000000000000000000000000000000',
       });

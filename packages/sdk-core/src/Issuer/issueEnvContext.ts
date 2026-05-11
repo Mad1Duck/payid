@@ -1,4 +1,4 @@
-import type { EnvContext } from "payid-types";
+import type { EnvContext } from "../types";
 import { Wallet, keccak256, toUtf8Bytes } from "ethers";
 import { signAttestation } from "./signAttestation";
 

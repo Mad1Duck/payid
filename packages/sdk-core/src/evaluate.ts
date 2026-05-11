@@ -1,7 +1,7 @@
 import type { RuleContext, RuleResult, RuleConfig, RuleResultDebug } from "./types";
 import { executeRule, preprocessContextV2 } from "./rule/engine";
 import { normalizeContext } from "./normalize";
-import { buildDecisionTrace } from "./core/dicisionTrace";
+import { buildDecisionTrace } from "./core/decisionTrace";
 
 export async function evaluate(
   context: RuleContext,

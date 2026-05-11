@@ -3,18 +3,20 @@ import type {
   RuleResult,
   RuleConfig,
   RuleTraceEntry
-} from "payid-types";
+} from "../types";
 import type { RuleSource } from "../resolver/types";
 import type { UserOperation } from "../erc4337/types";
+import type { DecisionProof } from "../decision-proof/types";
+import type { SessionPolicyV2 } from "../sessionPolicy/types";
 import type { ethers } from "ethers";
 
 // ─────────────────────────────────────────────
 // CLIENT — safe untuk browser / mobile / edge
-// Tidak butuh server, tidak butuh issuer wallet
+// Signer diinjeksikan per-call dari wallet user.
 // ─────────────────────────────────────────────
 export interface PayIDClient {
   /**
-   * Pure rule evaluation — client-safe, no signing
+   * Pure rule evaluation — no signing, client-safe.
    */
   evaluate(
     context: RuleContext,
@@ -22,39 +24,57 @@ export interface PayIDClient {
   ): Promise<RuleResult>;
 
   /**
-   * Evaluate + generate EIP-712 Decision Proof
-   * Client sign sendiri pakai wallet mereka
+   * Evaluate rule + generate EIP-712 Decision Proof.
+   * Signer (wallet) diinjeksikan per-call — cocok untuk browser.
    */
   evaluateAndProve(params: {
     context: RuleContext;
+
+    /** Rule yang diambil dari chain (authority rule). */
     authorityRule: RuleConfig | RuleSource;
+
+    /** Override rule yang dipakai untuk evaluasi (opsional). */
     evaluationRule?: RuleConfig;
+
+    /** Session policy V2 (Channel A — receiver sign constraints). */
+    sessionPolicyV2?: SessionPolicyV2;
 
     payId: string;
     payer: string;
     receiver: string;
-
     asset: string;
     amount: bigint;
 
+    /** Wallet yang menandatangani proof. */
     signer: ethers.Signer;
+
     verifyingContract: string;
     ruleAuthority: string;
+
+    /** Override ruleSetHash di proof (untuk combined rules). */
+    ruleSetHashOverride?: string;
+
     ttlSeconds?: number;
+    chainId: number;
+    blockTimestamp: number;
+
+    /** EAS attestation UIDs untuk attestation-gated payments. */
+    attestationUIDs?: string[];
   }): Promise<{
     result: RuleResult;
-    proof: any | null;
+    proof: DecisionProof | null;
   }>;
 }
 
 // ─────────────────────────────────────────────
-// SERVER — butuh issuer wallet di constructor
-// Untuk Context V2 (env, state, oracle, risk)
+// SERVER — signer di-inject saat konstruksi.
+// Cocok untuk backend, bundler, relayer.
+// Mendukung Context V2 dengan trusted issuers.
 // ─────────────────────────────────────────────
 export interface PayIDServer {
   /**
-   * Evaluate + generate proof dengan trusted issuers
-   * Signer sudah di-inject saat construct PayIDServer
+   * Evaluate rule + generate proof.
+   * Signer sudah di-inject di constructor — tidak ada signer per-call.
    */
   evaluateAndProve(params: {
     context: RuleContext;
@@ -64,7 +84,6 @@ export interface PayIDServer {
     payId: string;
     payer: string;
     receiver: string;
-
     asset: string;
     amount: bigint;
 
@@ -73,23 +92,31 @@ export interface PayIDServer {
     ttlSeconds?: number;
     chainId: number;
     blockTimestamp: number;
+    attestationUIDs?: string[];
   }): Promise<{
     result: RuleResult;
-    proof: any | null;
+    proof: DecisionProof | null;
   }>;
 
   /**
-   * Build ERC-4337 UserOperation dari Decision Proof
-   * Server/bundler only
+   * Build ERC-4337 UserOperation dari Decision Proof.
+   * Dipakai oleh bundler/relayer untuk kirim transaksi.
    */
   buildUserOperation(params: {
-    proof: any;
+    proof: DecisionProof;
     smartAccount: string;
     nonce: string;
-    gas: any;
+    gas: {
+      callGasLimit: string;
+      verificationGasLimit: string;
+      preVerificationGas: string;
+      maxFeePerGas: string;
+      maxPriorityFeePerGas: string;
+    };
     targetContract: string;
     paymasterAndData?: string;
     attestationUIDs?: string[];
+    paymentType?: "eth" | "erc20";
   }): UserOperation;
 }
 

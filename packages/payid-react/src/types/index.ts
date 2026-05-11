@@ -57,7 +57,3 @@ export interface CombinedRule {
   direction?: RuleDirection;
 }
 
-export interface PayIDContext {
-  provider: object;  // injected wagmi/viem provider
-  contracts: PayIDContracts;
-}

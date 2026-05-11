@@ -1,71 +1,70 @@
-import { PayID } from "./core/payid";
-import type { PayIDClient, PayIDServer } from "./core/types";
+import { PayIDClient } from "./core/client/client";
+import { PayIDServer } from "./core/server/server";
+import type { ethers } from "ethers";
 
 /**
- * Create a PayID policy engine instance backed by a WASM rule evaluator.
+ * Create a client-safe PayID instance.
  *
- * ## Responsibility
+ * - Safe for browser, mobile, and edge runtimes.
+ * - Signer is injected per-call in `evaluateAndProve`.
+ * - WASM rule engine with automatic TS fallback.
  *
- * - Holds the WASM binary used for rule execution
- * - Defines the trust boundary for context attestation verification
- * - Acts as the primary entry point for PayID rule evaluation
- *
- * ## Trust model
- *
- * - If `trustedIssuers` is provided, Context V2 attestation
- *   verification is ENFORCED.
- * - If `trustedIssuers` is omitted, the engine runs in
- *   legacy (Context V1) mode without cryptographic verification.
- *
- * ## Environment
- *
- * This class is safe to instantiate in:
- * - Browsers
- * - Mobile apps
- * - Edge runtimes
- * - Backend services
- *
- * @param wasm
- *   Compiled PayID WASM rule engine binary.
- *
- * @param debugTrace
- *   Optional flag to enable decision trace generation for debugging.
- * 
- * @param trustedIssuers
- *   Optional set of trusted attestation issuer addresses.
- *
- *   When provided, Context V2 attestation verification is ENFORCED:
- *   - Only attestations issued by addresses in this set are accepted.
- *   - Missing, expired, or invalid attestations cause evaluation to fail.
- *
- *   When omitted, the engine runs in legacy (Context V1) mode
- *   without cryptographic verification.
- *
- *   ⚠️ Important:
- *   - Do NOT pass an empty Set.
- *     An empty set means "no issuer is trusted" and will
- *     cause all attestations to be rejected.
- *
- *   @example
- *   ```ts
- *   const trustedIssuers = new Set([
- *     TIME_ISSUER,
- *     STATE_ISSUER,
- *     ORACLE_ISSUER,
- *     RISK_ISSUER
- *   ]);
- *
- *   const payid = new PayID(wasmBinary, debugTrace, trustedIssuers);
- *   ```
+ * @example
+ * ```ts
+ * // Browser / React
+ * const client = createPayIDClient({ debugTrace: true });
+ * const { result, proof } = await client.evaluateAndProve({
+ *   ..., signer: walletSigner
+ * });
+ * ```
  */
-export function createPayID(params: {
+export function createPayIDClient(params?: {
+  wasm?: Uint8Array;
+  debugTrace?: boolean;
+}): PayIDClient {
+  return new PayIDClient(params?.debugTrace, params?.wasm);
+}
+
+/**
+ * Create a server-side PayID instance.
+ *
+ * - For backends, bundlers, and relayers only — never ship to browser.
+ * - Signer is bound at construction time (server wallet).
+ * - Supports Context V2 with `trustedIssuers` enforcement.
+ * - Can build ERC-4337 UserOperations.
+ *
+ * @example
+ * ```ts
+ * // Backend / bundler
+ * const server = createPayIDServer({
+ *   signer: serverWallet,
+ *   trustedIssuers: new Set([TIME_ISSUER, RISK_ISSUER]),
+ * });
+ * const { result, proof } = await server.evaluateAndProve({ ... });
+ * const userOp = server.buildUserOperation({ proof, paymentType: "erc20", ... });
+ * ```
+ */
+export function createPayIDServer(params: {
+  signer: ethers.Signer;
   wasm?: Uint8Array;
   debugTrace?: boolean;
   trustedIssuers?: Set<string>;
-}): PayIDClient & PayIDServer {
-  return new PayID(
+}): PayIDServer {
+  return new PayIDServer(
+    params.signer,
+    params.trustedIssuers,
+    params.debugTrace,
     params.wasm,
-    params.debugTrace ?? false,
-    params.trustedIssuers
   );
+}
+
+/**
+ * Alias for `createPayIDClient` — backwards-compatible entry point.
+ * Prefer `createPayIDClient` or `createPayIDServer` for clarity.
+ */
+export function createPayID(params?: {
+  wasm?: Uint8Array;
+  debugTrace?: boolean;
+}): PayIDClient {
+  return createPayIDClient(params);
 }

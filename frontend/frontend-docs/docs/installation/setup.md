@@ -16,9 +16,19 @@ sidebar_label: Setup
 
 ---
 
-## 1. Install SDK
+## Install Packages
 
-The core SDK package name is `payid`. Install it along with `ethers` as a peer dependency:
+Choose based on what you're building:
+
+### React / Frontend
+
+```bash
+npm install payid-react payid wagmi viem @tanstack/react-query ethers
+# or
+bun add payid-react payid wagmi viem @tanstack/react-query ethers
+```
+
+### Node.js / Backend (no React)
 
 ```bash
 npm install payid ethers
@@ -26,161 +36,242 @@ npm install payid ethers
 bun add payid ethers
 ```
 
-For React apps, install the React integration package:
+### Optional: QR image rendering in React
 
 ```bash
-npm install payid-react wagmi viem @tanstack/react-query ethers
-# or
-bun add payid-react wagmi viem @tanstack/react-query ethers
+npm install qrcode
+npm install --save-dev @types/qrcode
 ```
+
+Without `qrcode`, the `payload` string is still available for rendering with any other QR library.
 
 :::info Package Names
-The npm packages are `payid` (core SDK) and `payid-react` (React hooks). Not `@payid/sdk-core`.
+npm packages are `payid` (core SDK) and `payid-react` (React hooks). Not `@payid/sdk-core` or `@payid/react`.
 :::
 
 ---
 
-## 2. Initialize SDK
+## React Provider Setup
 
-### Client Mode (browser / Node.js)
+`payid-react` requires three nested providers. Add this once to your app root:
 
-Use `payid/client` when your rules only check `tx.*` fields — no KYC, no rate limits needed.
+```tsx
+// main.tsx (or _app.tsx / layout.tsx)
+import { WagmiProvider, createConfig, http } from 'wagmi'
+import { mainnet, hardhat } from 'wagmi/chains'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { PayIDProvider } from 'payid-react'
 
-```ts
-import { createPayID } from "payid/client";
+const wagmiConfig = createConfig({
+  chains: [mainnet],
+  transports: { [mainnet.id]: http() },
+})
 
-const payid = createPayID({ debugTrace: true }); // debugTrace optional
+const queryClient = new QueryClient()
 
-// Wait for WASM to be ready before calling evaluate/evaluateAndProve
-await payid.ready();
+export default function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <PayIDProvider
+          contracts={{
+            // Override contract addresses per chainId
+            // Get addresses from: docs/network/contracts-address
+            [mainnet.id]: {
+              ruleAuthority:       '0x...',
+              ruleItemERC721:      '0x...',
+              combinedRuleStorage: '0x...',
+              payIDVerifier:       '0x...',
+              payWithPayID:        '0x...',
+            },
+          }}
+          ipfsGateway="https://gateway.pinata.cloud/ipfs/"
+        >
+          {children}
+        </PayIDProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
+  )
+}
 ```
 
-### Server Mode (with trusted issuers for Context V2)
+### `PayIDProvider` Props
 
-Use `payid/server` when rules need verified data from your backend (KYC, spend tracking, geoblocking).
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `contracts` | `Record<chainId, PayIDContracts>` | Built-in defaults | Override contract addresses per chain |
+| `ipfsGateway` | `string` | `https://gateway.pinata.cloud/ipfs/` | IPFS gateway for rule fetching |
+
+---
+
+## Node.js / Backend Setup
+
+### Client Mode — Browser / Node.js (no server wallet)
+
+Rules only check basic transaction fields (`tx.*`). The payer signs with their own wallet.
 
 ```ts
-import { createPayID } from "payid/server";
+import { createPayIDClient } from 'payid/client'
 
-const payid = createPayID({
-  trustedIssuers: new Set([ENV_ISSUER_ADDRESS, STATE_ISSUER_ADDRESS]),
-});
+const payid = createPayIDClient({ debugTrace: false })
+
+// Wait for WASM engine to load — REQUIRED in Node.js before calling evaluate/evaluateAndProve
+await payid.ready()
 ```
 
-:::warning
-`new Set([])` means no trusted issuers — all attestations will be rejected. If you don't need trusted issuers, omit the property entirely or use client mode.
+:::note
+In React, WASM loads lazily inside the hooks. You do **not** need to call `ready()` manually when using `usePayIDFlow` or `usePayIDQR`.
 :::
 
----
+### Server Mode — Backend / Bundler (server wallet)
 
-## 3. Environment Variables
-
-```env
-# Network (use your target network RPC)
-RPC_URL=https://your-rpc-url.com
-CHAIN_ID=31337
-
-# Wallets (use test wallets only — never put real money here)
-SENDER_PRIVATE_KEY=0x...
-SENDER_ADDRESS=0x...
-RECIVER_PRIVATE_KEY=0x...
-RECIVER_ADDRESS=0x...
-ADMIN_PRIVATE_KEY=0x...
-ADMIN_ADDRESS=0x...
-ISSUER_PRIVATE_KEY=0x...
-ISSUER_ADDRESS=0x...
-
-# IPFS (get from pinata.cloud)
-PINATA_JWT=eyJh...
-PINATA_URL=https://api.pinata.cloud
-PINATA_GATEWAY=https://gateway.pinata.cloud
-
-# Contract addresses — fill after deploying or get from network docs
-COMBINED_RULE_STORAGE=0x0000000000000000000000000000000000000000
-RULE_ITEM_ERC721=0x0000000000000000000000000000000000000000
-PAYID_VERIFIER=0x0000000000000000000000000000000000000000
-PAY_WITH_PAYID=0x0000000000000000000000000000000000000000
-MOCK_USDC=0x0000000000000000000000000000000000000000
-```
-
----
-
-## 4. Verify Installation
-
-Run a quick sanity check with a local evaluation — no wallet or network needed:
+Rules can access server-signed context: KYC, rate limits, geoblocking. The server wallet signs proofs.
 
 ```ts
-import { createPayID } from "payid/client";
+import { createPayIDServer } from 'payid/server'
+import { ethers } from 'ethers'
 
-const payid = createPayID({});
-await payid.ready();
+const payid = createPayIDServer({
+  signer: new ethers.Wallet(process.env.PRIVATE_KEY!, provider),
+
+  // Optional: trusted issuer addresses for Context V2 attestation verification
+  // trustedIssuers: new Set([process.env.ISSUER_ADDRESS!]),
+})
+
+// No ready() call needed — PayIDServer is always ready
+```
+
+:::warning Server mode only
+`createPayIDServer` binds a private key at construction. Never use this in a browser. Never commit private keys to source control.
+:::
+
+### Verify Installation
+
+Test locally with no wallet or network:
+
+```ts
+import { createPayIDClient } from 'payid/client'
+
+const payid = createPayIDClient({})
+await payid.ready()
 
 const result = await payid.evaluate(
   {
     tx: {
-      sender: "0x0000000000000000000000000000000000000001",
-      receiver: "0x0000000000000000000000000000000000000002",
-      asset: "USDC",
-      amount: "150000000",
-      chainId: 1,
+      sender:   '0x0000000000000000000000000000000000000001',
+      receiver: '0x0000000000000000000000000000000000000002',
+      asset:    'USDC',
+      amount:   '150000000',
+      chainId:  1,
     },
   },
   {
-    version: "1",
-    logic: "AND",
+    version: '1',
+    logic:   'AND',
     rules: [
-      { id: "min_amount", if: { field: "tx.amount", op: ">=", value: "100000000" } },
+      { id: 'min_100', if: { field: 'tx.amount', op: '>=', value: '100000000' } },
     ],
   }
-);
+)
 
-console.log(result.decision); // "ALLOW"
+console.log(result.decision) // "ALLOW"
 ```
 
 ---
 
-## 5. Repository Structure
+## Subpath Exports
 
+The `payid` package has several subpath exports:
+
+| Import | Contents |
+|---|---|
+| `payid` or `payid/client` | `createPayIDClient`, `PayIDClient` |
+| `payid/server` | `createPayIDServer`, `PayIDServer` |
+| `payid/sessionPolicy` | `createSessionPolicyV2`, `encodeSessionPolicyV2QR`, `decodeSessionPolicyV2QR` |
+| `payid/context` | `buildContextV2` |
+| `payid/rule` | `hashRuleSet`, `canonicalize`, `combineRules` |
+
+---
+
+## Environment Variables
+
+For scripts and backend servers:
+
+```env
+# Network
+RPC_URL=https://your-rpc-url.com
+CHAIN_ID=1
+
+# Server wallet (backend only — never expose to browser)
+PRIVATE_KEY=0x...
+
+# Issuer wallets for Context V2 (server mode only)
+ISSUER_ADDRESS=0x...
+ISSUER_PRIVATE_KEY=0x...
+
+# IPFS (get free API key from pinata.cloud)
+PINATA_JWT=eyJh...
+PINATA_GATEWAY=https://gateway.pinata.cloud
+
+# Contract addresses (from Contract Addresses page)
+COMBINED_RULE_STORAGE=0x...
+RULE_ITEM_ERC721=0x...
+PAYID_VERIFIER=0x...
+PAY_WITH_PAYID=0x...
 ```
-payid-master/
-├── packages/
-│   ├── sdk-core/          # Core SDK — published as "payid" on npm
-│   │   ├── src/
-│   │   │   ├── core/
-│   │   │   │   ├── client/    # payid/client export
-│   │   │   │   └── server/    # payid/server export
-│   │   │   ├── sessionPolicy/ # payid/sessionPolicy export (QR, Channel A)
-│   │   │   ├── context/       # payid/context export (buildContextV2)
-│   │   │   └── rule/          # payid/rule export
-│   ├── payid-react/       # React hooks — published as "payid-react"
-│   │   └── src/
-│   │       ├── PayIDProvider.tsx
-│   │       └── hooks/
-│   │           ├── usePayID.ts      # Read + write hooks
-│   │           ├── usePayIDFlow.ts  # Full payment flow
-│   │           ├── usePayIDQR.ts    # QR generator for merchants
-│   │           ├── useRules.ts      # Rule NFT hooks
-│   │           └── useCombinedRules.ts
-│   ├── types/             # Shared TypeScript types — "payid-types"
-│   ├── contracts/         # Solidity contracts + Hardhat setup
-│   └── rule-engine/       # WASM rule engine — "payid-rule-engine"
+
+---
+
+## TypeScript Configuration
+
+Minimum `tsconfig.json` for the SDK:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true
+  }
+}
+```
+
+For React with `payid-react`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM"],
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true
+  }
+}
 ```
 
 ---
 
 ## Troubleshooting
 
+**`Cannot find module 'payid/client'`**
+Ensure `payid` is installed (not `@payid/sdk-core`). Check your `moduleResolution` — use `"bundler"` or `"node16"`.
+
 **`RULE_LICENSE_EXPIRED`**
-The merchant's Rule NFT has expired. The merchant needs to call `extendRuleExpiry()` or create a new Rule NFT with an active subscription.
+The merchant's Rule NFT has expired. They must call `extendRuleExpiry()` or create a new Rule NFT.
 
 **`RULE_AUTHORITY_NOT_TRUSTED`**
-The `ruleAuthority` address passed to `evaluateAndProve` is not whitelisted in `PayIDVerifier`. Use the official `CombinedRuleStorage` address from the [Contract Addresses →](../network/contracts-address) page, or ask the contract admin to whitelist your authority via `setTrustedAuthority()`.
+The `ruleAuthority` address isn't whitelisted in `PayIDVerifier`. Use the official `CombinedRuleStorage` address from [Contract Addresses →](../network/contracts-address).
 
 **`RULE_SLOT_FULL`**
-The merchant has hit the slot limit (1 without subscription, 3 with). They need to subscribe via `subscribe()` or deactivate an existing rule first.
+Merchant hit the slot limit (1 without subscription, 3 with). Subscribe first via `subscribe()`.
 
 **WASM not ready**
-Always `await payid.ready()` before calling `evaluate()` or `evaluateAndProve()`. The WASM binary is loaded asynchronously at startup.
+In Node.js, always call `await payid.ready()` before `evaluate()` or `evaluateAndProve()`. In React, this is handled automatically by the hooks.
 
-**`Cannot find module 'payid/client'`**
-Make sure you installed `payid` (not `@payid/sdk-core`). The subpath exports are `payid/client`, `payid/server`, `payid/sessionPolicy`, `payid/context`, `payid/rule`.
+**`new Set([])` rejects all attestations**
+In server mode, if `trustedIssuers: new Set([])`, all Context V2 attestations are rejected. Either omit `trustedIssuers` or add the issuer addresses you trust.

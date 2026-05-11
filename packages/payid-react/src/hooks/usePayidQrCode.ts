@@ -229,7 +229,7 @@ export function usePayIDQR(): PayIDQRResult {
 
       setStatus('signing');
 
-      const provider = new BrowserProvider(connectorClient.transport as Parameters<typeof BrowserProvider>[0]);
+      const provider = new BrowserProvider(connectorClient.transport as any);
       const signer = await provider.getSigner();
 
       const ruleAuthority = params.ruleAuthorityAddress ?? contracts.combinedRuleStorage;

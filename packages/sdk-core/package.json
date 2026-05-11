@@ -39,29 +39,40 @@
     "dist",
     "src/rule/engine/rule_engine.wasm"
   ],
+  "scripts": {
+    "build": "tsup",
+    "type-check": "tsc --noEmit",
+    "test": "echo 'No unit tests — add test files to run with bun test'",
+    "prepublishOnly": "bun run type-check && bun run test && bun run build",
+    "release": "release-it",
+    "release:dry": "release-it --dry-run",
+    "release:patch": "release-it patch --no-git.requireCleanWorkingDir",
+    "release:minor": "release-it minor --no-git.requireCleanWorkingDir",
+    "release:major": "release-it major --no-git.requireCleanWorkingDir"
+  },
   "dependencies": {
     "ethers": "^6.16.0",
-    "lodash": "^4.17.21",
     "wasi": "^0.0.6"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"
   },
-  "scripts": {
-    "build": "tsup"
-  },
   "devDependencies": {
     "@types/bun": "latest",
+    "release-it": "^20.0.1",
     "tsup": "^8.5.1"
   },
-  "description": "pay-policy",
+  "description": "PAY.ID policy engine — evaluate payment rules and generate EIP-712 Decision Proofs",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Mad1Duck/payid.git"
   },
   "keywords": [
     "payment",
-    "policy"
+    "policy",
+    "eip-712",
+    "web3",
+    "evm"
   ],
   "author": "rahvanna",
   "license": "ISC",

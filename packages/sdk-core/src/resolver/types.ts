@@ -1,4 +1,4 @@
-import type { RuleConfig } from "payid-types";
+import type { RuleConfig } from "../types";
 
 export interface RuleSource {
   uri: string;

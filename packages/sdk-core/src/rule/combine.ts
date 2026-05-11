@@ -1,5 +1,5 @@
 // rule/combineRules.ts
-import type { RuleConfig } from "payid-types";
+import type { RuleConfig } from "../types";
 import { canonicalizeRuleSet } from "./canonicalize";
 
 /**

@@ -19,6 +19,10 @@ interface IRuleAuthority {
         );
 }
 
+interface IRuleLicense {
+    function ownerOf(uint256 tokenId) external view returns (address);
+}
+
 /**
  * @title RuleAuthority
  * @notice Deterministic deployment compatible
@@ -113,7 +117,19 @@ contract RuleAuthority is IRuleAuthority, AccessControl {
         );
 
         for (uint256 i = 0; i < ruleRefs.length; ) {
-            require(ruleRefs[i].ruleNFT.code.length > 0, "RULE_NFT_NOT_CONTRACT");
+            address nft = ruleRefs[i].ruleNFT;
+            uint256 tid = ruleRefs[i].tokenId;
+
+            require(nft.code.length > 0, "RULE_NFT_NOT_CONTRACT");
+
+            // Verify caller owns this specific token — prevents registering
+            // rule NFTs that belong to someone else.
+            try IRuleLicense(nft).ownerOf(tid) returns (address tokenOwner) {
+                require(tokenOwner == msg.sender, "RULE_NFT_NOT_OWNED_BY_CALLER");
+            } catch {
+                revert("RULE_NFT_INVALID_INTERFACE");
+            }
+
             unchecked { ++i; }
         }
 
@@ -174,6 +190,7 @@ contract RuleAuthority is IRuleAuthority, AccessControl {
 
     function deactivateRuleSet(bytes32 ruleSetHash) external onlyInitialized {
         RuleSet storage rs = _ruleSets[ruleSetHash];
+        require(rs.owner != address(0), "RULE_SET_NOT_FOUND");
         require(
             rs.owner == msg.sender || hasRole(REGISTRAR_ROLE, msg.sender),
             "NOT_AUTHORIZED"

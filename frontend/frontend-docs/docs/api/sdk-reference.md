@@ -12,34 +12,64 @@ Subpath exports: `payid/client` · `payid/server` · `payid/sessionPolicy` · `p
 
 ---
 
-## `createPayID(params)`
+## Factory Functions
 
-Factory function — the main SDK entry point. Import from `payid/client` for browser/Node, or `payid/server` for backend with trusted issuers.
+### `createPayIDClient(params?)` — Browser / Edge
+
+Safe for browsers, mobile apps, and edge runtimes. Signer is injected per-call in `evaluateAndProve`.
 
 ```ts
-import { createPayID } from "payid/client";   // client mode
-import { createPayID } from "payid/server";   // server mode
+import { createPayIDClient } from "payid/client";
+// or from root:
+import { createPayIDClient } from "payid";
 
-createPayID(params: {
-  debugTrace?: boolean;
-  trustedIssuers?: Set<string>;  // server mode only
+createPayIDClient(params?: {
+  wasm?:       Uint8Array;   // custom WASM binary (optional)
+  debugTrace?: boolean;      // log evaluation trace
 }): PayIDClient
+```
+
+`createPayID` is an alias for `createPayIDClient` kept for backwards compatibility.
+
+---
+
+### `createPayIDServer(params)` — Backend / Bundler
+
+For servers, relayers, and bundlers. Signer is bound at construction. Never ship to browser.
+
+```ts
+import { createPayIDServer } from "payid/server";
+// or from root:
+import { createPayIDServer } from "payid";
+
+createPayIDServer(params: {
+  signer:          ethers.Signer;    // server wallet — signs Decision Proofs
+  trustedIssuers?: Set<string>;      // addresses allowed to sign Context V2 attestations
+  debugTrace?:     boolean;
+  wasm?:           Uint8Array;
+}): PayIDServer
 ```
 
 | Param | Type | Description |
 |---|---|---|
+| `signer` | `ethers.Signer` | Server wallet that signs Decision Proofs |
+| `trustedIssuers` | `Set<string>?` | Issuer addresses for Context V2 attestation verification |
 | `debugTrace` | `boolean?` | Log evaluation trace to console |
-| `trustedIssuers` | `Set<string>?` | Issuer addresses allowed to sign Context V2 attestations. Server mode only. |
 
 ---
 
-## `payid.ready()`
+## `client.ready()` — Client only
 
-Wait for the WASM rule engine to finish loading. Must be called before `evaluate()` or `evaluateAndProve()`.
+Wait for the WASM rule engine to finish loading. Only needed in Node.js or test environments. In React, `usePayIDFlow` handles this lazily — no manual `ready()` needed.
 
 ```ts
-await payid.ready();
+const client = createPayIDClient({});
+await client.ready();  // only needed in Node.js / scripts
 ```
+
+:::note
+`PayIDServer` does not have a `ready()` method — the server-side engine is always ready.
+:::
 
 ---
 
@@ -117,11 +147,11 @@ Always pass `blockTimestamp: Math.floor(Date.now() / 1000)`. This is used for pr
 **Example:**
 
 ```ts
-import { createPayID } from "payid/client";
+import { createPayIDClient } from "payid/client";
 import { ethers } from "ethers";
 
-const payid = createPayID({});
-await payid.ready();
+const payid = createPayIDClient({});
+await payid.ready();  // only needed in Node.js
 
 const { result, proof } = await payid.evaluateAndProve({
   context: {
@@ -280,10 +310,11 @@ interface DecisionProof {
     contextHash:          string;
     ruleSetHash:          string;   // must match merchant's active hash on-chain
     ruleAuthority:        string;   // CombinedRuleStorage address
-    issuedAt:             number;
-    expiresAt:            number;   // issuedAt + ttlSeconds
-    nonce:                string;   // random, prevents replay
+    issuedAt:             bigint;
+    expiresAt:            bigint;   // issuedAt + ttlSeconds
+    nonce:                string;   // random bytes32 — prevents replay
     requiresAttestation:  boolean;
+    attestationUIDsHash:  string;   // keccak256(abi.encode(attestationUIDs)), ZeroHash if none
   };
   signature: string;  // EIP-712 signature from payer's wallet
 }

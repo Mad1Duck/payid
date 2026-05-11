@@ -1,5 +1,5 @@
 import { Wallet, keccak256, toUtf8Bytes, getBytes } from "ethers";
-import type { Attestation } from "payid-types";
+import type { Attestation } from "../types";
 
 export async function signAttestation(
   issuerWallet: Wallet,

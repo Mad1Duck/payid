@@ -16,11 +16,11 @@ import type { PayIDContracts } from "../types";
 export const PAYID_CONTRACTS: Record<number, PayIDContracts> = {
 
   31337: {
-    ruleAuthority: "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
-    ruleItemERC721: "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f",
-    combinedRuleStorage: "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE",
-    payIDVerifier: "0x59b670e9fA9D0A427751Af201D676719a970857b",
-    payWithPayID: "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
+    ruleAuthority: "0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9",
+    ruleItemERC721: "0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8",
+    combinedRuleStorage: "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
+    payIDVerifier: "0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB",
+    payWithPayID: "0x9E545E3C0baAB3E08CdfD552C960A1050f373042",
   },
 
   4202: {

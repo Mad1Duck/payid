@@ -8,13 +8,18 @@ export default defineConfig({
   plugins: [hardhatToolboxViemPlugin],
 
   solidity: {
-    version: "0.8.28",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200,
+    compilers: [
+      {
+        version: "0.8.28",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1000,
+          },
+          viaIR: true,
+        },
       },
-    },
+    ],
   },
 
   networks: {

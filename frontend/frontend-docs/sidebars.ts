@@ -4,30 +4,43 @@ const sidebars: SidebarsConfig = {
   tutorialSidebar: [
     'intro',
     'quickstart',
+
     {
       type: 'category',
-      label: 'Getting Started',
+      label: '🚀 Getting Started',
       collapsed: false,
       items: ['installation/setup'],
     },
+
     {
       type: 'category',
-      label: 'Core Concepts',
+      label: '📚 Core Concepts',
       collapsed: false,
       items: ['core-concepts/overview'],
     },
+
     {
       type: 'category',
-      label: 'Rules',
+      label: '📋 Rules',
       collapsed: false,
       items: [
         'rules/rule-basics',
         'rules/combining-rules',
       ],
     },
+
     {
       type: 'category',
-      label: 'Examples',
+      label: '⚛️ React Integration',
+      collapsed: false,
+      items: [
+        'integration/react-integration',
+      ],
+    },
+
+    {
+      type: 'category',
+      label: '💻 Code Examples',
       collapsed: true,
       items: [
         'examples/client',
@@ -36,18 +49,19 @@ const sidebars: SidebarsConfig = {
         'examples/register-combined-rule',
       ],
     },
+
     {
       type: 'category',
-      label: 'Integration',
+      label: '🌐 Real-World',
       collapsed: true,
       items: [
-        'integration/react-integration',
         'integration/tokochain-simulation',
       ],
     },
+
     {
       type: 'category',
-      label: 'Reference',
+      label: '📖 Reference',
       collapsed: true,
       items: [
         'api/sdk-reference',

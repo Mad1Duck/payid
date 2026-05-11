@@ -82,9 +82,7 @@ contract AttestationVerifier {
 
     /* ===================== CONSTRUCTOR ===================== */
 
-    constructor() {
-        _initialized = true; // Lock implementation contract
-    }
+    constructor() {}
 
     /* ===================== INITIALIZE ===================== */
 

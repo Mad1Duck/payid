@@ -41,7 +41,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     uint8   public constant MAX_SLOT = 3;
     uint256 public constant SUB_DURATION = 30 days;
 
-    // $0.35 = harga langganan dalam USD cents ya bisa di ubah blm connect chain link mohon maap
+    // Harga langganan default: $0.35 (35 USD cents). Bisa diubah via setSubscriptionUsdCents().
     uint256 public subscriptionUsdCents = 35;
 
     AggregatorV3Interface public ethUsdFeed;
@@ -84,6 +84,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     event Subscribed(address indexed user, uint256 expiry);
     event RuleExpiryExtended(uint256 indexed tokenId, uint256 newExpiry);
     event SubscriptionUsdCentsUpdated(uint256 newCents);
+    event OracleUpdated(address indexed oldFeed, address indexed newFeed);
 
     /* ===================== CONSTRUCTOR ===================== */
     constructor(
@@ -106,8 +107,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
 
     /**
      * @notice Update harga langganan dalam USD cents.
-     * @dev Hanya ADMIN yang bisa update — access control yang sebelumnya
-     *      tidak ada di subscriptionUsdCents.
+     * @dev Hanya ADMIN yang bisa update.
      */
     function setSubscriptionUsdCents(uint256 newCents)
         external
@@ -116,6 +116,47 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         require(newCents > 0, "INVALID_PRICE");
         subscriptionUsdCents = newCents;
         emit SubscriptionUsdCentsUpdated(newCents);
+    }
+
+    /**
+     * @notice Ganti price oracle ETH/USD.
+     * @dev Berguna untuk:
+     *      - Swap dari MockEthUsdOracle ke Chainlink feed asli di testnet/mainnet
+     *      - Update ke feed address baru jika Chainlink deprecated feed lama
+     *      - Emergency switch ke mock jika feed bermasalah
+     *
+     *      Contract langsung verifikasi feed baru bisa dipanggil dan returnnya
+     *      masuk akal sebelum menyimpan — mencegah salah set ke address non-oracle.
+     *
+     * @param newFeed Address contract yang mengimplementasikan AggregatorV3Interface.
+     *                Chainlink ETH/USD:
+     *                  Sepolia    0x694AA1769357215DE4FAC081bf1f309aDC325306
+     *                  Amoy       0x001382149eBa3441043c1c66972b4772963f5D43
+     *                  Base Sep   0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1
+     *                  Mainnet    0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
+     */
+    function setOracle(address newFeed) external onlyRole(ADMIN_ROLE) {
+        require(newFeed != address(0), "ZERO_ADDRESS");
+
+        // Sanity-check: pastikan feed bisa dipanggil dan harga dalam batas wajar
+        try AggregatorV3Interface(newFeed).latestRoundData() returns (
+            uint80,
+            int256 answer,
+            uint256,
+            uint256,
+            uint80
+        ) {
+            require(
+                answer >= MIN_ETH_PRICE && answer <= MAX_ETH_PRICE,
+                "ORACLE_PRICE_OUT_OF_RANGE"
+            );
+        } catch {
+            revert("ORACLE_NOT_CALLABLE");
+        }
+
+        address old = address(ethUsdFeed);
+        ethUsdFeed  = AggregatorV3Interface(newFeed);
+        emit OracleUpdated(old, newFeed);
     }
 
     /* ===================================================== */
@@ -137,6 +178,10 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
      *      Fallback ke harga hardcoded jika oracle bermasalah (stale/invalid)
      *      agar fungsi tidak revert dan subscriber tidak terblokir.
      */
+    // Chainlink ETH/USD 8-decimal bounds: $100 – $1,000,000
+    int256 private constant MIN_ETH_PRICE = 100e8;
+    int256 private constant MAX_ETH_PRICE = 1_000_000e8;
+
     function subscriptionPriceETH() public view returns (uint256) {
         try ethUsdFeed.latestRoundData() returns (
             uint80,
@@ -145,12 +190,19 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
             uint256 updatedAt,
             uint80
         ) {
-            if (answer <= 0 || block.timestamp - updatedAt > 1 hours) {
+            if (
+                answer < MIN_ETH_PRICE ||
+                answer > MAX_ETH_PRICE ||
+                block.timestamp - updatedAt > 1 hours
+            ) {
                 return _fallbackPrice();
             }
 
             uint256 priceInETH = (subscriptionUsdCents * 1e24) /
                 (uint256(answer) * 100);
+
+            // Guard against rounding to zero for very low subscription costs
+            if (priceInETH == 0) return _fallbackPrice();
 
             return priceInETH;
         } catch {
@@ -279,6 +331,11 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
             rules[oldActive].deprecated = true;
             emit RuleDeprecated(oldActive);
         }
+
+        // Require active subscription so ruleExpiry is always a future timestamp.
+        // Without this, ruleExpiry = subscriptionExpiry = 0 (or past), making the
+        // license immediately invalid in PayIDVerifier.requireAllowed().
+        require(hasSubscription(msg.sender), "SUBSCRIPTION_REQUIRED_FOR_ACTIVATION");
 
         tokenId = ++nextTokenId;
         r.tokenId            = tokenId;

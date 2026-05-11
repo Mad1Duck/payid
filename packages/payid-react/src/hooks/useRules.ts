@@ -2,7 +2,26 @@ import { useReadContract, useReadContracts, useAccount } from 'wagmi';
 import { useMemo } from 'react';
 import type { Abi } from 'viem';
 import { usePayIDContext } from '../PayIDProvider';
-import type { RuleDefinition } from '../types';
+import type { RuleDefinition, SubscriptionInfo } from '../types';
+
+interface ReadHookResult<T> {
+  data: T;
+  isLoading: boolean;
+  isPending: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+  isFetching: boolean;
+  error: Error | null;
+  status: 'pending' | 'error' | 'success';
+  refetch: () => void;
+}
+
+interface QueryListResult<T> {
+  data: T[];
+  isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
+}
 import RuleItemERC721Artifact from '../abis/PayIDModule#RuleItemERC721.json';
 
 const RuleItemERC721ABI = RuleItemERC721Artifact.abi as Abi;
@@ -19,7 +38,7 @@ export function useRuleCount() {
 }
 
 // useRule
-export function useRule(ruleId: bigint | undefined) {
+export function useRule(ruleId: bigint | undefined): ReadHookResult<RuleDefinition | undefined> {
   const { contracts } = usePayIDContext();
 
   const result = useReadContracts({
@@ -63,7 +82,7 @@ export function useRule(ruleId: bigint | undefined) {
 }
 
 // useRules
-export function useRules(options?: { onlyActive?: boolean; creator?: `0x${string}`; }) {
+export function useRules(options?: { onlyActive?: boolean; creator?: `0x${string}`; }): QueryListResult<RuleDefinition> {
   const { contracts } = usePayIDContext();
 
   const { data: nextRuleId } = useReadContract({
@@ -147,7 +166,7 @@ export function useRules(options?: { onlyActive?: boolean; creator?: `0x${string
 }
 
 // useMyRules
-export function useMyRules() {
+export function useMyRules(): QueryListResult<RuleDefinition> {
   const { address } = useAccount();
   return useRules({ creator: address });
 }
@@ -166,7 +185,7 @@ export function useRuleExpiry(tokenId: bigint | undefined) {
 }
 
 // useSubscription
-export function useSubscription(address: `0x${string}` | undefined) {
+export function useSubscription(address: `0x${string}` | undefined): ReadHookResult<SubscriptionInfo | undefined> {
   const { contracts } = usePayIDContext();
 
   const result = useReadContracts({

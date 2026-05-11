@@ -1,5 +1,5 @@
 import type { Wallet } from "ethers";
-import type { RiskContext } from "payid-types";
+import type { RiskContext } from "../types";
 import { signAttestation } from "./signAttestation";
 
 export async function issueRiskContext(

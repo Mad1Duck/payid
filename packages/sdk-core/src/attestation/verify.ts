@@ -1,4 +1,4 @@
-import { ethers, keccak256, toUtf8Bytes, verifyMessage, toBeArray } from "ethers";
+import { ethers, keccak256, toUtf8Bytes, toBeArray } from "ethers";
 import type { Attestation } from "../types/attestation";
 
 export function verifyAttestation(
@@ -16,14 +16,16 @@ export function verifyAttestation(
     throw new Error("ATTESTATION_EXPIRED");
   }
 
-  const hash = keccak256(
-    toUtf8Bytes(JSON.stringify(payload))
-  );
+  if (proof.issuedAt > now) {
+    throw new Error("ATTESTATION_ISSUED_IN_FUTURE");
+  }
 
-  const recovered = verifyMessage(
-    toBeArray(hash),
-    proof.signature
-  );
+  const payloadHash = keccak256(toUtf8Bytes(JSON.stringify(payload)));
+
+  // Use recoverAddress with explicit Ethereum message hash to avoid
+  // ambiguity between verifyMessage(string) and verifyMessage(bytes).
+  const messageHash = ethers.hashMessage(toBeArray(payloadHash));
+  const recovered = ethers.recoverAddress(messageHash, proof.signature);
 
   if (recovered.toLowerCase() !== proof.issuer.toLowerCase()) {
     throw new Error("INVALID_ATTESTATION_SIGNATURE");

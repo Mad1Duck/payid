@@ -52,9 +52,7 @@ contract PayWithPayID {
 
     /* ===================== CONSTRUCTOR ===================== */
 
-    constructor() {
-        _initialized = true; // Lock implementation contract
-    }
+    constructor() {}
 
     /* ===================== INITIALIZE ===================== */
 
@@ -96,6 +94,10 @@ contract PayWithPayID {
         bytes                   calldata sig,
         bytes32[]               calldata attestationUIDs
     ) external payable onlyInitialized {
+        // Validate asset and amount before consuming the nonce in requireAllowed
+        require(d.asset == address(0), "ASSET_NOT_ETH");
+        require(msg.value == d.amount,  "AMOUNT_MISMATCH");
+
         if (d.requiresAttestation) {
             require(attestationUIDs.length > 0, "ATTESTATION_REQUIRED");
             // Bind attestations to the signed decision
@@ -104,9 +106,6 @@ contract PayWithPayID {
         }
 
         verifier.requireAllowed(d, sig);
-
-        require(d.asset == address(0), "ASSET_NOT_ETH");
-        require(msg.value == d.amount,  "AMOUNT_MISMATCH");
 
         (bool ok, ) = payable(d.receiver).call{value: msg.value}("");
         require(ok, "ETH_TRANSFER_FAILED");
@@ -123,6 +122,9 @@ contract PayWithPayID {
         bytes                   calldata sig,
         bytes32[]               calldata attestationUIDs
     ) external onlyInitialized {
+        // Validate asset type before consuming the nonce in requireAllowed
+        require(d.asset != address(0), "ASSET_NOT_ERC20");
+
         if (d.requiresAttestation) {
             require(attestationUIDs.length > 0, "ATTESTATION_REQUIRED");
             // Bind attestations to the signed decision
@@ -131,8 +133,6 @@ contract PayWithPayID {
         }
 
         verifier.requireAllowed(d, sig);
-
-        require(d.asset != address(0), "ASSET_NOT_ERC20");
 
         bool ok = IERC20(d.asset).transferFrom(d.payer, d.receiver, d.amount);
         require(ok, "TRANSFER_FAILED");

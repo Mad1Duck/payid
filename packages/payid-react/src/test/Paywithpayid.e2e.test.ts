@@ -35,6 +35,7 @@ describe("PayWithPayID E2E (ETH + ERC20)", async () => {
     expiresAt: bigint;
     nonce: Hash;
     requiresAttestation: boolean;
+    attestationUIDsHash: Hash;
   }
 
   interface WriteOptions {
@@ -117,6 +118,7 @@ describe("PayWithPayID E2E (ETH + ERC20)", async () => {
       { name: "expiresAt", type: "uint64" },
       { name: "nonce", type: "bytes32" },
       { name: "requiresAttestation", type: "bool" },
+      { name: "attestationUIDsHash", type: "bytes32" },
     ],
   } as const;
 
@@ -248,6 +250,7 @@ describe("PayWithPayID E2E (ETH + ERC20)", async () => {
       expiresAt: now + 300n,
       nonce: hashString("nonce-erc20-001"),
       requiresAttestation: false,
+      attestationUIDsHash: `0x${"00".repeat(32)}`,
     };
 
     const sig = await signDecision(verifier, decision, payerWallet);
@@ -301,6 +304,7 @@ describe("PayWithPayID E2E (ETH + ERC20)", async () => {
       expiresAt: now + 300n,
       nonce: hashString("nonce-eth-001"),
       requiresAttestation: false,
+      attestationUIDsHash: `0x${"00".repeat(32)}`,
     };
 
     const sig = await signDecision(verifier, decision, payerWallet);
@@ -341,6 +345,7 @@ describe("PayWithPayID E2E (ETH + ERC20)", async () => {
       expiresAt: now - 60n,
       nonce: hashString("nonce-expired"),
       requiresAttestation: false,
+      attestationUIDsHash: `0x${"00".repeat(32)}`,
     };
 
     const sig = await signDecision(verifier, expiredDecision, payerWallet);

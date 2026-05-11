@@ -6,7 +6,7 @@ sidebar_label: React Integration
 
 # React Integration
 
-PAY.ID provides a dedicated React package — `payid-react` — built on top of [wagmi](https://wagmi.sh). It handles all contract interactions, wallet connections, and multi-step payment state for you.
+`payid-react` is the React package for PAY.ID, built on [wagmi](https://wagmi.sh). It provides 20+ hooks for payments, rule management, and QR codes — handling all contract calls, wallet signatures, and WASM initialization automatically.
 
 ---
 
@@ -72,30 +72,135 @@ export default function Root() {
 
 ---
 
+## Step-by-Step: Build a Complete Checkout Page
+
+This walks you through adding PAY.ID to a React app from scratch.
+
+### 1. Install & wrap your app
+
+```bash
+bun add payid-react payid wagmi viem @tanstack/react-query ethers
+```
+
+Wrap your app (see [Provider Setup →](../installation/setup#react-provider-setup)):
+
+```tsx
+<WagmiProvider config={wagmiConfig}>
+  <QueryClientProvider client={queryClient}>
+    <PayIDProvider contracts={{ [chainId]: { ...contractAddresses } }}>
+      <App />
+    </PayIDProvider>
+  </QueryClientProvider>
+</WagmiProvider>
+```
+
+### 2. Add wallet connect (any wagmi connector)
+
+```tsx
+import { useConnect, useAccount } from 'wagmi'
+import { injected } from 'wagmi/connectors'
+
+function ConnectButton() {
+  const { connect } = useConnect()
+  const { address, isConnected } = useAccount()
+
+  if (isConnected) return <span>{address?.slice(0, 8)}...</span>
+  return <button onClick={() => connect({ connector: injected() })}>Connect Wallet</button>
+}
+```
+
+### 3. Add a payment button (payer side)
+
+```tsx
+import { usePayIDFlow } from 'payid-react'
+
+function PayButton({ receiver }: { receiver: `0x${string}` }) {
+  const { execute, status, isPending, isSuccess, error, txHash } = usePayIDFlow()
+
+  return (
+    <button
+      onClick={() => execute({ receiver, asset: USDC_ADDRESS, amount: 50_000_000n, payId: 'pay.id/store' })}
+      disabled={isPending || isSuccess}
+    >
+      {isSuccess ? `✅ Paid! TX: ${txHash?.slice(0, 10)}...` : isPending ? 'Processing...' : 'Pay 50 USDC'}
+    </button>
+  )
+}
+```
+
+### 4. Check merchant subscription status
+
+```tsx
+import { useSubscription } from 'payid-react'
+import { useAccount } from 'wagmi'
+
+function SubscriptionBadge() {
+  const { address } = useAccount()
+  const { data: sub } = useSubscription(address)
+
+  if (!sub?.isActive) return <span style={{ color: 'red' }}>⚠️ No active subscription</span>
+  return <span style={{ color: 'green' }}>✅ Subscribed — {sub.logicalRuleCount}/{sub.maxSlots} slots used</span>
+}
+```
+
+### 5. Set up merchant rules (one-time)
+
+```tsx
+import { useSubscribe, useCreateRule, useActivateRule, useRegisterCombinedRule } from 'payid-react'
+
+// Follow the 4-step merchant setup from Quick Start →
+// subscribe() → createRule() → activateRule() → registerCombinedRule()
+```
+
+That's all you need for a fully working checkout. The rest of this page covers every available hook in detail.
+
+---
+
 ## Hooks Overview
 
-| Hook | Side | Purpose |
+### Payment Hooks (Payer side)
+
+| Hook | Returns | Description |
 |---|---|---|
-| `usePayIDFlow` | Payer | Full payment flow — fetch rules, evaluate, prove, submit |
-| `usePayIDQR` | Merchant | Generate signed QR code for customers to scan |
-| `usePayETH` | Payer | Low-level: pay with ETH |
-| `usePayERC20` | Payer | Low-level: pay with ERC20 |
-| `useSubscribe` | Merchant | Subscribe to unlock rule slots |
-| `useCreateRule` | Merchant | Create a new Rule NFT |
-| `useActivateRule` | Merchant | Activate (mint) a Rule NFT |
-| `useExtendRuleExpiry` | Merchant | Extend Rule NFT expiry |
-| `useRegisterCombinedRule` | Merchant | Register combined rule policy |
-| `useDeactivateCombinedRule` | Merchant | Deactivate active rule policy |
-| `useSubscription` | Read | Check subscription status |
-| `useMyRules` | Read | Fetch your Rule NFTs |
-| `useRule` | Read | Fetch a single rule by ID |
-| `useRules` | Read | Fetch all rules with filters |
-| `useActiveCombinedRule` | Read | Get active policy for any address |
-| `useActiveCombinedRuleByDirection` | Read | Get policy for INBOUND or OUTBOUND |
-| `useAllCombinedRules` | Read | List all registered policies |
-| `useMyRuleSets` | Read | Your registered rule sets |
-| `useVerifyDecision` | Read | Verify a Decision Proof on-chain |
-| `useNonceUsed` | Read | Check if a nonce was already used |
+| `usePayIDFlow()` | `{ execute, status, isPending, isSuccess, decision, txHash, error, reset }` | Complete payment flow — rules + proof + submit |
+| `usePayETH()` | `{ pay, hash, isPending, isConfirming, isSuccess, error }` | Low-level ETH payment |
+| `usePayERC20()` | `{ pay, hash, isPending, isConfirming, isSuccess, error }` | Low-level ERC20 payment |
+
+### QR Hooks (Merchant side)
+
+| Hook | Returns | Description |
+|---|---|---|
+| `usePayIDQR()` | `{ generate, payload, qrDataUrl, status, isPending, isReady, error, reset }` | Generate signed QR for customers to scan |
+
+### Merchant Setup Hooks (Write — one-time setup)
+
+| Hook | Action | Description |
+|---|---|---|
+| `useSubscribe()` | `subscribe(priceInWei)` | Subscribe to unlock rule slots |
+| `useCreateRule()` | `createRule({ ruleHash, uri })` | Register a rule definition on-chain |
+| `useActivateRule()` | `activateRule(ruleId)` | Mint the Rule NFT |
+| `useCreateRuleVersion()` | `createRuleVersion({ parentRuleId, newHash, newUri })` | Create a new version of an existing rule |
+| `useExtendRuleExpiry()` | `extendRuleExpiry({ tokenId, newExpiry, priceInWei })` | Extend Rule NFT expiry |
+| `useRegisterCombinedRule()` | `registerCombinedRule({ ruleSetHash, ruleNFTs, tokenIds, version })` | Register as active payment policy |
+| `useDeactivateCombinedRule()` | `deactivate()` | Deactivate your active policy |
+
+### Read Hooks
+
+| Hook | Data | Description |
+|---|---|---|
+| `useSubscription(address?)` | `SubscriptionInfo \| undefined` | Subscription status, slots, expiry |
+| `useMyRules()` | `RuleDefinition[]` | Your Rule NFTs (connected wallet) |
+| `useRules(options?)` | `RuleDefinition[]` | All rules with optional filters |
+| `useRule(ruleId?)` | `RuleDefinition \| undefined` | Single rule by ID |
+| `useRuleCount()` | `bigint` | Total number of rules created |
+| `useRuleExpiry(tokenId?)` | `bigint` | Unix expiry timestamp for a Rule NFT |
+| `useActiveCombinedRule(owner?)` | `CombinedRule \| undefined` | Active payment policy for any address |
+| `useActiveCombinedRuleByDirection(owner?, direction)` | `CombinedRule \| undefined` | Active policy by direction (INBOUND/OUTBOUND) |
+| `useAllCombinedRules(options?)` | `CombinedRule[]` | All registered combined rules |
+| `useMyRuleSets()` | `RuleSet[]` | Your registered rule sets |
+| `useOwnerRuleSets(owner?)` | `RuleSet[]` | Rule sets for any address |
+| `useVerifyDecision(decision?, signature?)` | `boolean` | Verify a Decision Proof on-chain |
+| `useNonceUsed(payer?, nonce?)` | `boolean` | Check if a nonce was already used |
 
 ---
 
@@ -487,14 +592,231 @@ function ContractInfo() {
 
 ---
 
+## Additional Write Hooks
+
+### `useCreateRuleVersion` — Create a new version of an existing rule
+
+```tsx
+import { useCreateRuleVersion } from 'payid-react'
+import { keccak256, toBytes } from 'viem'
+
+function UpdateRule({ parentRuleId }: { parentRuleId: bigint }) {
+  const { createRuleVersion, isPending, isSuccess } = useCreateRuleVersion()
+
+  const updatedRule = { id: 'usdc_only_v2', if: { field: 'tx.asset', op: '==', value: USDC_ADDRESS } }
+
+  return (
+    <button
+      onClick={() => createRuleVersion({
+        parentRuleId,
+        newHash: keccak256(toBytes(JSON.stringify(updatedRule))),
+        newUri:  'ipfs://NEW_CID',
+      })}
+      disabled={isPending}
+    >
+      {isSuccess ? '✅ Updated' : isPending ? 'Updating...' : 'Update Rule'}
+    </button>
+  )
+}
+```
+
+### `useDeactivateCombinedRule` — Remove your active payment policy
+
+```tsx
+import { useDeactivateCombinedRule } from 'payid-react'
+
+function DeactivateButton() {
+  const { deactivate, isPending, isSuccess } = useDeactivateCombinedRule()
+
+  return (
+    <button onClick={() => deactivate()} disabled={isPending}>
+      {isSuccess ? '✅ Deactivated' : isPending ? 'Deactivating...' : 'Deactivate Policy'}
+    </button>
+  )
+}
+```
+
+:::warning
+Deactivating removes your active payment policy. All payments to you will pass without rule checking until you register a new combined rule.
+:::
+
+---
+
+## Read Hooks (Detailed)
+
+### `useRules` — All rules with filters
+
+```tsx
+import { useRules } from 'payid-react'
+import { useAccount } from 'wagmi'
+
+function AllRules() {
+  const { address } = useAccount()
+  const { data: myRules, isLoading } = useRules({
+    onlyActive: true,   // filter to only active rules
+    creator:    address, // filter to only rules created by this address
+  })
+
+  if (isLoading) return <p>Loading...</p>
+
+  return (
+    <ul>
+      {myRules.map(rule => (
+        <li key={rule.ruleId.toString()}>
+          Rule #{rule.ruleId.toString()} — hash: {rule.ruleHash.slice(0, 10)}...
+          {' | '}tokenId: {rule.tokenId.toString()}
+          {' | '}expires: {new Date(Number(rule.expiry) * 1000).toLocaleDateString()}
+        </li>
+      ))}
+    </ul>
+  )
+}
+```
+
+### `useAllCombinedRules` — All policies on chain
+
+```tsx
+import { useAllCombinedRules } from 'payid-react'
+
+function AllPolicies() {
+  const { data: policies, isLoading, refetch } = useAllCombinedRules({ onlyActive: true })
+
+  return (
+    <div>
+      <button onClick={() => refetch()}>Refresh</button>
+      {policies.map(p => (
+        <div key={p.hash}>
+          <strong>{p.owner.slice(0, 8)}...</strong>
+          {' — '}v{p.version.toString()} — {p.ruleRefs.length} rule(s)
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+### `useVerifyDecision` — Check a proof on-chain
+
+```tsx
+import { useVerifyDecision, useNonceUsed } from 'payid-react'
+
+function ProofStatus({ decision, signature, payer, nonce }: {
+  decision: Decision
+  signature: `0x${string}`
+  payer: `0x${string}`
+  nonce: `0x${string}`
+}) {
+  const { data: isValid }  = useVerifyDecision(decision, signature)
+  const { data: nonceUsed } = useNonceUsed(payer, nonce)
+
+  return (
+    <div>
+      <p>Proof valid: {isValid ? '✅' : '❌'}</p>
+      <p>Nonce used: {nonceUsed ? '⚠️ Already used' : '✅ Fresh'}</p>
+    </div>
+  )
+}
+```
+
+---
+
+## TypeScript Types Reference
+
+All types are exported from `payid-react`:
+
+```ts
+import type {
+  PayIDContracts,
+  PayIDContextValue,
+  RuleDefinition,
+  RuleSet,
+  RuleRef,
+  CombinedRule,
+  SubscriptionInfo,
+  PayIDFlowParams,
+  PayIDFlowResult,
+  PayIDFlowStatus,
+  PayIDQRParams,
+  PayIDQRResult,
+  PayIDQRStatus,
+} from 'payid-react'
+import { RuleDirection } from 'payid-react'
+```
+
+### Key Types
+
+```ts
+// Contract addresses for one chain
+interface PayIDContracts {
+  ruleAuthority:       Address   // RuleAuthority contract
+  ruleItemERC721:      Address   // Rule NFT contract
+  combinedRuleStorage: Address   // CombinedRuleStorage contract
+  payIDVerifier:       Address   // PayIDVerifier contract
+  payWithPayID:        Address   // PayWithPayID contract
+}
+
+// Rule NFT data
+interface RuleDefinition {
+  ruleId:     bigint
+  ruleHash:   Hash
+  uri:        string    // ipfs://CID
+  creator:    Address
+  rootRuleId: bigint
+  version:    number
+  deprecated: boolean
+  active:     boolean
+  tokenId:    bigint    // 0 if not yet activated
+  expiry:     bigint    // unix timestamp, 0 = no expiry
+}
+
+// Active payment policy on-chain
+interface CombinedRule {
+  hash:      Hash
+  owner:     Address
+  version:   bigint
+  active:    boolean
+  ruleRefs:  RuleRef[]     // array of { ruleNFT, tokenId }
+  direction?: RuleDirection
+}
+
+// Subscription status
+interface SubscriptionInfo {
+  expiry:           bigint
+  isActive:         boolean
+  logicalRuleCount: number  // current active rule count
+  maxSlots:         number  // 1 without sub, 3 with sub
+}
+
+// usePayIDFlow params
+interface PayIDFlowParams {
+  receiver:              Address
+  asset:                 Address   // token address, zeroAddress for ETH
+  amount:                bigint
+  payId:                 string
+  context?:              Record<string, unknown>  // extra context fields
+  attestationUIDs?:      Hash[]
+  ruleAuthorityAddress?: Address
+}
+
+// RuleDirection for directional rules
+enum RuleDirection {
+  INBOUND  = 0,  // payments coming IN to the owner
+  OUTBOUND = 1,  // payments going OUT from the owner
+}
+```
+
+---
+
 ## Tips
 
-**Call `ready()` only in Node.js / tests.** In React, `usePayIDFlow` and `usePayIDQR` handle WASM initialization lazily — no manual `ready()` needed.
+**No `ready()` needed in React.** WASM loads lazily inside `usePayIDFlow` and `usePayIDQR` — no manual initialization needed.
 
-**Never cache a proof.** `usePayIDFlow` generates a fresh proof every time. Proofs expire after `ttlSeconds` (default 300 seconds).
+**Never cache a proof.** `usePayIDFlow` generates a fresh proof every time. Proofs expire after ~5 minutes (300 seconds by default).
 
-**Check subscription before creating rules.** Use `useSubscription(address)` to verify the user has active slots before calling `useCreateRule`.
+**Check subscription before creating rules.** Use `useSubscription(address)` to verify the merchant has active slots before calling `useCreateRule`.
 
-**Preview the receiver's policy.** Use `useActiveCombinedRule(receiver)` before payment to show what rules will be checked.
+**Preview receiver's policy before paying.** Use `useActiveCombinedRule(receiver)` to show the merchant's rules to the payer before they click pay.
 
-**Works with all wallet types.** `usePayIDFlow` and `usePayIDQR` use wagmi's `useConnectorClient` internally — compatible with MetaMask, WalletConnect, Coinbase Wallet, Safe, and any other wagmi connector.
+**Works with all wagmi connectors.** MetaMask, WalletConnect, Coinbase Wallet, Safe, and any other connector work automatically.
+
+**ETH vs ERC20.** Pass `zeroAddress` (from viem) as `asset` for native ETH payments. Pass the token contract address for ERC20.

@@ -90,9 +90,7 @@ contract PayIDVerifier is EIP712 {
 
     /* ===================== CONSTRUCTOR ===================== */
 
-    constructor() EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) {
-        _initialized = true; // Lock implementation contract
-    }
+    constructor() EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) {}
 
     /* ===================== INITIALIZE ===================== */
 
@@ -165,28 +163,25 @@ contract PayIDVerifier is EIP712 {
 
     /* ===================== HASHING ===================== */
 
-    function hashDecision(Decision calldata d) public view returns (bytes32) {
-        return _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    DECISION_TYPEHASH,
-                    d.version,
-                    d.payId,
-                    d.payer,
-                    d.receiver,
-                    d.asset,
-                    d.amount,
-                    d.contextHash,
-                    d.ruleSetHash,
-                    d.ruleAuthority,
-                    d.issuedAt,
-                    d.expiresAt,
-                    d.nonce,
-                    d.requiresAttestation,
-                    d.attestationUIDsHash
-                )
+    // All Decision fields are static types (bytes32, address, uint256, uint64, bool).
+    // For static-only structs, abi.encode(a,b,...,n) == bytes.concat(abi.encode(a,...,k), abi.encode(k+1,...,n)).
+    // Splitting into two calls avoids the 16-slot stack limit without changing the hash output.
+    function _encodeDecision(Decision calldata d) private pure returns (bytes memory) {
+        return bytes.concat(
+            abi.encode(
+                DECISION_TYPEHASH,
+                d.version, d.payId, d.payer, d.receiver,
+                d.asset,   d.amount, d.contextHash, d.ruleSetHash
+            ),
+            abi.encode(
+                d.ruleAuthority, d.issuedAt, d.expiresAt,
+                d.nonce, d.requiresAttestation, d.attestationUIDsHash
             )
         );
+    }
+
+    function hashDecision(Decision calldata d) public view returns (bytes32) {
+        return _hashTypedDataV4(keccak256(_encodeDecision(d)));
     }
 
     /* ===================== VERIFY ===================== */

@@ -1,4 +1,4 @@
-import type { RuleConfig } from "payid-types";
+import type { RuleConfig } from "../types";
 
 /**
  * SessionPolicy V1 — off-chain only, rule injected inline.

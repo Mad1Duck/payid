@@ -5,9 +5,9 @@
 import type { RuleContext, RuleResult } from "../../types";
 
 export async function runWasmRule(
-  _wasmBinary: Buffer,
   context: RuleContext,
-  config: any
+  config: any,
+  _wasmBinary?: Buffer | Uint8Array,
 ): Promise<RuleResult> {
   return evaluateRule(context, config);
 }
@@ -187,7 +187,18 @@ function daysToYMD(days: number): [number, number, number] {
 function dayOfMonth(days: number): number { return daysToYMD(days)[2]; }
 function monthOfYear(days: number): number { return daysToYMD(days)[1]; }
 
-// Operator dispatch 
+// Safe regex guard — reject patterns that cause catastrophic backtracking (ReDoS)
+function isSafeRegex(pattern: string): boolean {
+  if (pattern.length > 200) return false;
+  // Detect nested quantifiers: (a+)+, (a*)+, (a+)*, (a{n,m})+, etc.
+  if (/\([^)]*[+*]\s*[+*]/.test(pattern)) return false;
+  if (/(\([^)]*[+*][^)]*\))[+*{]/.test(pattern)) return false;
+  // Detect alternation with overlapping groups inside quantifiers
+  if (/\((?:[^|)]+\|)+[^)]*\)[+*{]/.test(pattern)) return false;
+  return true;
+}
+
+// Operator dispatch
 
 function applyOp(actual: any, op: string, expected: any): boolean {
   const a = toU128(actual);
@@ -232,8 +243,16 @@ function applyOp(actual: any, op: string, expected: any): boolean {
     case "exists": return actual !== undefined && actual !== null;
     case "not_exists": return actual === undefined || actual === null;
 
-    case "regex": return typeof actual === "string" && typeof expected === "string" && new RegExp(expected).test(actual);
-    case "not_regex": return typeof actual === "string" && typeof expected === "string" && !new RegExp(expected).test(actual);
+    case "regex": {
+      if (typeof actual !== "string" || typeof expected !== "string") return false;
+      if (!isSafeRegex(expected)) throw new Error(`UNSAFE_REGEX_PATTERN: ${expected.slice(0, 40)}`);
+      return new RegExp(expected).test(actual);
+    }
+    case "not_regex": {
+      if (typeof actual !== "string" || typeof expected !== "string") return false;
+      if (!isSafeRegex(expected)) throw new Error(`UNSAFE_REGEX_PATTERN: ${expected.slice(0, 40)}`);
+      return !new RegExp(expected).test(actual);
+    }
 
     default: return false;
   }

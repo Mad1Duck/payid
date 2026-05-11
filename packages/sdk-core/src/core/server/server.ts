@@ -1,10 +1,10 @@
 import type { ethers } from "ethers";
-import type { RuleConfig, RuleContext, RuleResult } from "payid-types";
+import type { RuleConfig, RuleContext, RuleResult } from "../../types";
 import type { DecisionProof } from "../../decision-proof/types";
 import type { UserOperation } from "../../erc4337/types";
 import { evaluate } from "../../evaluate";
 import { generateDecisionProof } from "../../decision-proof/generate";
-import { buildPayERC20CallData } from "../../erc4337/build";
+import { buildPayETHCallData, buildPayERC20CallData } from "../../erc4337/build";
 import { buildUserOperation } from "../../erc4337/userop";
 import type { RuleSource } from "../../resolver/types";
 import { resolveRule } from "../../resolver/resolver";
@@ -115,12 +115,12 @@ export class PayIDServer {
     targetContract: string;
     paymasterAndData?: string;
     attestationUIDs?: string[];
+    paymentType?: "eth" | "erc20";
   }): UserOperation {
-    const callData = buildPayERC20CallData(
-      params.targetContract,
-      params.proof,
-      params.attestationUIDs ?? []
-    );
+    const isETH = params.paymentType === "eth";
+    const callData = isETH
+      ? buildPayETHCallData(params.targetContract, params.proof, params.attestationUIDs ?? [])
+      : buildPayERC20CallData(params.targetContract, params.proof, params.attestationUIDs ?? []);
     return buildUserOperation({
       sender: params.smartAccount,
       nonce: params.nonce,

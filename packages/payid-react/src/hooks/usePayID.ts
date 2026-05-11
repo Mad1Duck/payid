@@ -3,28 +3,22 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from 'wagmi';
-import type { Abi } from 'viem';
+import type { Abi, Hash } from 'viem';
 import { usePayIDContext } from '../PayIDProvider';
 import PayIDVerifierABI from '../abis/PayIDModule#PayIDVerifier.json';
 import PayWithPayIDABI from '../abis/PayIDModule#PayWithPayID.json';
 import RuleItemERC721ABI from '../abis/PayIDModule#RuleItemERC721.json';
-import CombinedRuleStorageABI from '../abis/PayIDModule#CombinedRuleStorage.json';
+import RuleAuthorityABI from '../abis/PayIDModule#RuleAuthority.json';
 
-interface Decision {
-  version: `0x${string}`;
-  payId: `0x${string}`;
-  payer: `0x${string}`;
-  receiver: `0x${string}`;
-  asset: `0x${string}`;
-  amount: bigint;
-  contextHash: `0x${string}`;
-  ruleSetHash: `0x${string}`;
-  ruleAuthority: `0x${string}`;
-  issuedAt: bigint;
-  expiresAt: bigint;
-  nonce: `0x${string}`;
-  requiresAttestation: boolean;
+interface TxHookResult {
+  hash: Hash | undefined;
+  isPending: boolean;
+  isConfirming: boolean;
+  isSuccess: boolean;
+  error: Error | null;
 }
+
+import type { DecisionPayload as Decision } from 'payid';
 
 export function useVerifyDecision(
   decision: Decision | undefined,
@@ -60,7 +54,9 @@ export function useNonceUsed(
  * const { pay, isPending, isSuccess } = usePayETH()
  * await pay({ decision, signature, attestationUIDs: [] })
  */
-export function usePayETH() {
+export function usePayETH(): TxHookResult & {
+  pay: (params: { decision: Decision; signature: `0x${string}`; attestationUIDs?: `0x${string}`[]; }) => void;
+} {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -89,7 +85,9 @@ export function usePayETH() {
  * const { pay, isPending, isSuccess } = usePayERC20()
  * await pay({ decision, signature, attestationUIDs: [] })
  */
-export function usePayERC20() {
+export function usePayERC20(): TxHookResult & {
+  pay: (params: { decision: Decision; signature: `0x${string}`; attestationUIDs?: `0x${string}`[]; }) => void;
+} {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -114,7 +112,7 @@ export function usePayERC20() {
  * Subscribe ke RuleItemERC721 untuk membuka slot rule tambahan.
  * Harga dihitung dari subscriptionPriceETH() — gunakan useSubscriptionPrice() dulu.
  */
-export function useSubscribe() {
+export function useSubscribe(): TxHookResult & { subscribe: (priceInWei: bigint) => void; } {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -136,7 +134,9 @@ export function useSubscribe() {
  * @param ruleHash   keccak256 dari rule JSON
  * @param uri        IPFS URI ke rule metadata (ipfs://...)
  */
-export function useCreateRule() {
+export function useCreateRule(): TxHookResult & {
+  createRule: (params: { ruleHash: `0x${string}`; uri: string; }) => void;
+} {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -156,7 +156,9 @@ export function useCreateRule() {
 /**
  * Buat versi baru dari rule yang sudah ada.
  */
-export function useCreateRuleVersion() {
+export function useCreateRuleVersion(): TxHookResult & {
+  createRuleVersion: (params: { parentRuleId: bigint; newHash: `0x${string}`; newUri: string; }) => void;
+} {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -181,7 +183,7 @@ export function useCreateRuleVersion() {
  * Aktivasi sebuah rule version — mint NFT license.
  * Versi lama otomatis di-deactivate.
  */
-export function useActivateRule() {
+export function useActivateRule(): TxHookResult & { activateRule: (ruleId: bigint) => void; } {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -202,7 +204,9 @@ export function useActivateRule() {
  * Perpanjang expiry satu rule NFT.
  * Hanya mengubah ruleExpiry[tokenId], bukan subscriptionExpiry.
  */
-export function useExtendRuleExpiry() {
+export function useExtendRuleExpiry(): TxHookResult & {
+  extendRuleExpiry: (params: { tokenId: bigint; newExpiry: bigint; priceInWei: bigint; }) => void;
+} {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -228,7 +232,9 @@ export function useExtendRuleExpiry() {
  * Register combined rule set ke CombinedRuleStorage.
  * Menggantikan rule lama jika ada.
  */
-export function useRegisterCombinedRule() {
+export function useRegisterCombinedRule(): TxHookResult & {
+  registerCombinedRule: (params: { ruleSetHash: `0x${string}`; ruleNFTs: `0x${string}`[]; tokenIds: bigint[]; version: bigint; }) => void;
+} {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -240,10 +246,10 @@ export function useRegisterCombinedRule() {
     version: bigint;
   }) => {
     writeContract({
-      address: contracts.combinedRuleStorage,
-      abi: CombinedRuleStorageABI.abi as Abi,
-      functionName: 'registerCombinedRule',
-      args: [params.ruleSetHash, params.ruleNFTs, params.tokenIds, params.version],
+      address: contracts.ruleAuthority,
+      abi: RuleAuthorityABI.abi as Abi,
+      functionName: 'registerRuleSet',
+      args: [params.ruleSetHash, params.ruleNFTs.map((nft, i) => ({ ruleNFT: nft, tokenId: params.tokenIds[i] }))],
     });
   };
 
@@ -253,16 +259,17 @@ export function useRegisterCombinedRule() {
 /**
  * Deactivate rule aktif milik caller.
  */
-export function useDeactivateCombinedRule() {
+export function useDeactivateCombinedRule(): TxHookResult & { deactivate: (ruleSetHash: `0x${string}`) => void; } {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const deactivate = () => {
+  const deactivate = (ruleSetHash: `0x${string}`) => {
     writeContract({
-      address: contracts.combinedRuleStorage,
-      abi: CombinedRuleStorageABI.abi as Abi,
-      functionName: 'deactivateMyCombinedRule',
+      address: contracts.ruleAuthority,
+      abi: RuleAuthorityABI.abi as Abi,
+      functionName: 'deactivateRuleSet',
+      args: [ruleSetHash],
     });
   };
 

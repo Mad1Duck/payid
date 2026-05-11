@@ -1,6 +1,6 @@
 import type { Wallet } from "ethers";
 import { signAttestation } from "./signAttestation";
-import type { OracleContext } from "payid-types";
+import type { OracleContext } from "../types";
 
 export async function issueOracleContext(
   wallet: Wallet,

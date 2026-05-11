@@ -23,12 +23,34 @@ export async function generateDecisionProof(params: {
   blockTimestamp?: number;
   attestationUIDs?: string[];
 }): Promise<DecisionProof> {
+  // L1: zero-address guard
+  if (!ethers.isAddress(params.payer) || params.payer === ethers.ZeroAddress) {
+    throw new Error("GENERATE_PROOF: payer address tidak valid atau zero");
+  }
+  if (!ethers.isAddress(params.receiver) || params.receiver === ethers.ZeroAddress) {
+    throw new Error("GENERATE_PROOF: receiver address tidak valid atau zero");
+  }
+  if (!ethers.isAddress(params.verifyingContract) || params.verifyingContract === ethers.ZeroAddress) {
+    throw new Error("GENERATE_PROOF: verifyingContract tidak valid atau zero");
+  }
+  if (params.amount <= 0n) {
+    throw new Error("GENERATE_PROOF: amount harus > 0");
+  }
+
   const now = params.blockTimestamp ?? Math.floor(Date.now() / 1000);
   const issuedAt = now - 30;
   const expiresAt = now + (params.ttlSeconds ?? 300);
 
-  const chainId = params.chainId
-    ?? Number((await params.signer.provider!.getNetwork()).chainId);
+  // M4: chainId validation — derive from provider only if not provided,
+  // then verify it's a positive integer to catch RPC misconfigurations.
+  let chainId = params.chainId;
+  if (!chainId && params.signer.provider) {
+    const network = await params.signer.provider.getNetwork();
+    chainId = Number(network.chainId);
+  }
+  if (!chainId || chainId <= 0 || !Number.isInteger(chainId)) {
+    throw new Error(`GENERATE_PROOF: chainId tidak valid: ${chainId}`);
+  }
 
   const requiresAttestation =
     Array.isArray(params.ruleConfig?.requires) &&
@@ -58,7 +80,7 @@ export async function generateDecisionProof(params: {
   const domain = {
     name: "PAY.ID Decision",
     version: "2",
-    chainId,
+    chainId: chainId,
     verifyingContract: params.verifyingContract,
   };
 

@@ -2,12 +2,28 @@ import { ethers } from "ethers";
 import type { DecisionProof } from "../decision-proof/types";
 
 // ABI PayWithPayID yang sudah diupdate (EAS-based)
-const PAY_WITH_PAYID_ABI = [
-  // ETH payment — attestationUIDs adalah EAS UIDs, pass [] jika tidak perlu
-  "function payETH((bytes32 version, bytes32 payId, address payer, address receiver, address asset, uint256 amount, bytes32 contextHash, bytes32 ruleSetHash, address ruleAuthority, uint64 issuedAt, uint64 expiresAt, bytes32 nonce, bool requiresAttestation) d, bytes sig, bytes32[] attestationUIDs) payable",
+// Decision struct must exactly mirror PayIDVerifier.sol Decision struct (14 fields).
+// Field order and types are load-bearing for ABI encoding — any mismatch causes
+// on-chain decode failure and silent wrong-value reads.
+const DECISION_TUPLE =
+  "bytes32 version," +
+  "bytes32 payId," +
+  "address payer," +
+  "address receiver," +
+  "address asset," +
+  "uint256 amount," +
+  "bytes32 contextHash," +
+  "bytes32 ruleSetHash," +
+  "address ruleAuthority," +
+  "uint64 issuedAt," +
+  "uint64 expiresAt," +
+  "bytes32 nonce," +
+  "bool requiresAttestation," +
+  "bytes32 attestationUIDsHash";
 
-  // ERC20 payment
-  "function payERC20((bytes32 version, bytes32 payId, address payer, address receiver, address asset, uint256 amount, bytes32 contextHash, bytes32 ruleSetHash, address ruleAuthority, uint64 issuedAt, uint64 expiresAt, bytes32 nonce, bool requiresAttestation) d, bytes sig, bytes32[] attestationUIDs)",
+const PAY_WITH_PAYID_ABI = [
+  `function payETH((${DECISION_TUPLE}) d, bytes sig, bytes32[] attestationUIDs) payable`,
+  `function payERC20((${DECISION_TUPLE}) d, bytes sig, bytes32[] attestationUIDs)`,
 ];
 
 /**
@@ -46,14 +62,3 @@ export function buildPayERC20CallData(
   ]);
 }
 
-/**
- * @deprecated Gunakan buildPayETHCallData atau buildPayERC20CallData
- * Fungsi lama ini pakai ABI yang tidak match dengan contract baru
- */
-export function buildPayCallData(
-  contractAddress: string,
-  proof: DecisionProof,
-  attestationUIDs: string[] = []
-): string {
-  return buildPayERC20CallData(contractAddress, proof, attestationUIDs);
-}

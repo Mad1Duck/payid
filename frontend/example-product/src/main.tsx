@@ -7,11 +7,10 @@ import {
   createRouter,
 } from '@tanstack/react-router'
 import { WagmiProvider, createConfig, http } from 'wagmi'
-import { hardhat, liskSepolia } from 'wagmi/chains'
+import { hardhat } from 'wagmi/chains'
 import { injected, metaMask } from 'wagmi/connectors'
 import { PayIDProvider } from 'payid-react'
 
-// routes
 import HomeRoute from './routes/home/index.tsx'
 import RuleConsole from './routes/rule-console/index.tsx'
 import History from './routes/history/index.tsx'
@@ -20,10 +19,10 @@ import Qr from './routes/qr/index.tsx'
 import RuleBuilder from './routes/rule-builder/index.tsx'
 import Vrify from './routes/verify/index.tsx'
 import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider.tsx'
+import { addresses } from './constants/contracts'
 import './styles.css'
 import reportWebVitals from './reportWebVitals.ts'
 
-// Wagmi config
 const wagmiConfig = createConfig({
   chains: [hardhat],
   connectors: [injected(), metaMask()],
@@ -32,13 +31,8 @@ const wagmiConfig = createConfig({
   },
 })
 
-// Router
 const rootRoute = createRootRoute({
-  component: () => (
-    <>
-      <Outlet />
-    </>
-  ),
+  component: () => <Outlet />,
 })
 
 const routeTree = rootRoute.addChildren([
@@ -75,18 +69,16 @@ if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
     <StrictMode>
-      {/* Urutan wajib: Wagmi → Query → PayID → Router */}
       <WagmiProvider config={wagmiConfig}>
         <TanStackQueryProvider.Provider {...TanStackQueryProviderContext}>
           <PayIDProvider
             contracts={{
-              31337: {
-                ruleAuthority: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
-                ruleItemERC721: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
-                combinedRuleStorage:
-                  '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
-                payIDVerifier: '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707',
-                payWithPayID: '0x0165878A594ca255338adfa4d48449f69242Eb8F',
+              [hardhat.id]: {
+                ruleAuthority:       addresses[31337].RuleAuthority,
+                ruleItemERC721:      addresses[31337].RuleItemERC721,
+                combinedRuleStorage: addresses[31337].CombinedRuleStorage,
+                payIDVerifier:       addresses[31337].PayIDVerifier,
+                payWithPayID:        addresses[31337].PayWithPayID,
               },
             }}
           >

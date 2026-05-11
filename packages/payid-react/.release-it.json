@@ -1,0 +1,20 @@
+{
+  "$schema": "https://unpkg.com/release-it/schema/release-it.json",
+  "npm": {
+    "publish": true,
+    "publishPath": "."
+  },
+  "git": {
+    "commitMessage": "chore: release payid-react@${version}",
+    "tagName": "payid-react@${version}",
+    "requireCleanWorkingDir": false,
+    "commit": true,
+    "tag": true,
+    "push": true
+  },
+  "hooks": {
+    "before:bump": "bun run type-check",
+    "after:bump": "bun run build"
+  },
+  "plugins": {}
+}

@@ -1,7 +1,7 @@
 // src/core/client/client.ts
-import type { RuleConfig, RuleContext, RuleResult, RuleResultDebug } from "payid-types";
+import type { RuleConfig, RuleContext, RuleResult, RuleResultDebug } from "../../types";
 import { evaluate } from "../../evaluate";
-import { loadWasm } from "payid-rule-engine";
+import { loadWasm } from "../../rule/engine/wasm";
 import { combineRules } from "../../rule/combine";
 import { decodeSessionPolicy, decodeSessionPolicyV2 } from "../../sessionPolicy/decode";
 import { ethers } from "ethers";

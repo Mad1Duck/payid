@@ -113,14 +113,46 @@ async function loadRuleConfigs(
         args: [tokenId],
       })) as string;
 
+      // Reject dangerous URI schemes — only http(s) and ipfs are allowed
+      if (
+        !tokenUri.startsWith('http://') &&
+        !tokenUri.startsWith('https://') &&
+        !tokenUri.startsWith('ipfs://')
+      ) {
+        throw new Error(`INVALID_TOKEN_URI_SCHEME: ${tokenUri.slice(0, 40)}`);
+      }
+
       const url = toHttpUrl(tokenUri, ipfsGateway);
       log('loadRuleConfigs', `[${i}] fetch`, url);
 
-      const res = await fetch(url);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10_000);
+
+      let res: Response;
+      try {
+        res = await fetch(url, { signal: controller.signal });
+      } catch (err: any) {
+        if (err?.name === 'AbortError') throw new Error(`RULE_FETCH_TIMEOUT: ${url}`);
+        throw err;
+      } finally {
+        clearTimeout(timer);
+      }
+
       if (!res.ok) throw new Error(`Failed to fetch rule metadata: ${url} (${res.status})`);
 
-      const metadata: any = await res.json();
-      if (!metadata.rule) throw new Error(`Missing 'rule' in metadata: ${url}`);
+      const text = await res.text();
+      if (text.length > 100 * 1024) throw new Error(`RULE_METADATA_TOO_LARGE: ${url}`);
+
+      let metadata: any;
+      try {
+        metadata = JSON.parse(text);
+      } catch {
+        throw new Error(`RULE_METADATA_INVALID_JSON: ${url}`);
+      }
+
+      if (!metadata.rule || typeof metadata.rule !== 'object') {
+        throw new Error(`Missing 'rule' in metadata: ${url}`);
+      }
 
       return metadata.rule;
     }),
@@ -146,8 +178,8 @@ export function usePayIDFlow(): PayIDFlowResult {
   const sdkRef = useRef<any>(null);
   const getSdk = useCallback(async () => {
     if (!sdkRef.current) {
-      const { createPayID } = await import('payid/client');
-      sdkRef.current = createPayID({ debugTrace: true });
+      const { createPayIDClient } = await import('payid/client');
+      sdkRef.current = createPayIDClient({ debugTrace: true });
       await sdkRef.current.ready?.();
     }
     return sdkRef.current;

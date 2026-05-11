@@ -17,7 +17,10 @@
     "deploy:base": "bun hardhat ignition deploy ignition/modules/PayID.ts --network base      --parameters ignition/parameters/base.json       --deployment-id base-v1",
     "deploy:moonbeam": "bun hardhat ignition deploy ignition/modules/PayID.ts --network moonbeam  --parameters ignition/parameters/moonbeam.json   --deployment-id moonbeam-v1",
     "deploy:moonriver": "bun hardhat ignition deploy ignition/modules/PayID.ts --network moonriver --parameters ignition/parameters/moonriver.json  --deployment-id moonriver-v1",
-    "deploy:all-testnet": "bun run deploy:lisk-sepolia && bun run deploy:monad && bun run deploy:polygon-amoy && bun run deploy:sepolia && bun run deploy:base-sepolia && bun run deploy:moonbase"
+    "deploy:all-testnet": "bun run deploy:lisk-sepolia && bun run deploy:monad && bun run deploy:polygon-amoy && bun run deploy:sepolia && bun run deploy:base-sepolia && bun run deploy:moonbase",
+    "sync": "bun run scripts/sync-deployments.ts",
+    "sync:local": "bun run scripts/sync-deployments.ts 31337",
+    "sync:abi": "bun run scripts/sync-deployments.ts --abi-only"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.6",

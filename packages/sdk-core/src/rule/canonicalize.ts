@@ -1,4 +1,4 @@
-import type { AnyRule } from "payid-types";
+import type { AnyRule } from "../types";
 
 /**
  * Canonicalize a rule set into a deterministic, order-independent form.
