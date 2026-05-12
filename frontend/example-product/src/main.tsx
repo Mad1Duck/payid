@@ -23,11 +23,27 @@ import { addresses } from './constants/contracts'
 import './styles.css'
 import reportWebVitals from './reportWebVitals.ts'
 
+import { type Chain } from 'viem'
+
+export const zeroGTestnet = {
+  id: 16600,
+  name: '0G Newton Testnet',
+  nativeCurrency: { decimals: 18, name: 'A0GI', symbol: 'A0GI' },
+  rpcUrls: {
+    default: { http: ['https://16600.rpc.thirdweb.com/'] },
+    public: { http: ['https://16600.rpc.thirdweb.com/'] },
+  },
+  blockExplorers: {
+    default: { name: '0G Explorer', url: 'https://chainscan-newton.0g.ai' },
+  },
+} as const satisfies Chain
+
 const wagmiConfig = createConfig({
-  chains: [hardhat],
+  chains: [hardhat, zeroGTestnet],
   connectors: [injected(), metaMask()],
   transports: {
     [hardhat.id]: http('http://127.0.0.1:8545'),
+    [zeroGTestnet.id]: http(),
   },
 })
 
@@ -76,9 +92,14 @@ if (rootElement && !rootElement.innerHTML) {
               [hardhat.id]: {
                 ruleAuthority:       addresses[31337].RuleAuthority,
                 ruleItemERC721:      addresses[31337].RuleItemERC721,
-                combinedRuleStorage: addresses[31337].CombinedRuleStorage,
                 payIDVerifier:       addresses[31337].PayIDVerifier,
                 payWithPayID:        addresses[31337].PayWithPayID,
+              },
+              [zeroGTestnet.id]: {
+                ruleAuthority:       '0x0000000000000000000000000000000000000000',
+                ruleItemERC721:      '0x0000000000000000000000000000000000000000',
+                payIDVerifier:       '0x0000000000000000000000000000000000000000',
+                payWithPayID:        '0x0000000000000000000000000000000000000000',
               },
             }}
           >

@@ -111,6 +111,14 @@ export default defineConfig({
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
+    // 0G Newton Testnet
+    zeroGTestnet: {
+      type: "http",
+      chainId: 16600,
+      url: process.env.ZEROG_RPC_URL ?? "https://16600.rpc.thirdweb.com/",
+      accounts: { mnemonic: process.env.MNEMONIC ?? "" },
+    },
+
     // Moonriver (Kusama EVM — canary network)
     moonriver: {
       type: "http",
