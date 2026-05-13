@@ -24,5 +24,13 @@ export async function resolveRule(
     return { config, source };
   }
 
+  if (uri.startsWith("0g://")) {
+    const rootHash = uri.replace("0g://", "");
+    const indexerUrl = (globalThis as any).PAYID_ZGS_INDEXER_URL || "https://indexer-testnet.0g.ai";
+    const url = `${indexerUrl}/blob/${rootHash}`;
+    const config = await fetchJsonWithHashCheck(url, hash);
+    return { config, source };
+  }
+
   throw new Error("UNSUPPORTED_RULE_URI");
 }

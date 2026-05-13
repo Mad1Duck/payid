@@ -10,7 +10,11 @@ import {
   Shield,
 } from 'lucide-react'
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useAccount } from 'wagmi'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
+import { WalletButton } from '@/components/WalletButton'
 import { MobileLayout } from '@/components/Layouts/MobileLayout'
 
 // Mock proof data
@@ -54,25 +58,25 @@ function CopyableField({
     : `${value.slice(0, 10)}...${value.slice(-6)}`
 
   return (
-    <div className="p-4 rounded-2xl bg-card border border-border/50">
+    <div className="p-4 rounded-xl module-card">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center flex-shrink-0">
-          <Icon className="w-5 h-5 text-muted-foreground" />
+        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+          <Icon className="w-5 h-5 text-slate-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="font-mono text-sm text-foreground mt-1 truncate">
+          <p className="text-sm text-slate-600 font-medium">{label}</p>
+          <p className="font-mono text-sm text-slate-900 mt-1 truncate">
             {displayValue}
           </p>
         </div>
         <button
           onClick={handleCopy}
-          className="p-2 rounded-lg hover:bg-secondary transition-colors"
+          className="btn-tactile p-2 rounded-lg hover:bg-slate-100 transition-colors"
         >
           {copied ? (
-            <Check className="w-4 h-4 text-success" />
+            <Check className="w-4 h-4 text-emerald-600" />
           ) : (
-            <Copy className="w-4 h-4 text-muted-foreground" />
+            <Copy className="w-4 h-4 text-slate-500" />
           )}
         </button>
       </div>
@@ -81,42 +85,61 @@ function CopyableField({
 }
 
 export default function TransactionProof() {
+  const { address, isConnected } = useAccount()
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   return (
     <MobileLayout hideNav>
       <div className="px-5 safe-area-top min-h-screen flex flex-col">
         {/* Header */}
-        <header className="flex items-center gap-4 py-4">
-          <button className="p-2 -ml-2 rounded-xl hover:bg-secondary transition-colors">
-            <ArrowLeft className="w-5 h-5 text-foreground" />
-          </button>
+        <motion.header
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center gap-3 py-4"
+        >
+          <Link to="/">
+            <button className="btn-tactile p-2.5 -ml-2 rounded-xl bg-white/50 hover:bg-white/80 transition-colors border border-white/20">
+              <ArrowLeft className="w-5 h-5 text-foreground" />
+            </button>
+          </Link>
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-foreground">
+            <h1 className="text-xl font-bold text-foreground tracking-tight">
               Transaction Proof
             </h1>
             <p className="text-sm text-muted-foreground">
-              Cryptographic verification
+              {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : 'Connect wallet'}
             </p>
           </div>
-        </header>
+          <WalletButton />
+        </motion.header>
 
         {/* Success Banner */}
-        <div className="mt-4 p-6 rounded-3xl bg-success-muted border border-success/20 text-center animate-scale-in">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-success/20 flex items-center justify-center">
-            <CheckCircle2 className="w-10 h-10 text-success" />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          className="mt-4 p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center"
+        >
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
+            <CheckCircle2 className="w-10 h-10 text-emerald-600" />
           </div>
-          <h2 className="text-2xl font-bold text-success">Payment Complete</h2>
-          <p className="text-lg font-semibold text-foreground mt-2">
+          <h2 className="text-2xl font-bold text-emerald-700">Payment Complete</h2>
+          <p className="text-lg font-semibold text-slate-900 mt-2">
             {proofData.amount} {proofData.token}
           </p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-slate-600 mt-1">
             Transaction verified and recorded
           </p>
-        </div>
+        </motion.div>
 
         {/* Proof Summary */}
-        <div className="mt-6 space-y-3 animate-slide-up">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="mt-6 space-y-3"
+        >
           <CopyableField
             label="Rule Hash"
             value={proofData.ruleHash}
@@ -132,61 +155,80 @@ export default function TransactionProof() {
             value={proofData.signerAddress}
             icon={Key}
           />
-        </div>
+        </motion.div>
 
         {/* Advanced Toggle */}
-        <button
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="mt-6 flex items-center justify-center gap-2 py-3 text-accent font-medium"
+          className="mt-6 flex items-center justify-center gap-2 py-3 text-teal-600 font-semibold btn-tactile"
         >
           <Shield className="w-4 h-4" />
           {showAdvanced ? 'Hide' : 'Show'} Advanced / Developer View
-        </button>
+        </motion.button>
 
         {/* Advanced Details */}
-        {showAdvanced && (
-          <div className="mt-2 p-4 rounded-2xl bg-primary/5 border border-primary/10 animate-slide-up">
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                  Full Signature
-                </p>
-                <p className="font-mono text-xs text-foreground break-all bg-secondary/50 p-3 rounded-lg">
-                  {proofData.signature}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                  Verification Status
-                </p>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                  <span className="text-sm font-medium text-success">
-                    Cryptographically Verified
-                  </span>
+        <AnimatePresence>
+          {showAdvanced && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mt-2 p-4 rounded-xl bg-slate-50 border border-slate-200"
+            >
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs text-slate-600 uppercase tracking-wide mb-1 font-semibold">
+                    Full Signature
+                  </p>
+                  <p className="font-mono text-xs text-slate-900 break-all bg-white p-3 rounded-lg border border-slate-200">
+                    {proofData.signature}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-600 uppercase tracking-wide mb-1 font-semibold">
+                    Verification Status
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-sm font-semibold text-emerald-600">
+                      Cryptographically Verified
+                    </span>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-slate-200">
+                  <p className="text-xs text-slate-600">
+                    The rule hash represents the on-chain authority rules. The
+                    context hash encapsulates the payment parameters. Both are
+                    signed by the signer to create a verifiable proof.
+                  </p>
                 </div>
               </div>
-              <div className="pt-2 border-t border-border/50">
-                <p className="text-xs text-muted-foreground">
-                  The rule hash represents the on-chain authority rules. The
-                  context hash encapsulates the payment parameters. Both are
-                  signed by the signer to create a verifiable proof.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Action Buttons */}
-        <div className="mt-auto py-6 space-y-3">
-          <Button variant="outline" size="lg" className="w-full">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+          className="mt-auto py-6 space-y-3"
+        >
+          <Button
+            variant="outline"
+            className="w-full h-12 rounded-xl btn-tactile border-slate-200 hover:bg-slate-50"
+          >
             <ExternalLink className="w-5 h-5 mr-2" />
             View on-chain verification
           </Button>
-          <Button size="icon" className="w-full">
+          <Button className="w-full h-12 rounded-xl btn-tactile bg-slate-900 hover:bg-slate-800 text-white">
             Done
           </Button>
-        </div>
+        </motion.div>
       </div>
     </MobileLayout>
   )

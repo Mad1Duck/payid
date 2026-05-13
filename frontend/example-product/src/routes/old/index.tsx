@@ -1,7 +1,7 @@
 import { createRoute } from '@tanstack/react-router'
 
 import type { RootRoute } from '@tanstack/react-router'
-import Page from '@/pages/home'
+import Page from '@/pages/test'
 
 function Index() {
   return (
@@ -13,7 +13,7 @@ function Index() {
 
 export default (parentRoute: RootRoute) =>
   createRoute({
-    path: '/',
+    path: '/old',
     component: Index,
     getParentRoute: () => parentRoute,
   })

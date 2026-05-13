@@ -51,6 +51,7 @@
     "release:major": "release-it major --no-git.requireCleanWorkingDir"
   },
   "dependencies": {
+    "@0gfoundation/0g-storage-ts-sdk": "^1.2.9",
     "ethers": "^6.16.0",
     "wasi": "^0.0.6"
   },

@@ -310,6 +310,7 @@ const TABS = [
   { id: 'rules', label: 'Rule NFTs', icon: '◈' },
   { id: 'create', label: 'Create Rule', icon: '＋' },
   { id: 'combine', label: 'Combine', icon: '⊕' },
+  { id: 'agent', label: 'Agent ID', icon: '🤖' },
   { id: 'subscription', label: 'Subscription', icon: '★' },
   { id: 'transact', label: 'Pay', icon: '→' },
 ] as const
@@ -1157,6 +1158,149 @@ function SubscriptionTab({ myAddress }: { myAddress: Address | undefined }) {
 }
 
 // TransactTab
+// AgentTab (0G Agent ID integration)
+function AgentTab({ myAddress }: { myAddress: Address | undefined }) {
+  const { contracts } = usePayIDContext()
+  const { data: allCombined = [] } = useAllCombinedRules()
+  const tx = useTx()
+
+  const [tokenId, setTokenId] = useState('')
+  const [ruleHash, setRuleHash] = useState('')
+
+  const AGENT_PAYID_ABI = [
+    {
+      name: 'linkAgentRule',
+      type: 'function',
+      stateMutability: 'nonpayable',
+      inputs: [
+        { name: 'agentTokenId', type: 'uint256' },
+        { name: 'ruleSetHash', type: 'bytes32' },
+      ],
+      outputs: [],
+    },
+    {
+      name: 'agentRules',
+      type: 'function',
+      stateMutability: 'view',
+      inputs: [{ name: '', type: 'uint256' }],
+      outputs: [{ name: '', type: 'bytes32' }],
+    },
+  ] as const
+
+  const MOCK_AGENT_ABI = [
+    {
+      name: 'mint',
+      type: 'function',
+      stateMutability: 'nonpayable',
+      inputs: [{ name: 'to', type: 'address' }],
+      outputs: [{ type: 'uint256' }],
+    },
+  ] as const
+
+  const handleLink = () => {
+    if (!tokenId || !ruleHash) return
+    void tx.send({
+      address: (contracts as any).agentPayID,
+      abi: AGENT_PAYID_ABI,
+      functionName: 'linkAgentRule',
+      args: [BigInt(tokenId), ruleHash as Hash],
+      chain: undefined,
+      account: null,
+    })
+  }
+
+  const handleMint = () => {
+    if (!myAddress) return
+    void tx.send({
+      address: (contracts as any).mockAgentRegistry,
+      abi: MOCK_AGENT_ABI,
+      functionName: 'mint',
+      args: [myAddress],
+      chain: undefined,
+      account: null,
+    })
+  }
+
+  return (
+    <div className="col">
+      <div className="rc-card">
+        <div className="rc-card-header">
+          <div className="rc-card-title">
+            <span className="accent">🤖</span> 0G Agent ID Linking
+          </div>
+        </div>
+        <div className="rc-card-body col">
+          <div className="alert alert-warn">
+            <div className="alert-icon">ℹ</div>
+            <div className="alert-body">
+              Link your 0G AI Agent (ERC-7857) to a specific PayID Rule Set.
+              This allows the Agent to have its own autonomous payment policy.
+            </div>
+          </div>
+
+          <div className="divider" />
+
+          <div className="grid2">
+            <div className="field">
+              <div className="field-label">Agent Token ID</div>
+              <input
+                className="field-input"
+                placeholder="e.g. 0, 1, 2"
+                value={tokenId}
+                onChange={(e) => setTokenId(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <div className="field-label">Rule Set Hash</div>
+              <select
+                className="field-input"
+                value={ruleHash}
+                onChange={(e) => setRuleHash(e.target.value)}
+              >
+                <option value="">Select a Policy</option>
+                {allCombined.map((c) => (
+                  <option key={c.hash} value={c.hash}>
+                    {shortHash(c.hash)} (v{c.version.toString()})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {tx.status === 'success' && (
+            <Alert
+              type="ok"
+              title="Transaction successful!"
+              hash={tx.hash}
+              onDismiss={tx.reset}
+            />
+          )}
+          {tx.status === 'error' && (
+            <Alert type="err" title={tx.error ?? 'Error'} onDismiss={tx.reset} />
+          )}
+
+          <div className="row" style={{ gap: 12 }}>
+            <button
+              className="btn btn-primary"
+              onClick={handleLink}
+              disabled={tx.isPending || !tokenId || !ruleHash}
+            >
+              {tx.isPending ? <span className="spin" /> : '🔗 Link Agent to Policy'}
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={handleMint}
+              disabled={tx.isPending || !myAddress}
+            >
+              Mint Demo Agent NFT
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TransactTab({ myAddress }: { myAddress: Address | undefined }) {
   const chainId = useChainId()
   const tokens = TOKENS_BY_CHAIN[chainId] ?? DEFAULT_TOKENS
@@ -1480,6 +1624,7 @@ export default function RuleConsole() {
           {tab === 'rules' && <RulesTab myAddress={address} />}
           {tab === 'create' && <CreateRuleTab />}
           {tab === 'combine' && <CombineTab myAddress={address} />}
+          {tab === 'agent' && <AgentTab myAddress={address} />}
           {tab === 'subscription' && <SubscriptionTab myAddress={address} />}
           {tab === 'transact' && <TransactTab myAddress={address} />}
         </main>

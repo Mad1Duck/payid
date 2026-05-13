@@ -1,7 +1,5 @@
-import { motion } from 'framer-motion'
-import { Clock, Coins, DollarSign, Shield, User } from 'lucide-react'
+import { Clock, Coins, DollarSign, User } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 export type CartridgeType =
   | 'minAmount'
@@ -15,6 +13,7 @@ interface RuleCartridgeProps {
   type: CartridgeType
   name: string
   summary: string
+  image?: string
   isActive?: boolean
   isInSlot?: boolean
   isDragging?: boolean
@@ -25,43 +24,13 @@ interface RuleCartridgeProps {
 
 const cartridgeConfig: Record<
   CartridgeType,
-  {
-    icon: LucideIcon
-    shellColor: string
-    labelColor: string
-    accentColor: string
-  }
+  { icon: LucideIcon; from: string; to: string; accent: string }
 > = {
-  minAmount: {
-    icon: DollarSign,
-    shellColor: 'from-[#2d4a3e] via-[#1e3a2f] to-[#152a22]',
-    labelColor: 'from-[#4ade80] to-[#22c55e]',
-    accentColor: '#4ade80',
-  },
-  maxAmount: {
-    icon: DollarSign,
-    shellColor: 'from-[#4a3d2d] via-[#3a2f1e] to-[#2a2215]',
-    labelColor: 'from-[#fbbf24] to-[#f59e0b]',
-    accentColor: '#fbbf24',
-  },
-  allowedToken: {
-    icon: Coins,
-    shellColor: 'from-[#2d3a4a] via-[#1e2f3a] to-[#15222a]',
-    labelColor: 'from-[#60a5fa] to-[#3b82f6]',
-    accentColor: '#60a5fa',
-  },
-  allowedSender: {
-    icon: User,
-    shellColor: 'from-[#3d2d4a] via-[#2f1e3a] to-[#22152a]',
-    labelColor: 'from-[#c084fc] to-[#a855f7]',
-    accentColor: '#c084fc',
-  },
-  expiration: {
-    icon: Clock,
-    shellColor: 'from-[#4a2d3d] via-[#3a1e2f] to-[#2a1522]',
-    labelColor: 'from-[#fb7185] to-[#f43f5e]',
-    accentColor: '#fb7185',
-  },
+  minAmount:    { icon: DollarSign, from: '#059669', to: '#047857', accent: '#10b981' },
+  maxAmount:    { icon: DollarSign, from: '#d97706', to: '#b45309', accent: '#f59e0b' },
+  allowedToken: { icon: Coins,      from: '#0891b2', to: '#0e7490', accent: '#06b6d4' },
+  allowedSender:{ icon: User,       from: '#7c3aed', to: '#6d28d9', accent: '#8b5cf6' },
+  expiration:   { icon: Clock,      from: '#e11d48', to: '#be123c', accent: '#f43f5e' },
 }
 
 export function RuleCartridge({
@@ -69,196 +38,224 @@ export function RuleCartridge({
   type,
   name,
   summary,
+  image,
   isActive = false,
   isInSlot = false,
-  isDragging = false,
   showAdvanced = false,
-  ruleHash = '0x7f3a...8b2c',
+  ruleHash,
 }: RuleCartridgeProps) {
-  const config = cartridgeConfig[type]
-  const Icon = config.icon
+  const cfg = cartridgeConfig[type]
+  const Icon = cfg.icon
+  const W = 56
 
   return (
-    <motion.div
-      className={cn(
-        'relative select-none',
-        isInSlot ? 'w-15' : 'w-17',
-        isDragging && 'z-50',
-      )}
-      animate={{
-        scale: isDragging ? 1.15 : 1,
-        rotate: isDragging ? -3 : 0,
-      }}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-    >
-      {/* GBA Cartridge Shell */}
+    <div className="relative select-none" style={{ width: W }}>
+      {/* ── Connector tabs at top (go into slot) ── */}
       <div
-        className={cn(
-          'relative rounded-t-lg rounded-b-[6px]',
-          isInSlot ? 'w-15 h-18' : 'w-17 h-20.5',
-          'bg-linear-to-b',
-          config.shellColor,
-          'shadow-[4px_6px_12px_rgba(0,0,0,0.5),-2px_-2px_4px_rgba(255,255,255,0.03)_inset,2px_2px_4px_rgba(0,0,0,0.3)_inset]',
-          'border-[1.5px] border-black/50',
-          isActive &&
-            'shadow-[4px_6px_12px_rgba(0,0,0,0.5),0_0_20px_rgba(76,175,80,0.3)]',
-          'transition-shadow duration-300',
-        )}
+        className="flex justify-center gap-px mx-1 mb-0"
+        style={{ height: '10px' }}
       >
-        {/* Top notch / grip area */}
-        <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-3 bg-linear-to-b from-black/60 to-black/40 rounded-b-sm border-x border-b border-black/30">
-          {/* Grip ridges */}
-          <div className="flex justify-center gap-0.5 pt-1">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="w-0.5 h-1.5 bg-black/40 rounded-full" />
-            ))}
-          </div>
-        </div>
-
-        {/* Main label sticker */}
-        <div
-          className={cn(
-            'absolute left-1.5 right-1.5 rounded-[3px]',
-            isInSlot ? 'top-4 h-9.5' : 'top-5 h-11',
-            'bg-linear-to-b',
-            config.labelColor,
-            'shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_-1px_2px_rgba(0,0,0,0.2)]',
-            'border border-white/20',
-            'flex flex-col items-center justify-center overflow-hidden',
-          )}
-        >
-          {/* Label shine effect */}
-          <div className="absolute inset-0 bg-linear-to-br from-white/30 via-transparent to-transparent" />
-
-          {/* Icon */}
+        {[...Array(9)].map((_, i) => (
           <div
-            className={cn(
-              'relative rounded-full p-1 mb-0.5',
-              'bg-black/20 backdrop-blur-sm',
-            )}
-          >
-            <Icon
-              className={cn(
-                'text-white drop-shadow-sm',
-                isInSlot ? 'w-3 h-3' : 'w-3.5 h-3.5',
-              )}
-              strokeWidth={2.5}
-            />
-          </div>
-
-          {/* Name */}
-          <span
-            className={cn(
-              'relative font-bold text-white uppercase tracking-tight text-center leading-none drop-shadow-sm',
-              isInSlot ? 'text-[7px]' : 'text-[8px]',
-            )}
-          >
-            {name}
-          </span>
-
-          {/* Subtle pattern overlay */}
-          <div
-            className="absolute inset-0 opacity-10"
+            key={i}
             style={{
-              backgroundImage: `repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0,0,0,0.1) 2px,
-                rgba(0,0,0,0.1) 4px
-              )`,
+              flex: 1,
+              background: 'linear-gradient(180deg, #d4b850 0%, #a07820 100%)',
+              borderRadius: '1px 1px 0 0',
+              boxShadow: '0 -1px 2px rgba(0,0,0,0.3)',
             }}
           />
-        </div>
-
-        {/* Bottom connector pins area */}
-        <div
-          className={cn(
-            'absolute bottom-0 left-0 right-0 h-4 rounded-b-[5px]',
-            'bg-linear-to-t from-black/60 to-transparent',
-          )}
-        >
-          {/* Connector edge */}
-          <div className="absolute bottom-0 left-2 right-2 h-0.75 bg-linear-to-r from-[#4a4a4a] via-[#5a5a5a] to-[#4a4a4a] rounded-t-sm">
-            {/* Gold pins */}
-            <div className="flex justify-center gap-0.75 -mt-px">
-              {[...Array(6)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-1.5 h-1.5 bg-linear-to-b from-[#d4a853] to-[#a67c3a] rounded-sm shadow-[0_1px_2px_rgba(0,0,0,0.3)]"
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Rating badge (like GBA games) */}
-        <div
-          className={cn(
-            'absolute flex items-center gap-0.5',
-            isInSlot ? 'bottom-4 left-1.5' : 'bottom-5 left-2',
-          )}
-        >
-          <Shield className="w-2 h-2 text-white/40" />
-          <span className="text-[5px] font-bold text-white/40 uppercase">
-            Rule
-          </span>
-        </div>
-
-        {/* Active glow LED */}
-        {isActive && (
-          <motion.div
-            className={cn(
-              'absolute rounded-full',
-              isInSlot
-                ? 'top-13 right-2 w-1.5 h-1.5'
-                : 'top-15 right-2 w-2 h-2',
-            )}
-            style={{ backgroundColor: config.accentColor }}
-            animate={{
-              boxShadow: [
-                `0 0 4px ${config.accentColor}`,
-                `0 0 10px ${config.accentColor}`,
-                `0 0 4px ${config.accentColor}`,
-              ],
-              opacity: [0.8, 1, 0.8],
-            }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          />
-        )}
-
-        {/* Plastic texture overlay */}
-        <div
-          className="absolute inset-0 rounded-t-lg rounded-b-[6px] opacity-[0.04] pointer-events-none mix-blend-overlay"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-          }}
-        />
-
-        {/* Edge highlight */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent rounded-t" />
+        ))}
       </div>
 
-      {/* Summary (only in tray) */}
+      {/* ── Cartridge body ── */}
+      <div
+        style={{
+          width: W,
+          height: isInSlot ? 80 : 86,
+          background: 'linear-gradient(180deg, #1e2420 0%, #131a13 60%, #0e1410 100%)',
+          borderRadius: isInSlot ? '0 0 4px 4px' : '2px 2px 4px 4px',
+          border: '1px solid rgba(255,255,255,0.07)',
+          boxShadow: `2px 4px 10px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)`,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Label sticker */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 5,
+            left: 4,
+            right: 4,
+            bottom: 13,
+            borderRadius: 3,
+            background: `linear-gradient(145deg, ${cfg.from} 0%, ${cfg.to} 100%)`,
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 2px rgba(0,0,0,0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            overflow: 'hidden',
+          }}
+        >
+          {/* Shine */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, transparent 55%)',
+            }}
+          />
+          {/* Horizontal stripes */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              opacity: 0.08,
+              backgroundImage:
+                'repeating-linear-gradient(0deg, rgba(0,0,0,0.5) 0px, rgba(0,0,0,0.5) 1px, transparent 1px, transparent 3px)',
+            }}
+          />
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%', padding: '0 2px' }}>
+            {/* NFT Image or Icon */}
+            {image ? (
+              <img
+                src={image}
+                alt=""
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 4,
+                  objectFit: 'cover',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon size={10} color="#fff" strokeWidth={2.5} />
+              </div>
+            )}
+            <span
+              style={{
+                fontSize: 6.5,
+                fontWeight: 800,
+                color: '#fff',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                textAlign: 'center',
+                lineHeight: 1.1,
+                maxWidth: 44,
+                textShadow: '0 1px 2px rgba(0,0,0,0.4)',
+              }}
+            >
+              {name}
+            </span>
+          </div>
+        </div>
+
+        {/* PAY.ID mark */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 4,
+            left: 0,
+            right: 0,
+            textAlign: 'center',
+            fontSize: 5,
+            fontWeight: 700,
+            color: 'rgba(255,255,255,0.18)',
+            letterSpacing: '0.15em',
+            fontFamily: 'monospace',
+          }}
+        >
+          PAY.ID
+        </div>
+
+        {/* Active LED pulse */}
+        {isActive && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 5,
+              right: 5,
+              width: 4,
+              height: 4,
+              borderRadius: '50%',
+              background: cfg.accent,
+              boxShadow: `0 0 6px ${cfg.accent}`,
+              animation: 'pulse 2s ease-in-out infinite',
+            }}
+          />
+        )}
+
+        {/* Inactive overlay */}
+        {!isActive && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(0,0,0,0.45)',
+            }}
+          />
+        )}
+      </div>
+
+      {/* Summary text (tray only) */}
       {!isInSlot && (
-        <div className="mt-1.5 text-center">
-          <span className="text-[8px] text-console-label/60 font-mono">
+        <div style={{ marginTop: 4, textAlign: 'center' }}>
+          <span
+            style={{
+              fontSize: 8,
+              fontFamily: 'monospace',
+              color: isActive ? 'rgba(100,116,139,0.7)' : 'rgba(248,113,113,0.8)',
+            }}
+          >
             {summary}
           </span>
         </div>
       )}
 
-      {/* Advanced view info */}
-      {showAdvanced && isInSlot && (
-        <motion.div
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-20 bg-black/90 rounded px-1.5 py-1 text-[6px] font-mono text-console-label/80 space-y-0.5 border border-amber-900/30"
+      {/* Advanced debug */}
+      {showAdvanced && isInSlot && ruleHash && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            marginTop: 4,
+            width: 72,
+            background: 'rgba(15,23,42,0.92)',
+            border: '1px solid rgba(13,148,136,0.25)',
+            borderRadius: 3,
+            padding: '2px 4px',
+            fontSize: 5,
+            fontFamily: 'monospace',
+            color: 'rgba(94,234,212,0.7)',
+            zIndex: 50,
+          }}
         >
-          <div className="truncate text-amber-400/80">ID: {id.slice(-6)}</div>
-          <div className="truncate text-amber-400/60">Hash: {ruleHash}</div>
-        </motion.div>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {id.slice(-8)}
+          </div>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.6 }}>
+            {ruleHash.slice(0, 12)}…
+          </div>
+        </div>
       )}
-    </motion.div>
+    </div>
   )
 }

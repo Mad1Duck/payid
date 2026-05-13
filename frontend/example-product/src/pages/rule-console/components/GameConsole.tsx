@@ -1,8 +1,6 @@
-import { motion } from 'framer-motion'
-import { CartridgeSlot } from './CartridgeSlot'
+import { motion, AnimatePresence } from 'framer-motion'
 import { DraggableCartridge } from './DraggableCartridge'
 import type { CartridgeType } from './RuleCartridge'
-import { cn } from '@/lib/utils'
 
 export interface SlotData {
   id: string
@@ -14,6 +12,7 @@ export interface SlotData {
     summary: string
     ruleHash?: string
     authorityAddress?: string
+    image?: string
   }
 }
 
@@ -21,6 +20,7 @@ interface GameConsoleProps {
   slots: Array<SlotData>
   highlightedSlot?: string | null
   showAdvanced?: boolean
+  txLog?: Array<{ time: string; msg: string; type: 'info' | 'ok' | 'err' }>
   onSlotClick?: (slotId: string) => void
   onCartridgeEject?: (slotId: string) => void
 }
@@ -29,187 +29,324 @@ export function GameConsole({
   slots,
   highlightedSlot,
   showAdvanced = false,
+  txLog = [],
   onSlotClick,
   onCartridgeEject,
 }: GameConsoleProps) {
   return (
-    <div className="relative w-full max-w-sm mx-auto">
-      {/* Console Body */}
+    <div className="flex flex-col items-center select-none">
+      {/* ── CONSOLE BODY ── */}
       <div
-        className={cn(
-          'relative rounded-2xl p-6 pb-8',
-          'bg-linear-to-b from-console-body-top to-console-body-bottom',
-          'shadow-[8px_12px_24px_rgba(0,0,0,0.5),-4px_-4px_12px_rgba(255,255,255,0.05)_inset]',
-          'border border-white/5',
-        )}
+        className="relative w-[244px] rounded-[20px] z-10"
+        style={{
+          background: 'linear-gradient(165deg, #d8dce0 0%, #c4c8cc 40%, #b0b4b8 100%)',
+          boxShadow:
+            '0 10px 30px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.35), inset 0 -2px 6px rgba(0,0,0,0.15)',
+        }}
       >
-        {/* Top vent holes */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 flex gap-1">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="w-1 h-3 bg-black/40 rounded-full" />
-          ))}
-        </div>
-
-        {/* Console screen/display area */}
-        <div
-          className={cn(
-            'relative mb-6 p-4 rounded-lg',
-            'bg-linear-to-b from-console-screen-top to-console-screen-bottom',
-            'shadow-[inset_0_2px_8px_rgba(0,0,0,0.6),0_1px_0_rgba(255,255,255,0.05)]',
-            'border border-black/40',
-          )}
-        >
-          {/* Screen bezel */}
-          <div className="absolute inset-1 rounded border border-black/20" />
-
-          {/* Title */}
-          <div className="text-center mb-4">
-            <h2 className="text-sm font-mono font-bold text-console-text uppercase tracking-[0.2em]">
-              Rule Console
-            </h2>
-            <div className="flex items-center justify-center gap-2 mt-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_6px_#22c55e]" />
-              <span className="text-[9px] font-mono text-console-label uppercase">
-                System Ready
-              </span>
-            </div>
-          </div>
-
-          {/* Slot status display */}
-          <div className="flex justify-center gap-3 text-[8px] font-mono text-console-label/70">
-            {slots.map((slot) => (
-              <div key={slot.id} className="flex items-center gap-1">
-                <div
-                  className={cn(
-                    'w-1.5 h-1.5 rounded-full',
-                    slot.cartridge ? 'bg-green-500' : 'bg-gray-600',
-                  )}
-                />
-                <span>{slot.label}</span>
+        {/* Corner screws */}
+        {[['top-2.5 left-2.5'], ['top-2.5 right-2.5'], ['bottom-3.5 left-2.5'], ['bottom-3.5 right-2.5']].map(
+          (pos, i) => (
+            <div
+              key={i}
+              className={`absolute ${pos[0]} w-2 h-2 rounded-full`}
+              style={{
+                background: 'radial-gradient(circle at 35% 35%, #a0a4a8, #6a6e72)',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.5), 0 0.5px 1px rgba(255,255,255,0.2)',
+              }}
+            >
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ fontSize: '5px', color: 'rgba(0,0,0,0.35)', fontWeight: 900 }}
+              >
+                ✕
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          ),
+        )}
 
-        {/* Cartridge Slots Area */}
-        <div
-          className={cn(
-            'relative p-4 rounded-lg',
-            'bg-linear-to-b from-black/40 to-black/20',
-            'shadow-[inset_0_2px_6px_rgba(0,0,0,0.4)]',
-          )}
-        >
-          {/* Section label */}
-          <div className="absolute -top-2 left-4 px-2 bg-console-body-bottom">
-            <span className="text-[8px] font-mono uppercase tracking-widest text-console-label">
-              Active Rule Slots
+        {/* Top section */}
+        <div className="px-5 pt-5 pb-3">
+          {/* Brand */}
+          <div className="flex justify-between items-center mb-2.5">
+            <span
+              className="text-[7px] font-black tracking-[0.35em] uppercase"
+              style={{ color: '#5a5d60', fontFamily: 'monospace' }}
+            >
+              PAYID
+            </span>
+            <span
+              className="text-[7px] font-bold tracking-[0.2em] uppercase"
+              style={{ color: '#5a5d60', fontFamily: 'monospace' }}
+            >
+              ADVANCE
             </span>
           </div>
 
-          {/* Slots grid */}
-          <div className="flex justify-center gap-4 pt-2">
+          {/* Screen bezel */}
+          <div
+            className="rounded-xl p-[5px]"
+            style={{
+              background: '#1a1e18',
+              boxShadow:
+                'inset 0 3px 10px rgba(0,0,0,0.9), inset 0 -1px 3px rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.4)',
+            }}
+          >
+            {/* LCD Screen */}
+            <div
+              className="rounded-[8px] overflow-hidden relative"
+              style={{ background: '#060e06', aspectRatio: '4/3' }}
+            >
+              {/* Scanlines */}
+              <div
+                className="absolute inset-0 pointer-events-none z-10"
+                style={{
+                  backgroundImage:
+                    'repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px)',
+                }}
+              />
+              {/* Screen glare */}
+              <div
+                className="absolute top-0 left-0 w-1/2 h-1/3 pointer-events-none z-10"
+                style={{
+                  background:
+                    'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 100%)',
+                }}
+              />
+              {/* Content */}
+              <div className="relative z-0 p-3 font-mono">
+                {txLog.length > 0 ? (
+                  /* TX LOG MODE */
+                  <>
+                    <div
+                      className="text-[8px] mb-1.5 font-bold tracking-wider"
+                      style={{ color: '#3dff3d', textShadow: '0 0 6px #3dff3d80' }}
+                    >
+                      ◢ TX MONITOR
+                    </div>
+                    <div className="space-y-0.5">
+                      {txLog.map((entry, i) => (
+                        <div key={i} className="flex items-start gap-1">
+                          <span style={{ color: '#1a5a1a', fontSize: 5, whiteSpace: 'nowrap', marginTop: 1 }}>
+                            {entry.time}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 6,
+                              color: entry.type === 'ok' ? '#5bff5b' : entry.type === 'err' ? '#ff5555' : '#90ff90',
+                              wordBreak: 'break-all',
+                              lineHeight: 1.3,
+                            }}
+                          >
+                            {entry.msg}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      className="mt-1.5 text-[5px] tracking-wide animate-pulse"
+                      style={{ color: '#1a4a1a' }}
+                    >
+                      _
+                    </div>
+                  </>
+                ) : (
+                  /* NORMAL MODE */
+                  <>
+                    <div
+                      className="text-[8px] mb-2 font-bold tracking-wider"
+                      style={{ color: '#3dff3d', textShadow: '0 0 6px #3dff3d80' }}
+                    >
+                      ◢ RULE ENGINE v1
+                    </div>
+                    <div className="space-y-1.5">
+                      {slots.map((slot) => (
+                        <div key={slot.id}>
+                          <div className="flex items-center gap-1.5">
+                            <div
+                              className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all duration-500"
+                              style={{
+                                background: slot.cartridge ? '#3dff3d' : '#163016',
+                                boxShadow: slot.cartridge ? '0 0 5px #3dff3d' : 'none',
+                              }}
+                            />
+                            <span
+                              className="text-[7px] truncate flex-1"
+                              style={{ color: slot.cartridge ? '#90ff90' : '#1e3a1e' }}
+                            >
+                              {slot.cartridge ? slot.cartridge.name : `${slot.label}: —`}
+                            </span>
+                          </div>
+                          {slot.cartridge && (
+                            <div className="pl-3 space-y-0.5">
+                              <span
+                                className="block text-[5.5px] truncate"
+                                style={{ color: '#2a8a2a' }}
+                              >
+                                {slot.cartridge.summary}
+                              </span>
+                              <span
+                                className="block text-[5px] truncate"
+                                style={{ color: '#1a5a1a' }}
+                              >
+                                {slot.cartridge.ruleHash?.slice(0, 18)}…
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      className="mt-2.5 text-[6px] tracking-wide"
+                      style={{ color: '#1a4a1a' }}
+                    >
+                      {slots.filter((s) => s.cartridge).length === 0
+                        ? '_ INSERT CARTRIDGE'
+                        : `${slots.filter((s) => s.cartridge).length} RULE(S) LOADED`}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Divider + status LEDs */}
+        <div
+          className="flex items-center justify-between px-5 py-1.5"
+          style={{
+            borderTop: '1px solid rgba(0,0,0,0.12)',
+            borderBottom: '1px solid rgba(0,0,0,0.12)',
+          }}
+        >
+          <span
+            className="text-[6px] font-mono font-bold tracking-[0.2em] uppercase"
+            style={{ color: '#5a5d60' }}
+          >
+            RULE SLOTS
+          </span>
+          <div className="flex gap-1.5">
             {slots.map((slot) => (
               <div
                 key={slot.id}
-                onClick={() => !slot.cartridge && onSlotClick?.(slot.id)}
-                className="cursor-pointer"
-              >
-                <CartridgeSlot
-                  slotId={slot.id}
-                  label={slot.label}
-                  isHighlighted={highlightedSlot === slot.id}
-                >
-                  {slot.cartridge && (
-                    <motion.div
-                      initial={{ y: -20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      exit={{ y: -30, opacity: 0 }}
-                      transition={{
-                        type: 'spring',
-                        stiffness: 300,
-                        damping: 20,
-                      }}
-                      className="absolute inset-0 flex items-center justify-center"
-                    >
-                      <DraggableCartridge
-                        id={slot.cartridge.id}
-                        type={slot.cartridge.type}
-                        name={slot.cartridge.name}
-                        summary={slot.cartridge.summary}
-                        isActive
-                        isInSlot
-                        showAdvanced={showAdvanced}
-                        ruleHash={slot.cartridge.ruleHash}
-                        authorityAddress={slot.cartridge.authorityAddress}
-                        onEject={() => onCartridgeEject?.(slot.id)}
-                      />
-                    </motion.div>
-                  )}
-                </CartridgeSlot>
-              </div>
+                className="w-1.5 h-1.5 rounded-full transition-all duration-400"
+                style={{
+                  background: slot.cartridge ? '#5bff5b' : '#c0c4c8',
+                  boxShadow: slot.cartridge ? '0 0 5px #5bff5b' : 'none',
+                }}
+              />
             ))}
           </div>
-
-          {/* Advanced: Slot mapping */}
-          {showAdvanced && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="mt-4 pt-3 border-t border-white/5"
-            >
-              <div className="text-[8px] font-mono text-console-label/60 space-y-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                  <span className="uppercase tracking-wider">Slot Mapping</span>
-                </div>
-                {slots.map((slot) => (
-                  <div
-                    key={slot.id}
-                    className="flex justify-between px-2 py-0.5 bg-black/20 rounded"
-                  >
-                    <span>{slot.label}</span>
-                    <span className="text-console-label/40">
-                      {slot.cartridge ? `→ ${slot.cartridge.id}` : '→ NULL'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
         </div>
 
-        {/* Console branding */}
-        <div className="mt-4 text-center">
-          <span className="text-[10px] font-mono font-bold text-console-label/30 uppercase tracking-[0.3em]">
-            PayID™ Console
-          </span>
-        </div>
-
-        {/* Side screws */}
-        <div className="absolute top-6 left-3 w-2 h-2 rounded-full bg-console-screw shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
-          <div className="absolute inset-0.5 bg-black/20 rounded-full" />
-        </div>
-        <div className="absolute top-6 right-3 w-2 h-2 rounded-full bg-console-screw shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
-          <div className="absolute inset-0.5 bg-black/20 rounded-full" />
-        </div>
-        <div className="absolute bottom-6 left-3 w-2 h-2 rounded-full bg-console-screw shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
-          <div className="absolute inset-0.5 bg-black/20 rounded-full" />
-        </div>
-        <div className="absolute bottom-6 right-3 w-2 h-2 rounded-full bg-console-screw shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
-          <div className="absolute inset-0.5 bg-black/20 rounded-full" />
-        </div>
-
-        {/* Plastic texture overlay */}
+        {/* Slot openings at bottom of console */}
         <div
-          className="absolute inset-0 rounded-2xl opacity-[0.03] pointer-events-none"
+          className="flex justify-center gap-2.5 px-4 pt-2.5 pb-3 rounded-b-[20px]"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+            background: 'linear-gradient(180deg, #a8acb0 0%, #989c9e 100%)',
           }}
-        />
+        >
+          {slots.map((slot) => (
+            <div key={slot.id} className="flex flex-col items-center" style={{ width: '56px' }}>
+              <span
+                className="text-[6px] font-mono mb-1 font-bold tracking-widest"
+                style={{ color: highlightedSlot === slot.id ? '#00cc00' : '#6a6e72' }}
+              >
+                {slot.label}
+              </span>
+              {/* Slot opening hole */}
+              <div
+                className="w-full h-7 rounded-t-sm relative overflow-hidden transition-all duration-200"
+                style={{
+                  background: highlightedSlot === slot.id ? '#0a1a0a' : '#060906',
+                  border: highlightedSlot === slot.id
+                    ? '1px solid rgba(93,255,93,0.35)'
+                    : '1px solid rgba(0,0,0,0.7)',
+                  borderBottom: 'none',
+                  boxShadow: highlightedSlot === slot.id
+                    ? 'inset 0 2px 8px rgba(0,0,0,0.8), inset 0 0 12px rgba(61,255,61,0.15)'
+                    : 'inset 0 2px 8px rgba(0,0,0,0.95)',
+                }}
+              >
+                {/* Gold connector pins */}
+                <div className="flex justify-center gap-px items-end h-full pb-px">
+                  {[...Array(9)].map((_, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: '4px',
+                        height: '16px',
+                        background: highlightedSlot === slot.id
+                          ? 'rgba(61,255,61,0.4)'
+                          : 'rgba(184,150,64,0.45)',
+                        borderRadius: '1px 1px 0 0',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Console shadow on surface */}
-      <div className="absolute -bottom-2 left-4 right-4 h-4 bg-black/20 blur-xl rounded-full" />
+      {/* ── CARTRIDGE DISPLAY ZONE (below console) ── */}
+      {/* data-slot-id lives here so drop detection works when dragging from tray */}
+      <div className="flex justify-center gap-2.5 px-4 relative z-0" style={{ width: '244px', marginTop: '-1px' }}>
+        {slots.map((slot) => (
+          <div
+            key={slot.id}
+            data-slot-id={slot.id}
+            style={{ width: '56px', minHeight: 36 }}
+            className="relative cursor-pointer"
+            onClick={() => !slot.cartridge && onSlotClick?.(slot.id)}
+          >
+            <AnimatePresence>
+              {slot.cartridge ? (
+                <motion.div
+                  key={slot.cartridge.id}
+                  initial={{ y: 50, opacity: 0 }}
+                  animate={{ y: -58, opacity: 1 }}
+                  exit={{ y: 50, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+                  className="absolute top-0 left-0 right-0"
+                  style={{ zIndex: 5 }}
+                >
+                  <DraggableCartridge
+                    id={slot.cartridge.id}
+                    type={slot.cartridge.type}
+                    name={slot.cartridge.name}
+                    summary={slot.cartridge.summary}
+                    image={slot.cartridge.image}
+                    isActive
+                    isInSlot
+                    showAdvanced={showAdvanced}
+                    ruleHash={slot.cartridge.ruleHash}
+                    authorityAddress={slot.cartridge.authorityAddress}
+                    onEject={() => onCartridgeEject?.(slot.id)}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty"
+                  className="h-9 flex items-center justify-center"
+                >
+                  {highlightedSlot === slot.id && (
+                    <motion.span
+                      animate={{ opacity: [0.3, 1, 0.3] }}
+                      transition={{ duration: 0.7, repeat: Infinity }}
+                      className="text-[7px] font-mono font-bold tracking-widest"
+                      style={{ color: '#3dff3d', textShadow: '0 0 6px #3dff3d' }}
+                    >
+                      ↑ INSERT
+                    </motion.span>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

@@ -1,130 +1,153 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronLeft, Wrench } from 'lucide-react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronLeft, Wrench, Zap, Info, CheckCircle2 } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { useAccount } from 'wagmi'
+import {
+  useMyRules,
+  useActiveCombinedRule,
+  usePayIDContext,
+} from 'payid-react'
+import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { keccak256, encodePacked } from 'viem'
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { CartridgeTray } from './components/CartridgeTray'
 import { GameConsole } from './components/GameConsole'
+import { WalletButton } from '@/components/WalletButton'
 import type { CartridgeData } from './components/CartridgeTray'
 import type { SlotData } from './components/GameConsole'
 import { cn } from '@/lib/utils'
 import { MobileLayout } from '@/components/Layouts/MobileLayout'
 import { Switch } from '@/components/ui/switch'
 
-// Mock data for available cartridges
-const availableCartridges: Array<CartridgeData> = [
+// CombinedRuleStorage ABI (registerCombinedRule)
+const COMBINED_ABI = [
   {
-    id: 'rule_001',
-    type: 'minAmount',
-    name: 'Min Amount',
-    summary: '≥ 10 USDC',
-    ruleHash: '0x7f3a8b2c',
-    authorityAddress: '0xAuth9d4e',
+    name: 'registerCombinedRule',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'ruleSetHash', type: 'bytes32' },
+      { name: 'ruleNFTs', type: 'address[]' },
+      { name: 'tokenIds', type: 'uint256[]' },
+      { name: 'version', type: 'uint64' },
+    ],
+    outputs: [],
   },
   {
-    id: 'rule_002',
-    type: 'allowedToken',
-    name: 'Token',
-    summary: 'USDC only',
-    ruleHash: '0x9c4d2e1f',
-    authorityAddress: '0xAuth7b3a',
+    name: 'registerCombinedRuleForDirection',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'ruleSetHash', type: 'bytes32' },
+      { name: 'direction', type: 'uint8' },
+      { name: 'ruleNFTs', type: 'address[]' },
+      { name: 'tokenIds', type: 'uint256[]' },
+      { name: 'version', type: 'uint64' },
+    ],
+    outputs: [],
   },
-  {
-    id: 'rule_003',
-    type: 'allowedSender',
-    name: 'Sender',
-    summary: 'Whitelist',
-    ruleHash: '0x2b5e8f4a',
-    authorityAddress: '0xAuth2c8d',
-  },
-  {
-    id: 'rule_004',
-    type: 'expiration',
-    name: 'Expires',
-    summary: '24 hours',
-    ruleHash: '0x6a1c9d3b',
-    authorityAddress: '0xAuth5f2e',
-  },
-]
+] as const
+
+/** Build a deterministic rule-set hash from selected rules */
+function buildRuleSetHash(
+  ruleNFT: `0x${string}`,
+  tokenIds: bigint[],
+  version: bigint
+): `0x${string}` {
+  const ruleNFTs = Array(tokenIds.length).fill(ruleNFT)
+  return keccak256(
+    encodePacked(['address[]', 'uint256[]', 'uint64'], [ruleNFTs, tokenIds, version])
+  ) as `0x${string}`
+}
 
 export default function RuleConsole() {
+  const { address, isConnected } = useAccount()
+  const { data: myRules = [] } = useMyRules()
+  const { data: activeCombined } = useActiveCombinedRule(address)
+  const { contracts } = usePayIDContext()
+
+  const {
+    writeContract,
+    data: registerHash,
+    isPending: isRegistering,
+    error: registerError,
+  } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess: registerSuccess } = useWaitForTransactionReceipt({
+    hash: registerHash,
+  })
+
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [highlightedSlot, setHighlightedSlot] = useState<string | null>(null)
   const consoleRef = useRef<HTMLDivElement>(null)
-  const [slotPositions, setSlotPositions] = useState<
-    Array<{ id: string; x: number; y: number; width: number; height: number }>
-  >([])
+  const [direction, setDirection] = useState<'none' | 'inbound' | 'outbound'>('none')
+  const [version, setVersion] = useState('1')
+  const [registerStage, setRegisterStage] = useState<'idle' | 'registering' | 'done' | 'error'>('idle')
+  const [txLog, setTxLog] = useState<Array<{ time: string; msg: string; type: 'info' | 'ok' | 'err' }>>([])
 
-  // Initialize slots
+  // ── Fetch NFT images from IPFS metadata ──
+  const [nftImages, setNftImages] = useState<Record<string, string>>({})
+  useEffect(() => {
+    async function loadImages() {
+      const images: Record<string, string> = {}
+      for (const r of myRules) {
+        if (!r.uri) continue
+        const metaUrl = r.uri.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/')
+        try {
+          const res = await fetch(metaUrl)
+          const meta = await res.json()
+          if (meta.image) {
+            const imgUrl = meta.image.startsWith('ipfs://')
+              ? meta.image.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/')
+              : meta.image
+            images[`rule_${r.ruleId.toString()}`] = imgUrl
+          }
+        } catch {
+          /* ignore fetch errors — metadata may be unavailable */
+        }
+      }
+      setNftImages(images)
+    }
+    if (myRules.length > 0) loadImages()
+  }, [myRules])
+
+  // ── Build cartridges from ALL user rules ──
+  const allRules = myRules
+  const activeRules = allRules.filter((r) => r.active)
+  const availableCartridges: Array<CartridgeData> = allRules.map((r) => {
+    const name = r.uri?.startsWith('ipfs://')
+      ? `Rule #${r.ruleId.toString()}`
+      : `Rule #${r.ruleId.toString()}`
+    return {
+      id: `rule_${r.ruleId.toString()}`,
+      type: 'minAmount' as const,
+      name,
+      summary: r.active ? `Token #${r.tokenId.toString()}` : 'INACTIVE',
+      image: nftImages[`rule_${r.ruleId.toString()}`],
+      ruleHash: r.ruleHash,
+      authorityAddress: r.creator,
+      active: r.active,
+    }
+  })
+
+  // Slots start empty — user fills from their active rules
   const [slots, setSlots] = useState<Array<SlotData>>([
-    {
-      id: 'slot_a',
-      label: 'SLOT A',
-      cartridge: {
-        id: 'rule_001',
-        type: 'minAmount',
-        name: 'Min Amount',
-        summary: '≥ 10 USDC',
-        ruleHash: '0x7f3a8b2c',
-        authorityAddress: '0xAuth9d4e',
-      },
-    },
+    { id: 'slot_a', label: 'SLOT A', cartridge: undefined },
     { id: 'slot_b', label: 'SLOT B', cartridge: undefined },
     { id: 'slot_c', label: 'SLOT C', cartridge: undefined },
   ])
-
-  // Update slot positions for drag detection
-  const updateSlotPositions = useCallback(() => {
-    const slotElements = document.querySelectorAll('[data-slot-id]')
-    const positions: Array<{
-      id: string
-      x: number
-      y: number
-      width: number
-      height: number
-    }> = []
-
-    slotElements.forEach((el) => {
-      const rect = el.getBoundingClientRect()
-      const slotId = el.getAttribute('data-slot-id')
-      if (slotId) {
-        positions.push({
-          id: slotId,
-          x: rect.left,
-          y: rect.top,
-          width: rect.width,
-          height: rect.height,
-        })
-      }
-    })
-
-    setSlotPositions(positions)
-  }, [])
-
-  useEffect(() => {
-    updateSlotPositions()
-    window.addEventListener('resize', updateSlotPositions)
-    window.addEventListener('scroll', updateSlotPositions)
-
-    // Update positions after a short delay to ensure DOM is ready
-    const timeout = setTimeout(updateSlotPositions, 100)
-
-    return () => {
-      window.removeEventListener('resize', updateSlotPositions)
-      window.removeEventListener('scroll', updateSlotPositions)
-      clearTimeout(timeout)
-    }
-  }, [updateSlotPositions, slots])
 
   // Get cartridges that are not in slots
   const trayCartridges = availableCartridges.filter(
     (cart) => !slots.some((slot) => slot.cartridge?.id === cart.id),
   )
 
+  const selectedSlots = slots.filter((s) => s.cartridge)
+  const canRegister = selectedSlots.length > 0 && isConnected && !isRegistering && !isConfirming
+
   const handleSlotClick = (slotId: string) => {
     const slot = slots.find((s) => s.id === slotId)
-
     if (!slot?.cartridge) {
-      // Highlight slot for insertion
       setHighlightedSlot((prev) => (prev === slotId ? null : slotId))
     }
   }
@@ -132,46 +155,33 @@ export default function RuleConsole() {
   const handleCartridgeEject = (slotId: string) => {
     const slot = slots.find((s) => s.id === slotId)
     if (slot?.cartridge) {
-      setSlots((prev) =>
-        prev.map((s) => (s.id === slotId ? { ...s, cartridge: undefined } : s)),
-      )
-      toast('Rule Ejected', {
-        description: `${slot.cartridge.name} removed from ${slot.label}`,
-      })
+      setSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, cartridge: undefined } : s)))
+      toast('Rule Ejected', { description: `${slot.cartridge.name} removed from ${slot.label}` })
     }
   }
 
   const handleCartridgeDrop = (cartridgeId: string, slotId: string) => {
     const slot = slots.find((s) => s.id === slotId)
     if (slot?.cartridge) {
-      toast.error('Slot Occupied', {
-        description: 'Remove the current cartridge first',
-      })
+      toast.error('Slot Occupied', { description: 'Remove the current cartridge first' })
       return
     }
-
     const cartridge = availableCartridges.find((c) => c.id === cartridgeId)
     if (!cartridge) return
-
-    setSlots((prev) =>
-      prev.map((s) => (s.id === slotId ? { ...s, cartridge } : s)),
-    )
-
+    setSlots((prev) => prev.map((s) => (s.id === slotId ? { ...s, cartridge } : s)))
     setHighlightedSlot(null)
-
-    toast.success('Rule Loaded', {
-      description: `${cartridge.name} inserted into ${slot?.label}`,
-    })
+    if (!cartridge.active) {
+      toast.warning('Rule Inactive', { description: `${cartridge.name} loaded — activate this rule to make it effective` })
+    } else {
+      toast.success('Rule Loaded', { description: `${cartridge.name} inserted into ${slot?.label}` })
+    }
   }
 
   const handleCartridgeClick = (cartridgeId: string) => {
     if (!highlightedSlot) {
-      // Find first empty slot
       const emptySlot = slots.find((s) => !s.cartridge)
       if (!emptySlot) {
-        toast.error('No Empty Slots', {
-          description: 'Remove a cartridge first',
-        })
+        toast.error('No Empty Slots', { description: 'Remove a cartridge first' })
         return
       }
       handleCartridgeDrop(cartridgeId, emptySlot.id)
@@ -180,125 +190,247 @@ export default function RuleConsole() {
     }
   }
 
-  return (
-    <MobileLayout hideNav className="bg-console-bg">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4">
-        <button className="flex items-center gap-1 text-console-label hover:text-console-text transition-colors">
-          <ChevronLeft className="w-4 h-4" />
-          <span className="text-xs font-mono uppercase">Back</span>
-        </button>
+  const nowStr = () => new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
-        {/* Advanced View Toggle */}
+  // ── Register Combined Rule on-chain ──
+  const handleRegister = () => {
+    const filled = slots.filter((s) => s.cartridge)
+    if (filled.length === 0 || !isConnected) return
+
+    const selectedRules = filled
+      .map((s) => activeRules.find((r) => `rule_${r.ruleId.toString()}` === s.cartridge!.id))
+      .filter(Boolean) as typeof activeRules
+
+    if (selectedRules.length === 0) return
+
+    const tokenIds = selectedRules.map((r) => r.tokenId)
+    const ver = BigInt(version || '1')
+    const ruleNFTs = Array(tokenIds.length).fill(contracts.ruleItemERC721) as `0x${string}`[]
+    const ruleSetHash = buildRuleSetHash(contracts.ruleItemERC721, tokenIds, ver)
+
+    setRegisterStage('registering')
+    setTxLog([
+      { time: nowStr(), msg: `> Registering ${selectedRules.length} rule(s)`, type: 'info' },
+      { time: nowStr(), msg: `  Hash: ${ruleSetHash.slice(0, 18)}…`, type: 'info' },
+      { time: nowStr(), msg: '  Waiting for wallet…', type: 'info' },
+    ])
+
+    if (direction === 'none') {
+      writeContract({
+        address: contracts.combinedRuleStorage,
+        abi: COMBINED_ABI,
+        functionName: 'registerCombinedRule',
+        args: [ruleSetHash, ruleNFTs, tokenIds, ver],
+      })
+    } else {
+      writeContract({
+        address: contracts.combinedRuleStorage,
+        abi: COMBINED_ABI,
+        functionName: 'registerCombinedRuleForDirection',
+        args: [ruleSetHash, direction === 'inbound' ? 0 : 1, ruleNFTs, tokenIds, ver],
+      })
+    }
+  }
+
+  // Watch register result
+  useEffect(() => {
+    if (registerSuccess) {
+      setRegisterStage('done')
+      setTxLog((prev) => [
+        ...prev,
+        { time: nowStr(), msg: '  ✓ Transaction confirmed', type: 'ok' },
+        { time: nowStr(), msg: `  Hash: ${(registerHash ?? '').slice(0, 18)}…`, type: 'ok' },
+        { time: nowStr(), msg: '  Policy active', type: 'ok' },
+      ])
+      toast.success('Combined Rule Registered', { description: 'Your policy is now active.' })
+    }
+    if (registerError) {
+      setRegisterStage('error')
+      const msg = (registerError as { shortMessage?: string }).shortMessage ?? 'Unknown error'
+      setTxLog((prev) => [
+        ...prev,
+        { time: nowStr(), msg: `  ✗ ${msg}`, type: 'err' },
+      ])
+      toast.error('Registration Failed', { description: msg })
+    }
+  }, [registerSuccess, registerError, registerHash])
+
+  return (
+    <MobileLayout hideNav>
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex items-center justify-between p-4"
+      >
+        <Link to="/rules">
+          <button className="btn-tactile flex items-center gap-1 text-slate-500 hover:text-slate-700 transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+            <span className="text-xs font-mono uppercase font-semibold">Back</span>
+          </button>
+        </Link>
+        <div className="flex items-center gap-2">
+          <WalletButton />
+        </div>
         <div className="flex items-center gap-2">
           <Wrench
-            className={cn(
-              'w-4 h-4 transition-colors',
-              showAdvanced ? 'text-amber-500' : 'text-console-label/50',
-            )}
+            className={cn('w-4 h-4 transition-colors', showAdvanced ? 'text-amber-500' : 'text-slate-400')}
           />
-          <span className="text-[10px] font-mono uppercase text-console-label">
-            Advanced
-          </span>
-          <Switch
-            checked={showAdvanced}
-            onCheckedChange={setShowAdvanced}
-            className="data-[state=checked]:bg-amber-600"
-          />
+          <span className="text-[10px] font-mono uppercase text-slate-500 font-semibold">Advanced</span>
+          <Switch checked={showAdvanced} onCheckedChange={setShowAdvanced} className="data-[state=checked]:bg-amber-600" />
         </div>
-      </div>
+      </motion.div>
 
-      {/* Advanced View Panel */}
-      <AnimatePresence>
-        {showAdvanced && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mx-4 mb-4 overflow-hidden"
-          >
-            <div
-              className={cn(
-                'p-3 rounded-lg',
-                'bg-gradient-to-b from-amber-950/50 to-black/40',
-                'border border-amber-900/30',
-                'shadow-[inset_0_1px_4px_rgba(0,0,0,0.4)]',
-              )}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                <span className="text-[9px] font-mono uppercase tracking-wider text-amber-500/80">
-                  Debug Mode Active
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-[8px] font-mono text-console-label/60">
-                <div className="p-2 bg-black/30 rounded">
-                  <span className="block text-console-label/40 mb-0.5">
-                    Console ID
-                  </span>
-                  <span className="text-amber-400/80">PAYID-CON-001</span>
-                </div>
-                <div className="p-2 bg-black/30 rounded">
-                  <span className="block text-console-label/40 mb-0.5">
-                    Authority
-                  </span>
-                  <span className="text-amber-400/80 truncate">
-                    0x8f4a...2d7e
-                  </span>
-                </div>
-                <div className="p-2 bg-black/30 rounded col-span-2">
-                  <span className="block text-console-label/40 mb-0.5">
-                    Active Rules Hash
-                  </span>
-                  <span className="text-amber-400/80">
-                    {slots.filter((s) => s.cartridge).length > 0
-                      ? '0x' +
-                        slots
-                          .filter((s) => s.cartridge)
-                          .map((s) => s.cartridge?.ruleHash?.slice(2, 4))
-                          .join('')
-                      : 'NULL'}
-                  </span>
-                </div>
-              </div>
+      {/* Active Policy Banner */}
+      {activeCombined && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-4 mb-3"
+        >
+          <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/30">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span className="text-[10px] font-mono uppercase text-emerald-400 tracking-wider">
+                Active Policy
+              </span>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <p className="text-[10px] font-mono text-emerald-500/60 mt-1 truncate">
+              {activeCombined.hash}
+            </p>
+            <p className="text-[10px] text-emerald-500/40 mt-0.5">
+              {activeCombined.ruleRefs.length} rule{activeCombined.ruleRefs.length > 1 ? 's' : ''} · v{activeCombined.version.toString()}
+            </p>
+          </div>
+        </motion.div>
+      )}
 
-      {/* Main Console */}
-      <div
+      {!activeCombined && isConnected && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-4 mb-3"
+        >
+          <div className="p-3 rounded-xl bg-slate-100 border border-slate-300 shadow-sm">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-slate-600" />
+              <span className="text-[10px] font-mono uppercase text-slate-700 tracking-wider font-bold">
+                No Active Policy
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-500 mt-1">
+              Load active rules into slots and register a combined policy.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── MAIN: Console + Tray ── */}
+      <motion.div
         ref={consoleRef}
-        className="flex-1 px-4 pb-4 flex flex-col justify-between"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="flex-1 flex flex-col items-center px-4 pb-4"
       >
-        <div className="flex-1 flex items-center justify-center">
+        {/* Console centered */}
+        <div className="flex items-center justify-center pt-2 pb-1">
           <GameConsole
             slots={slots}
             highlightedSlot={highlightedSlot}
             showAdvanced={showAdvanced}
+            txLog={txLog}
             onSlotClick={handleSlotClick}
             onCartridgeEject={handleCartridgeEject}
           />
         </div>
 
-        {/* Cartridge Tray */}
-        <div className="mt-4">
-          <CartridgeTray
-            cartridges={trayCartridges}
-            showAdvanced={showAdvanced}
-            slotPositions={slotPositions}
-            onCartridgeDrop={handleCartridgeDrop}
-            onCartridgeClick={handleCartridgeClick}
-          />
-        </div>
+        {/* Hint */}
+        <p className="text-[9px] font-mono text-slate-400/40 uppercase tracking-wider mt-1 mb-3">
+          drag cartridge up to insert · pull down to eject
+        </p>
 
-        {/* Instructions */}
-        <div className="mt-4 text-center">
-          <p className="text-[10px] font-mono text-console-label/50 uppercase tracking-wider">
-            Drag cartridge to slot • Pull up to eject
-          </p>
-        </div>
-      </div>
+        {/* Cartridge Tray */}
+        <CartridgeTray
+          cartridges={trayCartridges}
+          showAdvanced={showAdvanced}
+          onCartridgeDrop={handleCartridgeDrop}
+          onCartridgeClick={handleCartridgeClick}
+          onHoverSlot={(slotId) => setHighlightedSlot(slotId)}
+        />
+
+        {/* ── Register panel ── */}
+        {selectedSlots.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full mt-4 rounded-xl border border-slate-200 bg-white overflow-hidden"
+          >
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+              <Zap className="w-3.5 h-3.5 text-teal-500" />
+              <span className="text-[11px] font-mono font-bold text-slate-600 uppercase tracking-wide">
+                Register Policy
+              </span>
+              <span className="ml-auto text-[10px] font-mono text-slate-400">
+                {selectedSlots.length}/{slots.length} slots
+              </span>
+            </div>
+            <div className="px-4 py-3 space-y-2.5">
+              <div className="flex gap-2">
+                <select
+                  value={direction}
+                  onChange={(e) => setDirection(e.target.value as 'none' | 'inbound' | 'outbound')}
+                  className="flex-1 px-2 py-1.5 rounded border border-slate-200 text-xs bg-white focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                >
+                  <option value="none">Both directions</option>
+                  <option value="inbound">Inbound</option>
+                  <option value="outbound">Outbound</option>
+                </select>
+                <input
+                  type="number"
+                  value={version}
+                  onChange={(e) => setVersion(e.target.value)}
+                  min={1}
+                  placeholder="v"
+                  className="w-14 px-2 py-1.5 rounded border border-slate-200 text-xs font-mono bg-white focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                />
+              </div>
+
+              {registerStage !== 'idle' && (
+                <div
+                  className={cn(
+                    'py-2 px-3 rounded text-[11px] font-mono text-center',
+                    registerStage === 'done' ? 'bg-emerald-50 text-emerald-700' :
+                    registerStage === 'error' ? 'bg-red-50 text-red-700' :
+                    'bg-blue-50 text-blue-700',
+                  )}
+                >
+                  {registerStage === 'registering' && '⏳ Registering...'}
+                  {registerStage === 'done' && '✓ Policy registered!'}
+                  {registerStage === 'error' && '✗ Registration failed'}
+                </div>
+              )}
+
+              <button
+                onClick={handleRegister}
+                disabled={!canRegister}
+                className={cn(
+                  'w-full h-9 rounded-lg btn-tactile font-semibold text-xs text-white',
+                  'bg-teal-600 hover:bg-teal-700',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                )}
+              >
+                {isRegistering || isConfirming ? 'Registering...' : 'Register Combined Rule'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {!isConnected && (
+          <p className="text-center text-[10px] text-slate-400 mt-4">Connect wallet to register</p>
+        )}
+      </motion.div>
     </MobileLayout>
   )
 }

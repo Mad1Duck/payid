@@ -1,6 +1,7 @@
 import { PayIDClient } from "./core/client/client";
 import { PayIDServer } from "./core/server/server";
 import type { ethers } from "ethers";
+import type { ZGStorage } from "./storage/zgStorage";
 
 /**
  * Create a client-safe PayID instance.
@@ -49,12 +50,14 @@ export function createPayIDServer(params: {
   wasm?: Uint8Array;
   debugTrace?: boolean;
   trustedIssuers?: Set<string>;
+  storage?: ZGStorage;
 }): PayIDServer {
   return new PayIDServer(
     params.signer,
     params.trustedIssuers,
     params.debugTrace,
     params.wasm,
+    params.storage,
   );
 }
 

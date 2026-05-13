@@ -10,6 +10,7 @@ export default buildModule("PayIDModule", (m) => {
   const mockUSDC = m.contract("MockUSDC");
   const mockIDRX = m.contract("MockIDRX");
   const mockEAS = m.contract("MockEAS");
+  const mockAgentRegistry = m.contract("MockAgentRegistry");
 
   // Core contracts
   const attestationVerifier = m.contract("AttestationVerifier");
@@ -23,6 +24,11 @@ export default buildModule("PayIDModule", (m) => {
     "PRULE",
     admin,
     mockOracle,
+  ]);
+
+  const agentPayID = m.contract("AgentPayID", [
+    mockAgentRegistry,
+    payIdVerifier,
   ]);
 
   // Initialize
@@ -67,5 +73,7 @@ export default buildModule("PayIDModule", (m) => {
     ruleItemERC721,
     combinedRuleStorage,
     ruleAuthority,
+    mockAgentRegistry,
+    agentPayID,
   };
 });

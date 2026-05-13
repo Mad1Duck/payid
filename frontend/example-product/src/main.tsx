@@ -17,7 +17,9 @@ import History from './routes/history/index.tsx'
 import Proof from './routes/proof/index.tsx'
 import Qr from './routes/qr/index.tsx'
 import RuleBuilder from './routes/rule-builder/index.tsx'
+import Subscription from './routes/subscription/index.tsx'
 import Vrify from './routes/verify/index.tsx'
+import OldRoute from './routes/old/index.tsx'
 import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider.tsx'
 import { addresses } from './constants/contracts'
 import './styles.css'
@@ -58,7 +60,9 @@ const routeTree = rootRoute.addChildren([
   Proof(rootRoute as any),
   Qr(rootRoute as any),
   RuleBuilder(rootRoute as any),
+  Subscription(rootRoute as any),
   Vrify(rootRoute as any),
+  OldRoute(rootRoute as any),
 ])
 
 const TanStackQueryProviderContext = TanStackQueryProvider.getContext()

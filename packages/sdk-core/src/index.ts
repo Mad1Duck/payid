@@ -23,6 +23,7 @@ export * as rule from "./rule";
 export * as issuer from "./issuer";
 export * as context from "./context";
 export * as eas from "./eas";
+export * as storage from "./storage/zgStorage";
 
 // ─── Client / Server class namespaces (for direct class access if needed) ─────
 export * as client from "./core/client";

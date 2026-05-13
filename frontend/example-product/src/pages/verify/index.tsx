@@ -7,8 +7,12 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useAccount } from 'wagmi'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { RuleCard } from '@/components/RuleCard'
+import { WalletButton } from '@/components/WalletButton'
 import { cn } from '@/lib/utils'
 import { MobileLayout } from '@/components/Layouts/MobileLayout'
 
@@ -80,6 +84,7 @@ const rejectedResult = {
 }
 
 export default function PaymentEvaluation() {
+  const { address, isConnected } = useAccount()
   const [showDetails, setShowDetails] = useState(false)
 
   // Toggle between allowed/rejected for demo
@@ -93,117 +98,140 @@ export default function PaymentEvaluation() {
     <MobileLayout hideNav>
       <div className="px-5 safe-area-top min-h-screen flex flex-col">
         {/* Header */}
-        <header className="flex items-center gap-4 py-4">
-          <button
-            // onClick={() => navigate(-1)}
-            className="p-2 -ml-2 rounded-xl hover:bg-secondary transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-foreground" />
-          </button>
+        <motion.header
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center gap-3 py-4"
+        >
+          <Link to="/">
+            <button className="btn-tactile p-2.5 -ml-2 rounded-xl bg-white/50 hover:bg-white/80 transition-colors border border-white/20">
+              <ArrowLeft className="w-5 h-5 text-foreground" />
+            </button>
+          </Link>
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-foreground">
+            <h1 className="text-xl font-bold text-foreground tracking-tight">
               Payment Evaluation
             </h1>
-            <p className="text-sm text-muted-foreground">Before you pay</p>
+            <p className="text-sm text-muted-foreground">
+              {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : 'Connect wallet'}
+            </p>
           </div>
+          <WalletButton />
           {/* Demo toggle */}
           <button
             onClick={() => setIsAllowed(!isAllowed)}
-            className="text-xs text-muted-foreground underline"
+            className="text-xs text-slate-500 underline font-medium"
           >
             Toggle demo
           </button>
-        </header>
+        </motion.header>
 
         {/* Status Banner */}
-        <div
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
           className={cn(
-            'mt-4 p-6 rounded-3xl text-center animate-scale-in',
+            'mt-4 p-6 rounded-2xl text-center',
             result.status === 'allowed'
-              ? 'bg-success-muted border border-success/20'
-              : 'bg-destructive-muted border border-destructive/20',
+              ? 'bg-emerald-50 border border-emerald-200'
+              : 'bg-red-50 border border-red-200',
           )}
         >
           {result.status === 'allowed' ? (
-            <CheckCircle2 className="w-16 h-16 mx-auto text-success mb-4" />
+            <CheckCircle2 className="w-16 h-16 mx-auto text-emerald-600 mb-4" />
           ) : (
-            <XCircle className="w-16 h-16 mx-auto text-destructive mb-4" />
+            <XCircle className="w-16 h-16 mx-auto text-red-600 mb-4" />
           )}
           <h2
             className={cn(
               'text-2xl font-bold',
-              result.status === 'allowed' ? 'text-success' : 'text-destructive',
+              result.status === 'allowed' ? 'text-emerald-700' : 'text-red-700',
             )}
           >
             {result.status === 'allowed'
               ? 'Payment Allowed'
               : 'Payment Rejected'}
           </h2>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-sm text-slate-600 mt-2">
             {result.status === 'allowed'
               ? 'Payment satisfies all recipient rules'
               : 'Payment does not meet recipient requirements'}
           </p>
-        </div>
+        </motion.div>
 
         {/* Payment Summary */}
-        <div className="mt-6 p-4 rounded-2xl bg-card border border-border/50 animate-fade-in">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="mt-6 p-4 rounded-xl module-card"
+        >
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Amount</span>
-              <span className="font-semibold text-foreground">
+              <span className="text-slate-600 font-medium">Amount</span>
+              <span className="font-semibold text-slate-900">
                 {paymentData.amount} {paymentData.token}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">From</span>
-              <span className="font-mono text-sm text-foreground">
+              <span className="text-slate-600 font-medium">From</span>
+              <span className="font-mono text-sm text-slate-900">
                 {paymentData.sender}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">To</span>
-              <span className="font-mono text-sm text-foreground">
+              <span className="text-slate-600 font-medium">To</span>
+              <span className="font-mono text-sm text-slate-900">
                 {paymentData.recipient}
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Rule Evaluation Summary */}
-        <div className="mt-6 animate-slide-up">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+          className="mt-6"
+        >
           <button
             onClick={() => setShowDetails(!showDetails)}
-            className="w-full flex items-center justify-between p-4 rounded-2xl bg-secondary/50 hover:bg-secondary transition-colors"
+            className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors btn-tactile"
           >
             <div className="flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-muted-foreground" />
-              <span className="font-medium text-foreground">
+              <AlertTriangle className="w-5 h-5 text-slate-600" />
+              <span className="font-semibold text-slate-900">
                 Rule Evaluation
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-slate-600 font-medium">
                 {passedRules} passed, {failedRules} failed
               </span>
               {showDetails ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                <ChevronUp className="w-5 h-5 text-slate-600" />
               ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                <ChevronDown className="w-5 h-5 text-slate-600" />
               )}
             </div>
           </button>
 
           {/* Expanded Rule Details */}
-          {showDetails && (
-            <div className="mt-3 space-y-3 animate-slide-up">
-              {result.rules.map((rule, index) => (
-                <div
-                  key={rule.id}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
+          <AnimatePresence>
+            {showDetails && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="mt-3 space-y-3"
+              >
+                {result.rules.map((rule) => (
                   <RuleCard
+                    key={rule.id}
                     type={rule.type}
                     field={rule.field}
                     operator={rule.operator}
@@ -211,20 +239,23 @@ export default function PaymentEvaluation() {
                     evaluationResult={rule.result}
                     actualValue={rule.actual}
                   />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
         {/* Action Buttons */}
-        <div className="mt-auto py-6 space-y-3">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+          className="mt-auto py-6 space-y-3"
+        >
           {result.status === 'allowed' ? (
             <Button
               size="default"
-              variant="default"
-              className="w-full mt-4 h-12 bg-accent"
-              // onClick={() => navigate("/proof")}
+              className="w-full h-12 rounded-xl btn-tactile bg-teal-600 hover:bg-teal-700 text-white"
             >
               <CheckCircle2 className="w-5 h-5 mr-2" />
               Proceed to Pay
@@ -232,18 +263,20 @@ export default function PaymentEvaluation() {
           ) : (
             <Button
               size="default"
-              variant="default"
-              className="w-full mt-4 h-12"
+              className="w-full h-12 rounded-xl btn-tactile bg-slate-300 text-slate-500"
               disabled
             >
               <XCircle className="w-5 h-5 mr-2" />
               Cannot Proceed
             </Button>
           )}
-          <Button variant="default" className="w-full mt-4 h-12">
+          <Button
+            variant="outline"
+            className="w-full h-12 rounded-xl btn-tactile border-slate-200 hover:bg-slate-50"
+          >
             Cancel
           </Button>
-        </div>
+        </motion.div>
       </div>
     </MobileLayout>
   )

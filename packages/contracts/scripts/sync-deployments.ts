@@ -51,13 +51,15 @@ const CONTRACT_NAMES = [
   "PayWithPayID",
   "RuleAuthority",
   "RuleItemERC721",
+  "AgentPayID",
+  "MockAgentRegistry",
 ] as const;
 
 type ContractName = (typeof CONTRACT_NAMES)[number];
 
 // Contracts only shown on local deployments (mocks)
 const MOCK_CONTRACTS = new Set<ContractName>([
-  "MockEAS", "MockEthUsdOracle", "MockIDRX", "MockUSDC",
+  "MockEAS", "MockEthUsdOracle", "MockIDRX", "MockUSDC", "MockAgentRegistry"
 ]);
 
 // Display order in docs tables (core first, mocks last)
@@ -68,10 +70,12 @@ const DOCS_ORDER: ContractName[] = [
   "PayIDVerifier",
   "PayWithPayID",
   "AttestationVerifier",
+  "AgentPayID",
   "MockUSDC",
   "MockIDRX",
   "MockEthUsdOracle",
   "MockEAS",
+  "MockAgentRegistry",
 ];
 
 // ── Chain Metadata ────────────────────────────────────────────────────────────

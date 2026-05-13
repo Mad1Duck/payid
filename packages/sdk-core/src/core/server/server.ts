@@ -8,6 +8,7 @@ import { buildPayETHCallData, buildPayERC20CallData } from "../../erc4337/build"
 import { buildUserOperation } from "../../erc4337/userop";
 import type { RuleSource } from "../../resolver/types";
 import { resolveRule } from "../../resolver/resolver";
+import type { ZGStorage } from "../../storage/zgStorage";
 
 function isRuleSource(rule: RuleConfig | RuleSource): rule is RuleSource {
   return typeof rule === "object" && rule !== null && "uri" in rule;
@@ -48,6 +49,7 @@ export class PayIDServer {
     private readonly trustedIssuers?: Set<string>,
     private readonly debugTrace?: boolean,
     private readonly wasm?: Uint8Array,
+    private readonly storage?: ZGStorage,
   ) { }
 
   async evaluateAndProve(params: {

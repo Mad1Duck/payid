@@ -19,16 +19,16 @@ These are the addresses from a fresh local `npx hardhat node` + `hardhat ignitio
 <!-- sync:31337:start -->
 | Contract | Address |
 |---|---|
-| `RuleAuthority` | `0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9` |
-| `RuleItemERC721` | `0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8` |
-| `CombinedRuleStorage` | `0x09635F643e140090A9A8Dcd712eD6285858ceBef` |
-| `PayIDVerifier` | `0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB` |
-| `PayWithPayID` | `0x9E545E3C0baAB3E08CdfD552C960A1050f373042` |
-| `AttestationVerifier` | `0x7a2088a1bFc9d81c55368AE168C2C02570cB814F` |
-| `MockUSDC` (local only) | `0xc3e53F4d16Ae77Db1c982e75a937B9f60FE63690` |
-| `MockIDRX` (local only) | `0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E` |
-| `MockEthUsdOracle` (local only) | `0x67d269191c92Caf3cD7723F116c85e6E9bf55933` |
-| `MockEAS` (local only) | `0xc5a5C42992dECbae36851359345FE25997F5C42d` |
+| `RuleAuthority` | `0x40A633EeF249F21D95C8803b7144f19AAfeEF7ae` |
+| `RuleItemERC721` | `0x532802f2F9E0e3EE9d5Ba70C35E1F43C0498772D` |
+| `CombinedRuleStorage` | `0x0b27a79cb9C0B38eE06Ca3d94DAA68e0Ed17F953` |
+| `PayIDVerifier` | `0x773330693cb7d5D233348E25809770A32483A940` |
+| `PayWithPayID` | `0x52173b6ac069619c206b9A0e75609fC92860AB2A` |
+| `AttestationVerifier` | `0xF85895D097B2C25946BB95C4d11E2F3c035F8f0C` |
+| `MockUSDC` (local only) | `0x408F924BAEC71cC3968614Cb2c58E155A35e6890` |
+| `MockIDRX` (local only) | `0x47c05BCCA7d57c87083EB4e586007530eE4539e9` |
+| `MockEthUsdOracle` (local only) | `0xB468647B04bF657C9ee2de65252037d781eABafD` |
+| `MockEAS` (local only) | `0x7bdd3b028C4796eF0EAf07d11394d0d9d8c24139` |
 <!-- sync:31337:end -->
 
 **Start local node:**

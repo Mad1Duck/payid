@@ -14,16 +14,23 @@ export function MobileLayout({
   className,
 }: MobileLayoutProps) {
   return (
-    <div
-      className={cn(
-        'min-h-screen bg-background flex flex-col max-w-md mx-auto relative',
-        className,
-      )}
-    >
-      <main className={cn('flex-1 overflow-y-auto', !hideNav && 'pb-24')}>
-        {children}
-      </main>
-      {!hideNav && <BottomNav />}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div
+        className={cn(
+          'mobile-viewport flex flex-col relative overflow-hidden',
+          className,
+        )}
+      >
+        <main
+          className={cn(
+            'flex-1 overflow-y-auto smooth-scroll',
+            !hideNav && 'pb-24 safe-area-bottom safe-area-top',
+          )}
+        >
+          {children}
+        </main>
+        {!hideNav && <BottomNav />}
+      </div>
     </div>
   )
 }

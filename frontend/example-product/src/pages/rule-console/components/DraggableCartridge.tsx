@@ -1,32 +1,45 @@
-import { useState } from 'react'
-import { motion, useMotionValue } from 'framer-motion'
-import { createPortal } from 'react-dom'
+import { useCallback, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import { RuleCartridge } from './RuleCartridge'
 import type { PanInfo } from 'framer-motion'
 import type { CartridgeType } from './RuleCartridge'
-import { cn } from '@/lib/utils'
 
 interface DraggableCartridgeProps {
   id: string
   type: CartridgeType
   name: string
   summary: string
+  image?: string
   isInSlot?: boolean
   isActive?: boolean
   showAdvanced?: boolean
   ruleHash?: string
   authorityAddress?: string
-  onDragStart?: () => void
-  onDragEnd?: (info: PanInfo) => void
   onDrop?: (slotId: string) => void
   onEject?: () => void
-  slotPositions?: Array<{
-    id: string
-    x: number
-    y: number
-    width: number
-    height: number
-  }>
+  onTap?: () => void
+  onHoverSlot?: (slotId: string | null) => void
+}
+
+/** Find nearest slot to the given point */
+function findNearestSlot(point: { x: number; y: number }): string | null {
+  const slots = document.querySelectorAll('[data-slot-id]')
+  let bestId: string | null = null
+  let bestDist = Infinity
+
+  for (const slot of slots) {
+    const rect = slot.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    const dist = Math.sqrt((point.x - cx) ** 2 + (point.y - cy) ** 2)
+    if (dist < bestDist) {
+      bestDist = dist
+      bestId = slot.getAttribute('data-slot-id')
+    }
+  }
+
+  // No threshold - always snap to nearest slot
+  return bestId
 }
 
 export function DraggableCartridge({
@@ -34,226 +47,154 @@ export function DraggableCartridge({
   type,
   name,
   summary,
+  image,
   isInSlot = false,
   isActive = false,
   showAdvanced = false,
   ruleHash,
   authorityAddress,
-  onDragStart,
-  onDragEnd,
   onDrop,
   onEject,
-  slotPositions = [],
+  onTap,
+  onHoverSlot,
 }: DraggableCartridgeProps) {
-  const [isDragging, setIsDragging] = useState(false)
+  const motionRef = useRef<HTMLDivElement>(null)
+  const tapLock = useRef(false)
   const [nearSlot, setNearSlot] = useState<string | null>(null)
-  const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 })
-  const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
 
-  const x = useMotionValue(0)
-  const y = useMotionValue(0)
+  const handleTap = useCallback(() => {
+    if (tapLock.current) return
+    tapLock.current = true
+    onTap?.()
+    setTimeout(() => { tapLock.current = false }, 300)
+  }, [onTap])
 
-  const handleDragStart = (event: MouseEvent | TouchEvent | PointerEvent) => {
-    const target = event.target as HTMLElement
-    const rect = target.closest('[data-cartridge]')?.getBoundingClientRect()
-    if (rect) {
-      setInitialPosition({ x: rect.left, y: rect.top })
-    }
+  const handleDragStart = () => setIsDragging(true)
 
-    setIsDragging(true)
-    onDragStart?.()
+  const handleDrag = (_event: unknown, info: PanInfo) => {
+    if (isInSlot) return
+    const slotId = findNearestSlot(info.point)
+    setNearSlot(slotId)
+    onHoverSlot?.(slotId)
   }
 
-  const handleDrag = (
-    _event: MouseEvent | TouchEvent | PointerEvent,
-    info: PanInfo,
-  ) => {
-    // Update drag position for portal
-    setDragPosition({ x: info.offset.x, y: info.offset.y })
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    setIsDragging(false)
+    setNearSlot(null)
+    onHoverSlot?.(null)
 
     if (isInSlot) {
+      // Eject by pulling DOWN (cartridge hangs below console)
+      if (info.offset.y > 30) {
+        onEject?.()
+      }
       return
     }
 
-    // Check proximity to slots
-    const cartridgeCenter = {
-      x: info.point.x,
-      y: info.point.y,
+    // Get pointer coordinates from native event
+    let clientX: number
+    let clientY: number
+    if ('changedTouches' in event && event.changedTouches.length > 0) {
+      clientX = event.changedTouches[0].clientX
+      clientY = event.changedTouches[0].clientY
+    } else {
+      clientX = (event as MouseEvent).clientX
+      clientY = (event as MouseEvent).clientY
     }
 
-    let foundSlot: string | null = null
-    const snapThreshold = 80
+    // Hide dragged element so elementFromPoint can see the slot underneath
+    const motionEl = motionRef.current
+    if (motionEl) {
+      motionEl.style.visibility = 'hidden'
+    }
 
-    for (const slot of slotPositions) {
-      const slotCenter = {
-        x: slot.x + slot.width / 2,
-        y: slot.y + slot.height / 2,
-      }
+    const target = document.elementFromPoint(clientX, clientY)
 
-      const distance = Math.sqrt(
-        Math.pow(cartridgeCenter.x - slotCenter.x, 2) +
-          Math.pow(cartridgeCenter.y - slotCenter.y, 2),
-      )
+    if (motionEl) {
+      motionEl.style.visibility = ''
+    }
 
-      if (distance < snapThreshold) {
-        foundSlot = slot.id
-        break
+    if (target) {
+      const slot = target.closest('[data-slot-id]')
+      if (slot) {
+        const slotId = slot.getAttribute('data-slot-id')
+        if (slotId) {
+          onDrop?.(slotId)
+          return
+        }
       }
     }
 
-    setNearSlot(foundSlot)
+    // Fallback: nearest slot by distance
+    const slotId = findNearestSlot({ x: clientX, y: clientY })
+    if (slotId) {
+      onDrop?.(slotId)
+    }
   }
-
-  const handleDragEnd = (
-    _event: MouseEvent | TouchEvent | PointerEvent,
-    info: PanInfo,
-  ) => {
-    setIsDragging(false)
-    setDragPosition({ x: 0, y: 0 })
-
-    if (isInSlot) {
-      if (info.offset.y < -60) {
-        onEject?.()
-      }
-    } else if (nearSlot) {
-      onDrop?.(nearSlot)
-    }
-
-    setNearSlot(null)
-    onDragEnd?.(info)
-  }
-
-  // Dragging cartridge rendered in portal for visibility
-  const draggingCartridge =
-    isDragging &&
-    createPortal(
-      <motion.div
-        initial={{
-          x: initialPosition.x + dragPosition.x,
-          y: initialPosition.y + dragPosition.y,
-          scale: 1,
-          rotate: 0,
-        }}
-        animate={{
-          x: initialPosition.x + dragPosition.x,
-          y: initialPosition.y + dragPosition.y,
-          scale: 1.15,
-          rotate: dragPosition.x / 15,
-        }}
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        className="fixed top-0 left-0 z-9999 pointer-events-none"
-        style={{ willChange: 'transform' }}
-      >
-        <RuleCartridge
-          id={id}
-          type={type}
-          name={name}
-          summary={summary}
-          isActive={isActive}
-          isInSlot={isInSlot}
-          isDragging={true}
-          showAdvanced={false}
-          ruleHash={ruleHash}
-          authorityAddress={authorityAddress}
-        />
-
-        {/* Glow outline */}
-        <motion.div
-          className="absolute -inset-2 rounded-[10px] pointer-events-none"
-          animate={{
-            opacity: [0.5, 1, 0.5],
-            boxShadow: [
-              '0 0 15px rgba(255,255,255,0.3), 0 0 30px rgba(100,200,255,0.2)',
-              '0 0 25px rgba(255,255,255,0.5), 0 0 50px rgba(100,200,255,0.3)',
-              '0 0 15px rgba(255,255,255,0.3), 0 0 30px rgba(100,200,255,0.2)',
-            ],
-          }}
-          transition={{ duration: 0.8, repeat: Infinity }}
-          style={{
-            border: '2px solid rgba(255,255,255,0.4)',
-            borderRadius: '10px',
-          }}
-        />
-
-        {/* Drop shadow */}
-        <div
-          className="absolute inset-0 -z-10 rounded-lg blur-xl opacity-60"
-          style={{
-            background:
-              'radial-gradient(ellipse at center, rgba(0,0,0,0.6) 0%, transparent 70%)',
-            transform: 'translateY(20px) scale(1.1)',
-          }}
-        />
-
-        {/* Snap indicator */}
-        {nearSlot && !isInSlot && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-cartridge-glow/40 rounded-full border-2 border-cartridge-glow backdrop-blur-sm whitespace-nowrap"
-          >
-            <span className="text-[10px] font-mono text-white uppercase font-bold tracking-wide">
-              ✓ Release to Insert
-            </span>
-          </motion.div>
-        )}
-
-        {/* Eject indicator */}
-        {isInSlot && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap"
-          >
-            <motion.div
-              className="px-3 py-1.5 bg-rose-500/40 rounded-full border-2 border-rose-400 backdrop-blur-sm"
-              animate={{ y: [0, -4, 0] }}
-              transition={{ duration: 0.5, repeat: Infinity }}
-            >
-              <span className="text-[10px] font-mono text-white uppercase font-bold tracking-wide">
-                ↑ Pull to Eject
-              </span>
-            </motion.div>
-          </motion.div>
-        )}
-      </motion.div>,
-      document.body,
-    )
 
   return (
-    <div className="relative" data-cartridge>
+    <div
+      className="relative"
+      data-cartridge={id}
+      onClick={() => {
+        // Fallback click handler — onTap can be unreliable with drag
+        if (!isInSlot && !isDragging) handleTap()
+      }}
+    >
+      {/* Drop hint during drag */}
+      {isDragging && nearSlot && !isInSlot && (
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-50 pointer-events-none whitespace-nowrap">
+          <div className="px-2 py-0.5 bg-emerald-500/40 rounded-full border border-emerald-400/60 backdrop-blur-sm">
+            <span className="text-[8px] font-mono text-emerald-200 uppercase font-bold tracking-wide">
+              Release to Insert
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Eject hint during drag */}
+      {isDragging && isInSlot && (
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-50 pointer-events-none whitespace-nowrap">
+          <div className="px-2 py-0.5 bg-rose-500/40 rounded-full border border-rose-400/60 backdrop-blur-sm">
+            <span className="text-[8px] font-mono text-rose-200 uppercase font-bold tracking-wide">
+              Pull Down to Eject
+            </span>
+          </div>
+        </div>
+      )}
+
       <motion.div
+        ref={motionRef}
         drag
-        dragSnapToOrigin={isInSlot ? true : !nearSlot}
-        dragElastic={0.15}
-        dragTransition={{
-          bounceStiffness: 400,
-          bounceDamping: 25,
+        dragSnapToOrigin
+        dragElastic={0.1}
+        whileDrag={{
+          scale: 1.06,
+          zIndex: 9999,
+          boxShadow: isInSlot
+            ? '0 0 16px rgba(244,63,94,0.25)'
+            : '0 0 16px rgba(16,185,129,0.25)',
         }}
-        style={{ x, y }}
         onDragStart={handleDragStart}
         onDrag={handleDrag}
         onDragEnd={handleDragEnd}
-        className={cn(
-          'cursor-grab active:cursor-grabbing touch-none relative',
-          isDragging && 'opacity-30',
-        )}
+        onTap={handleTap}
+        className="cursor-grab active:cursor-grabbing touch-none"
       >
         <RuleCartridge
           id={id}
           type={type}
           name={name}
           summary={summary}
+          image={image}
           isActive={isActive}
           isInSlot={isInSlot}
-          isDragging={false}
           showAdvanced={showAdvanced}
           ruleHash={ruleHash}
           authorityAddress={authorityAddress}
         />
       </motion.div>
-
-      {draggingCartridge}
     </div>
   )
 }

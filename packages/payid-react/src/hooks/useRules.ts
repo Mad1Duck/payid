@@ -212,7 +212,7 @@ export function useSubscription(address: `0x${string}` | undefined): ReadHookRes
   });
 
   const data = useMemo(() => {
-    if (!result.data?.[0]?.result) return undefined;
+    if (result.data?.[0]?.result == null) return undefined;
     const expiry = result.data[0].result as bigint;
     const logicalRuleCount = Number(result.data[1]?.result ?? 0);
     const maxSlots = Number(result.data[2]?.result ?? 1);

@@ -1,7 +1,11 @@
 import { ArrowLeft, Check, Copy, RefreshCw, Share2 } from 'lucide-react'
 import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { useAccount } from 'wagmi'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { QRCodeDisplay } from '@/components/QRCodeDisplay'
+import { WalletButton } from '@/components/WalletButton'
 import { cn } from '@/lib/utils'
 import { MobileLayout } from '@/components/Layouts/MobileLayout'
 
@@ -14,6 +18,7 @@ const expirationOptions = [
 ]
 
 export default function QRPayment() {
+  const { address, isConnected } = useAccount()
   const [amount, setAmount] = useState('100')
   const [selectedToken, setSelectedToken] = useState('USDC')
   const [selectedExpiration, setSelectedExpiration] = useState(15)
@@ -40,29 +45,43 @@ export default function QRPayment() {
     <MobileLayout>
       <div className="px-5 safe-area-top">
         {/* Header */}
-        <header className="flex items-center gap-4 py-4">
-          <button className="p-2 -ml-2 rounded-xl hover:bg-secondary transition-colors">
-            <ArrowLeft className="w-5 h-5 text-foreground" />
-          </button>
+        <motion.header
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center gap-3 py-4"
+        >
+          <Link to="/">
+            <button className="btn-tactile p-2.5 -ml-2 rounded-xl bg-white/50 hover:bg-white/80 transition-colors border border-white/20">
+              <ArrowLeft className="w-5 h-5 text-foreground" />
+            </button>
+          </Link>
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-foreground">Payment QR</h1>
+            <h1 className="text-xl font-bold text-foreground tracking-tight">
+              Payment QR
+            </h1>
             <p className="text-sm text-muted-foreground">
-              Generate session payment
+              {isConnected ? `Connected: ${address?.slice(0, 6)}...${address?.slice(-4)}` : 'Connect wallet'}
             </p>
           </div>
           {isGenerated && (
             <button
               onClick={handleReset}
-              className="p-2 rounded-xl hover:bg-secondary transition-colors"
+              className="btn-tactile p-2.5 rounded-xl bg-white/50 hover:bg-white/80 transition-colors border border-white/20"
             >
-              <RefreshCw className="w-5 h-5 text-muted-foreground" />
+              <RefreshCw className="w-5 h-5 text-slate-500" />
             </button>
           )}
-        </header>
+        </motion.header>
 
         {isGenerated ? (
           /* Generated QR View */
-          <div className="mt-8 animate-scale-in">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="mt-8"
+          >
             <QRCodeDisplay
               amount={parseFloat(amount)}
               token={selectedToken}
@@ -72,19 +91,22 @@ export default function QRPayment() {
 
             {/* Actions */}
             <div className="mt-8 space-y-3">
-              <Button variant="default" size="default" className="w-full">
+              <Button
+                size="default"
+                className="w-full h-12 rounded-xl btn-tactile bg-slate-900 hover:bg-slate-800 text-white"
+              >
                 <Share2 className="w-5 h-5 mr-2" />
                 Share QR
               </Button>
               <Button
                 variant="outline"
-                size="lg"
-                className="w-full"
+                size="default"
+                className="w-full h-12 rounded-xl btn-tactile border-slate-200 hover:bg-slate-50"
                 onClick={handleCopyLink}
               >
                 {isCopied ? (
                   <>
-                    <Check className="w-5 h-5 mr-2 text-success" />
+                    <Check className="w-5 h-5 mr-2 text-emerald-600" />
                     Copied!
                   </>
                 ) : (
@@ -97,19 +119,24 @@ export default function QRPayment() {
             </div>
 
             {/* Session info */}
-            <div className="mt-6 p-4 rounded-2xl bg-secondary/50 border border-border/50">
-              <p className="text-xs text-muted-foreground text-center">
+            <div className="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <p className="text-xs text-slate-600 text-center">
                 This is a temporary session payment. The QR code will expire
                 after the countdown. Rules are evaluated off-chain for speed.
               </p>
             </div>
-          </div>
+          </motion.div>
         ) : (
           /* Configuration View */
-          <div className="mt-6 space-y-6 animate-fade-in">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mt-6 space-y-6"
+          >
             {/* Amount Input */}
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">
+              <label className="text-sm font-semibold text-slate-600 mb-2 block">
                 Amount
               </label>
               <div className="relative">
@@ -119,8 +146,8 @@ export default function QRPayment() {
                   onChange={(e) => setAmount(e.target.value)}
                   className={cn(
                     'w-full h-16 px-6 text-3xl font-bold text-foreground',
-                    'bg-card border border-border/50 rounded-2xl',
-                    'focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent',
+                    'bg-white border border-slate-200 rounded-xl',
+                    'focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent',
                     'transition-all duration-200',
                   )}
                   placeholder="0"
@@ -130,7 +157,7 @@ export default function QRPayment() {
 
             {/* Token Selection */}
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">
+              <label className="text-sm font-semibold text-slate-600 mb-2 block">
                 Token
               </label>
               <div className="grid grid-cols-4 gap-2">
@@ -139,10 +166,10 @@ export default function QRPayment() {
                     key={token}
                     onClick={() => setSelectedToken(token)}
                     className={cn(
-                      'py-3 px-4 rounded-xl font-medium transition-all duration-200',
+                      'py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-200 btn-tactile',
                       selectedToken === token
-                        ? 'bg-primary text-primary-foreground shadow-soft-md'
-                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+                        ? 'bg-slate-900 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
                     )}
                   >
                     {token}
@@ -153,7 +180,7 @@ export default function QRPayment() {
 
             {/* Expiration Selection */}
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">
+              <label className="text-sm font-semibold text-slate-600 mb-2 block">
                 Expiration
               </label>
               <div className="grid grid-cols-4 gap-2">
@@ -162,10 +189,10 @@ export default function QRPayment() {
                     key={option.value}
                     onClick={() => setSelectedExpiration(option.value)}
                     className={cn(
-                      'py-3 px-4 rounded-xl text-sm font-medium transition-all duration-200',
+                      'py-3 px-4 rounded-xl text-xs font-semibold transition-all duration-200 btn-tactile',
                       selectedExpiration === option.value
-                        ? 'bg-primary text-primary-foreground shadow-soft-md'
-                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+                        ? 'bg-slate-900 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
                     )}
                   >
                     {option.label}
@@ -175,16 +202,16 @@ export default function QRPayment() {
             </div>
 
             {/* Summary */}
-            <div className="p-4 rounded-2xl bg-accent/5 border border-accent/20">
+            <div className="p-4 rounded-xl bg-teal-50 border border-teal-200">
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Requesting</span>
-                <span className="font-bold text-foreground">
+                <span className="text-slate-600 font-medium">Requesting</span>
+                <span className="font-bold text-slate-900">
                   {amount || '0'} {selectedToken}
                 </span>
               </div>
               <div className="flex justify-between items-center mt-2">
-                <span className="text-muted-foreground">Valid for</span>
-                <span className="font-medium text-foreground">
+                <span className="text-slate-600 font-medium">Valid for</span>
+                <span className="font-semibold text-slate-900">
                   {
                     expirationOptions.find(
                       (o) => o.value === selectedExpiration,
@@ -197,13 +224,13 @@ export default function QRPayment() {
             {/* Generate Button */}
             <Button
               size="default"
-              className="w-full mt-4 h-12"
+              className="w-full mt-4 h-12 rounded-xl btn-tactile bg-teal-600 hover:bg-teal-700 text-white"
               onClick={handleGenerate}
               disabled={!amount || parseFloat(amount) <= 0}
             >
               Generate QR Code
             </Button>
-          </div>
+          </motion.div>
         )}
       </div>
     </MobileLayout>

@@ -24,6 +24,11 @@ import {
   useReadContract,
   useWriteContract,
 } from 'wagmi'
+import { JsonRpcProvider, Wallet } from 'ethers'
+import {
+  Indexer,
+  Blob as ZGBlob,
+} from '@0gfoundation/0g-storage-ts-sdk/browser'
 import type { Hash } from 'viem'
 import type { ChangeEvent } from 'react'
 
@@ -116,6 +121,7 @@ type Stage =
   | 'subscribing'
   | 'img-upload'
   | 'meta-upload'
+  | 'zg-upload'
   | 'creating'
   | 'activating'
   | 'verifying'
@@ -215,6 +221,44 @@ async function pinImage(dataUrl: string, name: string) {
     data: { cid },
   } = (await res.json()) as { data: { cid: string } }
   return { cid, url: `${getGateway()}/ipfs/${cid}` }
+}
+
+// ─── 0G Storage ───────────────────────────────────────────────────────────────
+const getZGConfig = () => ({
+  rpcUrl:
+    (import.meta.env.VITE_ZGS_RPC_URL as string | undefined) ??
+    'https://rpc-testnet.0g.ai',
+  indexerUrl:
+    (import.meta.env.VITE_ZGS_INDEXER_URL as string | undefined) ??
+    'https://indexer-testnet.0g.ai',
+  privateKey:
+    (import.meta.env.VITE_ZGS_PRIVATE_KEY as string | undefined) ?? '',
+})
+
+async function uploadToZG(data: unknown) {
+  const { indexerUrl, rpcUrl, privateKey } = getZGConfig()
+  if (!privateKey) throw new Error('VITE_ZGS_PRIVATE_KEY not set in .env')
+
+  const indexer = new Indexer(indexerUrl)
+  const content = typeof data === 'string' ? data : JSON.stringify(data)
+
+  const bytes = new TextEncoder().encode(content)
+  const file = new File([bytes], 'rule-metadata.json', {
+    type: 'application/json',
+  })
+  const blob = new ZGBlob(file)
+  const provider = new JsonRpcProvider(rpcUrl)
+  const signer = new Wallet(privateKey, provider)
+
+  const [result, err] = await indexer.upload(blob, rpcUrl, signer)
+
+  if (err) {
+    throw new Error(`0G Storage Upload Error: ${err.message}`)
+  }
+
+  const rootHash = 'rootHash' in result ? result.rootHash : result.rootHashes[0]
+
+  return { rootHash, tx: result }
 }
 
 // ─── Auto-generate NFT image via Canvas ──────────────────────────────────────
@@ -412,6 +456,7 @@ const PIPELINE: Array<{ key: Stage; short: string; label: string }> = [
   },
   { key: 'img-upload', short: 'Image', label: 'Uploading image to IPFS...' },
   { key: 'meta-upload', short: 'Meta', label: 'Uploading metadata to IPFS...' },
+  { key: 'zg-upload', short: '0G', label: 'Backing up to 0G Storage...' },
   {
     key: 'creating',
     short: 'Create',
@@ -617,7 +662,14 @@ export function CreateRuleTab() {
         metadata,
         `rule-${ruleId}.json`,
       )
-      const tokenURI = `ipfs://${cid}`
+
+      // ── Step 3.1: 0G Backup ──────────────────────────────────────────
+      setStage('zg-upload')
+      log('Uploading metadata to 0G Storage (Newton Testnet)...')
+      const { rootHash } = await uploadToZG(metadata)
+      log(`0G Hash: ${rootHash}`, 'ok')
+
+      const tokenURI = `0g://${rootHash}`
       log(`tokenURI: ${tokenURI}`, 'ok')
       log(`Preview:  ${previewURL.slice(0, 48)}...`, 'ok')
 
