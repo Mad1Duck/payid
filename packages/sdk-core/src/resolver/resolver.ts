@@ -1,8 +1,11 @@
-import type { RuleSource, ResolvedRule } from "./types";
+import type { RuleSource, ResolvedRule, ResolverOptions } from "./types";
 import { fetchJsonWithHashCheck } from "../utils/fetchJson";
 
+const DEFAULT_ZG_INDEXER = "https://indexer-testnet.0g.ai";
+
 export async function resolveRule(
-  source: RuleSource
+  source: RuleSource,
+  options?: ResolverOptions
 ): Promise<ResolvedRule> {
   const { uri, hash } = source;
 
@@ -26,7 +29,7 @@ export async function resolveRule(
 
   if (uri.startsWith("0g://")) {
     const rootHash = uri.replace("0g://", "");
-    const indexerUrl = (globalThis as any).PAYID_ZGS_INDEXER_URL || "https://indexer-testnet.0g.ai";
+    const indexerUrl = options?.zgIndexerUrl ?? (globalThis as any).PAYID_ZGS_INDEXER_URL ?? DEFAULT_ZG_INDEXER;
     const url = `${indexerUrl}/blob/${rootHash}`;
     const config = await fetchJsonWithHashCheck(url, hash);
     return { config, source };

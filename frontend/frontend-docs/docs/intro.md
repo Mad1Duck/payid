@@ -134,6 +134,14 @@ Smart contracts verify the proof (never execute rules). This keeps contracts sim
 
 ---
 
+## What's New
+
+- **[🛡️ VRAN Reputation](./integration/vran-reputation)** — Decentralized trust layer. Check merchant reputation and blacklist status before paying.
+- **[🏦 Bank / QRIS Bridge](./integration/bank-qris-bridge)** — Use PAY.ID as a policy oracle for fiat payment rails (QRIS, SWIFT, SEPA).
+- **[⚙️ Configurable 0G Resolver](./api/sdk-reference)** — Override the 0G indexer URL via SDK options instead of global variables.
+
+---
+
 ## Getting Started
 
 - [⚡ Quick Start →](./quickstart) — React app to first payment in minutes
@@ -142,3 +150,5 @@ Smart contracts verify the proof (never execute rules). This keeps contracts sim
 - [📋 Rule Basics →](./rules/rule-basics) — Write your first payment rule
 - [⚛️ React Integration →](./integration/react-integration) — All 20+ React hooks with examples
 - [🖥️ Server Guide →](./examples/server) — Backend / Node.js integration
+- [🏦 Bank / QRIS Bridge →](./integration/bank-qris-bridge) — Fiat payment policy integration
+- [🛡️ VRAN Reputation →](./integration/vran-reputation) — On-chain reputation & anti-scam

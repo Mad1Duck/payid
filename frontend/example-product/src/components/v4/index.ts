@@ -6,4 +6,7 @@ export { default as HistoryPage } from './HistoryPage';
 export { default as RulesPage } from './RulesPage';
 export { default as SettingsPage } from './SettingsPage';
 export { default as LandingPageV4 } from './LandingPageV4';
+export { default as ProofVisualizer } from './ProofVisualizer';
+export { default as PolicyCard } from './PolicyCard';
+export type { PolicyCardData } from './PolicyCard';
 export { ThemeProvider, useV4Theme } from './theme';

@@ -57,5 +57,12 @@ export type {
   PayIDFlowStatus,
 } from './hooks/usePayIDFlow';
 
+// Hooks: VRAN Reputation
+export {
+  useReputation,
+  useCanReport,
+  useVranConfig,
+} from './hooks/useReputation';
+
 // Contract addresses
 export { PAYID_CONTRACTS, getContracts } from './contracts/addresses';

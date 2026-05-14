@@ -2,6 +2,7 @@ import { PayIDClient } from "./core/client/client";
 import { PayIDServer } from "./core/server/server";
 import type { ethers } from "ethers";
 import type { ZGStorage } from "./storage/zgStorage";
+import type { ResolverOptions } from "./resolver/types";
 
 /**
  * Create a client-safe PayID instance.
@@ -22,8 +23,9 @@ import type { ZGStorage } from "./storage/zgStorage";
 export function createPayIDClient(params?: {
   wasm?: Uint8Array;
   debugTrace?: boolean;
+  resolverOptions?: ResolverOptions;
 }): PayIDClient {
-  return new PayIDClient(params?.debugTrace, params?.wasm);
+  return new PayIDClient(params?.debugTrace, params?.wasm, params?.resolverOptions);
 }
 
 /**
@@ -51,6 +53,7 @@ export function createPayIDServer(params: {
   debugTrace?: boolean;
   trustedIssuers?: Set<string>;
   storage?: ZGStorage;
+  resolverOptions?: ResolverOptions;
 }): PayIDServer {
   return new PayIDServer(
     params.signer,
@@ -58,6 +61,7 @@ export function createPayIDServer(params: {
     params.debugTrace,
     params.wasm,
     params.storage,
+    params.resolverOptions,
   );
 }
 
@@ -68,6 +72,7 @@ export function createPayIDServer(params: {
 export function createPayID(params?: {
   wasm?: Uint8Array;
   debugTrace?: boolean;
+  resolverOptions?: ResolverOptions;
 }): PayIDClient {
   return createPayIDClient(params);
 }

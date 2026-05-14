@@ -18,6 +18,7 @@ export default buildModule("PayIDModule", (m) => {
   const payWithPayID = m.contract("PayWithPayID");
   const ruleAuthority = m.contract("RuleAuthority");
   const combinedRuleStorage = m.contract("CombinedRuleStorage");
+  const vindexRegistry = m.contract("VindexRegistry");
 
   const ruleItemERC721 = m.contract("RuleItemERC721", [
     "PayID Rule Item",
@@ -50,6 +51,10 @@ export default buildModule("PayIDModule", (m) => {
     admin,
   ], { id: "initRuleAuthority", from: admin });
 
+  const initVindexRegistry = m.call(vindexRegistry, "initialize", [
+    admin,
+  ], { id: "initVindexRegistry", from: admin });
+
   m.call(payIdVerifier, "setTrustedAuthority", [combinedRuleStorage, true], {
     id: "trustCombinedRuleStorage",
     from: admin,
@@ -75,5 +80,6 @@ export default buildModule("PayIDModule", (m) => {
     ruleAuthority,
     mockAgentRegistry,
     agentPayID,
+    vindexRegistry,
   };
 });

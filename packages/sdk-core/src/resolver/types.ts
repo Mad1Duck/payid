@@ -9,3 +9,7 @@ export interface ResolvedRule {
   config: RuleConfig;
   source: RuleSource;
 }
+
+export interface ResolverOptions {
+  zgIndexerUrl?: string;
+}

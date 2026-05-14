@@ -56,12 +56,22 @@ const sidebars: SidebarsConfig = {
       collapsed: true,
       items: [
         'integration/tokochain-simulation',
+        'integration/bank-qris-bridge',
       ],
     },
 
     {
       type: 'category',
-      label: '📖 Reference',
+      label: '�️ VRAN',
+      collapsed: true,
+      items: [
+        'integration/vran-reputation',
+      ],
+    },
+
+    {
+      type: 'category',
+      label: '�📖 Reference',
       collapsed: true,
       items: [
         'api/sdk-reference',
@@ -69,6 +79,8 @@ const sidebars: SidebarsConfig = {
         'contracts/contracts',
       ],
     },
+
+    'changelog',
   ],
 };
 

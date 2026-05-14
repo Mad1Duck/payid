@@ -6,7 +6,7 @@ import { evaluate } from "../../evaluate";
 import { generateDecisionProof } from "../../decision-proof/generate";
 import { buildPayETHCallData, buildPayERC20CallData } from "../../erc4337/build";
 import { buildUserOperation } from "../../erc4337/userop";
-import type { RuleSource } from "../../resolver/types";
+import type { RuleSource, ResolverOptions } from "../../resolver/types";
 import { resolveRule } from "../../resolver/resolver";
 import type { ZGStorage } from "../../storage/zgStorage";
 
@@ -50,6 +50,7 @@ export class PayIDServer {
     private readonly debugTrace?: boolean,
     private readonly wasm?: Uint8Array,
     private readonly storage?: ZGStorage,
+    private readonly resolverOptions?: ResolverOptions,
   ) { }
 
   async evaluateAndProve(params: {
@@ -71,7 +72,7 @@ export class PayIDServer {
     proof: DecisionProof | null;
   }> {
     const authorityConfig = isRuleSource(params.authorityRule)
-      ? (await resolveRule(params.authorityRule)).config
+      ? (await resolveRule(params.authorityRule, this.resolverOptions)).config
       : params.authorityRule;
 
     const evalConfig = params.evaluationRule ?? authorityConfig;

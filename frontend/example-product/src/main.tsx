@@ -45,6 +45,7 @@ import {
   HistoryPage as V4HistoryPage,
   RulesPage as V4RulesPage,
   SettingsPage as V4SettingsPage,
+  ProofVisualizer as V4ProofVisualizer,
   LandingPageV4,
   ThemeProvider as V4ThemeProvider,
 } from './components/v4'
@@ -315,6 +316,12 @@ const v4RulesRoute = createRoute({
   component: V4RulesPage,
 })
 
+const v4ProofRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'proof',
+  component: V4ProofVisualizer,
+})
+
 const v4SettingsRoute = createRoute({
   getParentRoute: () => v4AppRoute,
   path: 'settings',
@@ -357,6 +364,7 @@ const routeTree = rootRoute.addChildren([
       v4ReceiveRoute,
       v4HistoryRoute,
       v4RulesRoute,
+      v4ProofRoute,
       v4SettingsRoute,
     ]),
   ]),
@@ -407,6 +415,7 @@ if (rootElement && !rootElement.innerHTML) {
                 payIDVerifier:       addresses[31337].PayIDVerifier,
                 payWithPayID:        addresses[31337].PayWithPayID,
                 combinedRuleStorage: addresses[31337].CombinedRuleStorage || '0x0000000000000000000000000000000000000000',
+                vindexRegistry:      addresses[31337].VindexRegistry || '0x0000000000000000000000000000000000000000',
               },
               [zeroGTestnet.id]: {
                 ruleAuthority:       '0x0000000000000000000000000000000000000000',
@@ -414,6 +423,7 @@ if (rootElement && !rootElement.innerHTML) {
                 payIDVerifier:       '0x0000000000000000000000000000000000000000',
                 payWithPayID:        '0x0000000000000000000000000000000000000000',
                 combinedRuleStorage: '0x0000000000000000000000000000000000000000',
+                vindexRegistry:      '0x0000000000000000000000000000000000000000',
               },
             }}
           >

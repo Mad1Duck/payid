@@ -10,6 +10,7 @@ import {
   Settings,
   Wallet,
   LogOut,
+  Zap,
 } from 'lucide-react'
 import { useAccount, useDisconnect } from 'wagmi'
 import { useV4Palette } from './theme'
@@ -31,6 +32,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     { to: '/v4/app/receive', icon: QrCode, label: 'Receive' },
     { to: '/v4/app/history', icon: History, label: 'History' },
     { to: '/v4/app/rules', icon: Shield, label: 'Policy' },
+    { to: '/v4/app/proof', icon: Zap, label: 'Proof' },
     { to: '/v4/app/settings', icon: Settings, label: 'Settings' },
   ]
 

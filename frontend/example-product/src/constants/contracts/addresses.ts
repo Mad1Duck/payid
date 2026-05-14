@@ -13,7 +13,8 @@ export const addresses = {
     PayIDVerifier: "0x773330693cb7d5D233348E25809770A32483A940" as `0x${string}`,
     PayWithPayID: "0x52173b6ac069619c206b9A0e75609fC92860AB2A" as `0x${string}`,
     RuleAuthority: "0x40A633EeF249F21D95C8803b7144f19AAfeEF7ae" as `0x${string}`,
-    RuleItemERC721: "0x532802f2F9E0e3EE9d5Ba70C35E1F43C0498772D" as `0x${string}`
+    RuleItemERC721: "0x532802f2F9E0e3EE9d5Ba70C35E1F43C0498772D" as `0x${string}`,
+    VindexRegistry: "0x0000000000000000000000000000000000000000" as `0x${string}`, // TODO: redeploy with VindexRegistry
   }
 } as const;
 

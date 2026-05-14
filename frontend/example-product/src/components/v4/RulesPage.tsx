@@ -3,8 +3,57 @@ import { Shield, AlertTriangle } from 'lucide-react'
 import { useAccount } from 'wagmi'
 import { useActiveCombinedRule, useMyRules } from 'payid-react'
 import { useV4Palette } from './theme'
+import PolicyCard from './PolicyCard'
+import type { PolicyCardData } from './PolicyCard'
 
 const cardBase = 'rounded-2xl relative overflow-hidden'
+
+const DEMO_POLICIES: PolicyCardData[] = [
+  {
+    id: '0x7a3f...e91b',
+    name: 'Premium Spending Policy',
+    subtitle: 'Daily limits with business hours',
+    tier: 'premium',
+    stats: [
+      { label: 'Limit', value: '$500' },
+      { label: 'Window', value: '9-17' },
+      { label: 'KYC', value: 'L2+' },
+    ],
+    rules: ['Daily Limit', 'Business Hours', 'KYC Verified'],
+    active: true,
+    owner: '0x1234...5678',
+    expiry: '2026-12-31',
+  },
+  {
+    id: '0x9b2a...c45d',
+    name: 'DAO Executive Card',
+    subtitle: 'Multi-sig governance policy',
+    tier: 'executive',
+    stats: [
+      { label: 'Signers', value: '3/5' },
+      { label: 'Max', value: '$50K' },
+      { label: 'Delay', value: '24h' },
+    ],
+    rules: ['Multisig', 'Timelock', 'DAO Vote'],
+    active: true,
+    owner: '0xabcd...ef01',
+    expiry: '2027-06-30',
+  },
+  {
+    id: '0x3f11...a781',
+    name: 'Legendary Gamer Vault',
+    subtitle: 'Esports tournament escrow',
+    tier: 'legendary',
+    stats: [
+      { label: 'Pool', value: '100 ETH' },
+      { label: 'Players', value: '64' },
+      { label: 'Fee', value: '1%' },
+    ],
+    rules: ['Escrow', 'Auto-Split', 'VRAN Check'],
+    active: false,
+    owner: '0xdead...beef',
+  },
+]
 
 export default function RulesPage() {
   const { address } = useAccount()
@@ -21,13 +70,26 @@ export default function RulesPage() {
   ]
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl space-y-5">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className={`text-lg font-semibold ${p.textMain}`}>Policy Engine</h1>
           <p className={`text-xs ${p.textMuted} mt-0.5`}>Active rule set for your PAY.ID</p>
         </div>
         <span className="text-[10px] font-mono px-2 py-1 rounded-full bg-[#00D084]/10 text-[#00D084]">WASM v4</span>
+      </div>
+
+      {/* Premium Policy Cards */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className={`text-sm font-semibold ${p.textMain}`}>My Policy Cards</h2>
+          <span className={`text-[11px] ${p.textMuted}`}>{DEMO_POLICIES.length} cards</span>
+        </div>
+        <div className="grid grid-cols-1 gap-4">
+          {DEMO_POLICIES.map((policy, i) => (
+            <PolicyCard key={policy.id} policy={policy} index={i} />
+          ))}
+        </div>
       </div>
 
       {/* Combined rule */}

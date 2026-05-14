@@ -18,6 +18,7 @@ import {
 import { useAccount, useBalance } from 'wagmi'
 import { formatUnits } from 'viem'
 import { useV4Palette } from './theme'
+import { useReputation } from 'payid-react'
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + '...' + addr.slice(-4)
@@ -88,6 +89,7 @@ export default function Dashboard() {
   const p = useV4Palette()
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'incoming' | 'outgoing'>('all')
+  const { score, isBlacklisted, isTrusted, isLoading: repLoading } = useReputation({})
 
   const sparkData = useMemo(() => {
     const base = balanceValue || 10
@@ -110,7 +112,12 @@ export default function Dashboard() {
     { id: '0x5d71...f22a', type: 'sent' as const, to: 'dave.pay.id', from: '', amount: '8.25', asset: 'ETH', time: '5h ago', token: 'ETH' },
   ]
 
-  const filteredTx = activeTab === 'all' ? allTx : allTx.filter(tx => tx.type === activeTab)
+  const filteredTx = activeTab === 'all'
+    ? allTx
+    : allTx.filter(tx =>
+        (activeTab === 'incoming' && tx.type === 'received') ||
+        (activeTab === 'outgoing' && tx.type === 'sent')
+      )
 
   const tokens = [
     { symbol: 'ETH', name: 'Ethereum', balance: balanceValue.toFixed(4), usd: (balanceValue * 3500).toFixed(2), icon: '⟠' },
@@ -252,6 +259,48 @@ export default function Dashboard() {
             </div>
           </Link>
         ))}
+      </motion.div>
+
+      {/* VRAN Reputation Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.12 }}
+        className="rounded-2xl p-5 relative"
+        style={{ background: p.cardBg }}
+      >
+        <div className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`} />
+        <div className="relative">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className={`text-sm font-semibold ${p.textMain}`}>VRAN Reputation</h3>
+              <p className={`text-xs ${p.textMuted} mt-0.5`}>Vindex Anti-Scam Network</p>
+            </div>
+            {isTrusted && !isBlacklisted && (
+              <span className="px-2 py-1 rounded-full bg-[#00D084]/10 text-[#00D084] text-xs font-medium">Trusted</span>
+            )}
+            {isBlacklisted && (
+              <span className="px-2 py-1 rounded-full bg-[#EF4444]/10 text-[#EF4444] text-xs font-medium">Blacklisted</span>
+            )}
+            {!isTrusted && !isBlacklisted && !repLoading && (
+              <span className="px-2 py-1 rounded-full bg-[#F59E0B]/10 text-[#F59E0B] text-xs font-medium">Neutral</span>
+            )}
+          </div>
+
+          <div className={`flex items-center gap-3 p-3 rounded-xl ${p.dark ? 'bg-white/3' : 'bg-black/3'}`}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg" style={{ background: isBlacklisted ? '#EF4444' : isTrusted ? '#00D084' : '#64748B' }}>
+              {repLoading ? '…' : score}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className={`text-sm font-medium ${p.textMain}`}>
+                {repLoading ? 'Loading reputation…' : `${score} / 1000`}
+              </div>
+              <div className={`text-xs ${p.textMuted}`}>
+                {isBlacklisted ? 'Account flagged by community' : isTrusted ? 'High reputation account' : 'Reputation score pending'}
+              </div>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
       {/* Activity Feed — PIVY Style with Tabs */}

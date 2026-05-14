@@ -9,7 +9,7 @@ import { generateDecisionProof } from "../../decision-proof/generate";
 import type { DecisionProof } from "../../decision-proof/types";
 import type { PayIDSessionPolicyPayloadV1 } from "../../sessionPolicy";
 import type { SessionPolicyV2 } from "../../sessionPolicy/types";
-import type { RuleSource } from "../../resolver/types";
+import type { RuleSource, ResolverOptions } from "../../resolver/types";
 import { resolveRule } from "../../resolver/resolver";
 
 function isRuleSource(rule: RuleConfig | RuleSource): rule is RuleSource {
@@ -22,6 +22,7 @@ export class PayIDClient {
   constructor(
     private readonly debugTrace?: boolean,
     private readonly wasm?: Uint8Array,
+    private readonly resolverOptions?: ResolverOptions,
   ) {
     this._ready = loadWasm(this.wasm).then(() => { }).catch(() => { });
   }
@@ -35,7 +36,7 @@ export class PayIDClient {
     rule: RuleConfig | RuleSource
   ): Promise<RuleResult> {
     const config = isRuleSource(rule)
-      ? (await resolveRule(rule)).config
+      ? (await resolveRule(rule, this.resolverOptions)).config
       : rule;
     return evaluate(context, config, { debug: this.debugTrace }, this.wasm);
   }
@@ -68,7 +69,7 @@ export class PayIDClient {
     proof: DecisionProof | null;
   }> {
     const authorityConfig = isRuleSource(params.authorityRule)
-      ? (await resolveRule(params.authorityRule)).config
+      ? (await resolveRule(params.authorityRule, this.resolverOptions)).config
       : params.authorityRule;
 
     // Determine rule config to evaluate against:

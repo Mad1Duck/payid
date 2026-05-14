@@ -6,6 +6,8 @@ export interface PayIDContracts {
   combinedRuleStorage: Address;
   payIDVerifier: Address;
   payWithPayID: Address;
+  /** VindexRegistry address for VRAN reputation checks */
+  vindexRegistry?: Address;
 }
 
 export interface RuleRef {

@@ -4,6 +4,9 @@ export { createPayID, createPayIDClient, createPayIDServer } from "./factory";
 // ─── Core interfaces ──────────────────────────────────────────────────────────
 export type { PayIDClient, PayIDServer } from "./core/types";
 
+// ─── Resolver options ───────────────────────────────────────────────────────────
+export type { ResolverOptions } from "./resolver/types";
+
 // ─── Decision proof ───────────────────────────────────────────────────────────
 export type { DecisionProof, DecisionPayload } from "./decision-proof/types";
 
@@ -16,6 +19,10 @@ export * from "./types/attestation";
 
 // ─── Attestation ──────────────────────────────────────────────────────────────
 export * from "./attestation/verify";
+
+// ─── Adapters ─────────────────────────────────────────────────────────────────
+export { FiatAdapter } from "./adapters/fiatAdapter";
+export type { QRISPayload, FiatEvaluationResult } from "./adapters/fiatAdapter";
 
 // ─── Modules (namespace-qualified to avoid collision) ─────────────────────────
 export * as sessionPolicy from "./sessionPolicy";
