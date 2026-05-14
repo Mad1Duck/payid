@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Globe, Bell, Shield, Wallet, ChevronRight, Sun, Moon, LogOut } from 'lucide-react'
 import { useAccount } from 'wagmi'
 import { useV4Palette, useV4Theme } from './theme'
+import { usePushNotifications } from '../../hooks/usePushNotifications'
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + '...' + addr.slice(-4)
@@ -32,10 +33,11 @@ export default function SettingsPage() {
   const { toggle } = useV4Theme()
   const { address, isConnected } = useAccount()
   const payId = isConnected && address ? `${shortAddr(address)}@pay.id` : 'connect@pay.id'
+  const { state, subscribe, unsubscribe, sendLocalNotification } = usePushNotifications()
 
   const settings = [
     { icon: Globe, label: 'Currency', value: 'USD', color: '#0EA5E9' },
-    { icon: Bell, label: 'Notifications', value: 'On', color: '#F59E0B' },
+    { icon: Bell, label: 'Notifications', value: state.subscribed ? 'On' : state.permission === 'denied' ? 'Blocked' : 'Off', color: '#F59E0B', onClick: state.subscribed ? unsubscribe : subscribe },
     { icon: Shield, label: 'Security', value: 'Biometric', color: '#00D084' },
     { icon: Wallet, label: 'Network', value: 'Hardhat · 31337', color: '#8B5CF6' },
   ]
@@ -109,6 +111,7 @@ export default function SettingsPage() {
           {settings.map((row) => (
             <div
               key={row.label}
+              onClick={(row as any).onClick}
               className={`flex items-center gap-3 p-3 rounded-xl transition-colors cursor-pointer ${p.cardHover}`}
             >
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${row.color}15` }}>

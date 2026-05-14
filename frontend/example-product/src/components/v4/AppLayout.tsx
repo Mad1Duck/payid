@@ -11,6 +11,9 @@ import {
   Wallet,
   LogOut,
   Zap,
+  ShoppingBag,
+  Wrench,
+  Users,
 } from 'lucide-react'
 import { useAccount, useDisconnect } from 'wagmi'
 import { useV4Palette } from './theme'
@@ -33,6 +36,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     { to: '/v4/app/history', icon: History, label: 'History' },
     { to: '/v4/app/rules', icon: Shield, label: 'Policy' },
     { to: '/v4/app/proof', icon: Zap, label: 'Proof' },
+    { to: '/v4/app/marketplace', icon: ShoppingBag, label: 'Market' },
+    { to: '/v4/app/tools', icon: Wrench, label: 'Tools' },
+    { to: '/v4/app/payroll', icon: Users, label: 'Payroll' },
     { to: '/v4/app/settings', icon: Settings, label: 'Settings' },
   ]
 
@@ -131,7 +137,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
           {/* Bottom CTA — PIVY Style */}
           <div className="mt-auto">
-            <div className={`rounded-2xl p-4 relative overflow-hidden ${p.cardBg}`}>
+            <div className="rounded-2xl p-4 relative overflow-hidden" style={{ backgroundColor: p.cardBg }}>
               <div className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`} />
               <div className="relative">
                 <div className="flex items-center gap-2 mb-2">

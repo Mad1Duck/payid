@@ -192,5 +192,58 @@
         }
       ]
     }
+  },
+
+  "frontend_hooks": {
+    "useMultiCurrency": {
+      "import": "./hooks/useMultiCurrency",
+      "returns": ["displayCurrency", "convert", "format", "toggle", "rates"],
+      "usage": "Toggle USD/IDR/ETH display on amount inputs"
+    },
+    "usePushNotifications": {
+      "import": "./hooks/usePushNotifications",
+      "returns": ["subscribe", "unsubscribe", "state", "sendLocalNotification"],
+      "usage": "Web Push API for payment alerts"
+    },
+    "TransactionSimulation": {
+      "import": "./components/v4/TransactionSimulation",
+      "props": ["amount", "asset", "currentBalance", "onComplete"],
+      "usage": "Preview tx outcome before signing"
+    },
+    "PolicyMarketplace": {
+      "import": "./components/v4/PolicyMarketplace",
+      "route": "/v4/app/marketplace",
+      "usage": "Browse and subscribe to rule templates"
+    },
+    "AdvancedTools": {
+      "import": "./components/v4/AdvancedTools",
+      "route": "/v4/app/tools",
+      "tabs": ["batch", "recurring", "escrow", "vesting"],
+      "usage": "UI for Batch, Recurring, Escrow, Vesting contracts"
+    }
+  },
+
+  "contract_extensions": {
+    "PayWithPayIDBatch": {
+      "file": "contracts/PayWithPayIDBatch.sol",
+      "functions": ["batchPayETH", "batchPayERC20"],
+      "note": "Requires array of DecisionProofs per payment"
+    },
+    "RecurringPayments": {
+      "file": "contracts/RecurringPayments.sol",
+      "functions": ["createSubscription", "charge", "cancel"],
+      "note": "Receiver charges with valid DecisionProof within approved limits"
+    },
+    "EscrowMilestone": {
+      "file": "contracts/EscrowMilestone.sol",
+      "functions": ["createEscrow", "submitMilestone", "releaseMilestone", "dispute", "autoRefund"],
+      "roles": ["client", "freelancer", "arbiter"],
+      "note": "VRAN arbiter confirms delivery before release"
+    },
+    "TimeLockVesting": {
+      "file": "contracts/TimeLockVesting.sol",
+      "functions": ["createSchedule", "release", "revoke"],
+      "note": "Linear vesting after cliff; integrates env.timestamp rules"
+    }
   }
 }

@@ -15,6 +15,8 @@ import {
 import { useAccount, useBalance } from 'wagmi'
 import { formatUnits } from 'viem'
 import { useV4Palette } from './theme'
+import { useMultiCurrency } from '../../hooks/useMultiCurrency'
+import TransactionSimulation from './TransactionSimulation'
 
 type RuleStatus = 'pending' | 'running' | 'done'
 
@@ -29,6 +31,7 @@ export default function SendFlow() {
   const cardBorder = `absolute inset-0 rounded-2xl border pointer-events-none ${p.cardBorder}`
   const cardBg = { background: p.cardBg }
 
+  const { displayCurrency, convert, format, toggle } = useMultiCurrency()
   const [step, setStep] = useState<Step>('who')
   const [payId, setPayId] = useState('')
   const [resolvedName, setResolvedName] = useState<string | null>(null)
@@ -37,6 +40,10 @@ export default function SendFlow() {
   const [txHash, setTxHash] = useState('')
   const [evalProgress, setEvalProgress] = useState(0)
   const [denyReason, setDenyReason] = useState('')
+  const [simResult, setSimResult] = useState<any>(null)
+  const [showSimulation, setShowSimulation] = useState(false)
+
+  const balanceValue = balance ? parseFloat(formatUnits(balance.value, balance.decimals)) : 0
 
   const demoRules: { id: string; name: string; status: RuleStatus }[] = [
     { id: 'ctx', name: 'Build Context', status: 'pending' },
@@ -216,7 +223,7 @@ export default function SendFlow() {
                 </div>
 
                 <div className="flex gap-3">
-                  <div className="flex-1">
+                  <div className="flex-1 relative">
                     <input
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
@@ -224,6 +231,11 @@ export default function SendFlow() {
                       placeholder="0.00"
                       className={`w-full px-4 py-3 rounded-xl ${p.inputBg} border ${p.inputBorder} ${p.textMain} placeholder-[#64748B] focus:outline-none focus:border-[#00D084]/40 transition-colors font-mono text-xl`}
                     />
+                    {amount && parseFloat(amount) > 0 && (
+                      <div className={`mt-1 text-xs ${p.textMuted} font-mono`}>
+                        ≈ {format(convert(parseFloat(amount), displayCurrency), displayCurrency)}
+                      </div>
+                    )}
                   </div>
                   <select
                     value={asset}
@@ -235,9 +247,27 @@ export default function SendFlow() {
                   </select>
                 </div>
 
-                <div className={`text-[11px] ${p.textMuted} font-mono`}>
-                  Balance: {balance ? parseFloat(formatUnits(balance.value, balance.decimals)).toFixed(4) : '--'} {asset}
+                <div className="flex items-center justify-between">
+                  <div className={`text-[11px] ${p.textMuted} font-mono`}>
+                    Balance: {balance ? balanceValue.toFixed(4) : '--'} {asset}
+                  </div>
+                  <button
+                    onClick={toggle}
+                    className={`text-[11px] px-2 py-1 rounded-lg border ${p.cardBorder} ${p.textMain} hover:bg-black/5 transition-colors`}
+                  >
+                    {displayCurrency}
+                  </button>
                 </div>
+
+                {/* Transaction Simulation Preview */}
+                {amount && parseFloat(amount) > 0 && (
+                  <TransactionSimulation
+                    amount={amount}
+                    asset={asset}
+                    currentBalance={balanceValue.toFixed(4)}
+                    onComplete={(result) => setSimResult(result)}
+                  />
+                )}
 
                 <button
                   onClick={() => setStep('review')}

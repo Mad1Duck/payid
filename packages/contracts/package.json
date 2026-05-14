@@ -20,7 +20,9 @@
     "deploy:all-testnet": "bun run deploy:lisk-sepolia && bun run deploy:monad && bun run deploy:polygon-amoy && bun run deploy:sepolia && bun run deploy:base-sepolia && bun run deploy:moonbase",
     "sync": "bun run scripts/sync-deployments.ts",
     "sync:local": "bun run scripts/sync-deployments.ts 31337",
-    "sync:abi": "bun run scripts/sync-deployments.ts --abi-only"
+    "sync:abi": "bun run scripts/sync-deployments.ts --abi-only",
+    "keeper": "bun run scripts/keeper.ts",
+    "keeper:local": "bun run scripts/keeper.ts --chainId 31337"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.6",

@@ -206,3 +206,240 @@ const { allowed, proof, reason } = await adapter.evaluatePayment(
   }
 );
 ```
+
+---
+
+## SDK Enhancements (May 2026)
+
+### 1. PayID Name Resolution API — Reverse Lookup
+
+Resolve wallet addresses back to human-readable PayIDs.
+
+```typescript
+import { reverseResolvePayID, batchReverseResolve } from 'payid';
+
+// Single lookup
+const result = await reverseResolvePayID(
+  '0x1234567890123456789012345678901234567890',
+  { registryUrl: 'https://registry.pay.id/v1' }
+);
+console.log(result?.payId); // "alice.pay.id"
+
+// Batch lookup (for contact lists / tx history)
+const map = await batchReverseResolve([
+  '0x1234...',
+  '0xabcd...',
+]);
+```
+
+### 2. Offline-First IndexedDB Cache
+
+Rules, contacts, drafts, and history cached locally for offline use.
+
+```typescript
+import { contactCache, draftCache, ruleCache, getCacheStats } from 'payid';
+
+// Cache a contact
+await contactCache.set({
+  payId: 'alice.pay.id',
+  address: '0x1234...',
+  name: 'Alice',
+  addedAt: Date.now(),
+});
+
+// Create offline draft (syncs when online)
+await draftCache.set({
+  toPayId: 'bob.pay.id',
+  amount: '100',
+  asset: 'USDC',
+  status: 'draft',
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+});
+
+// Check cache stats
+const stats = await getCacheStats();
+console.log(`${stats.contacts} contacts, ${stats.drafts} drafts`);
+```
+
+### 3. SDK CLI Tool
+
+Deploy rules and verify proofs from the command line.
+
+```bash
+# Deploy a rule JSON to IPFS + register on-chain
+npx payid deploy-rule ./my-rule.json \
+  --authority 0xRuleAuthority \
+  --chain 31337 \
+  --key $PRIVATE_KEY \
+  --rpc http://127.0.0.1:8545 \
+  --output result.json
+
+# Verify a Decision Proof by txHash
+npx payid verify-proof 0xabc123... \
+  --verifier 0xPayIDVerifier \
+  --rpc http://127.0.0.1:8545 \
+  --signer 0xExpectedSigner
+```
+
+---
+
+## Frontend & Smart Contract Features (May 2026)
+
+### 1. Multi-Currency Display
+
+Toggle between USD / IDR / ETH in real-time on the Send Flow amount input.
+
+```tsx
+import { useMultiCurrency } from './hooks/useMultiCurrency'
+
+const { displayCurrency, convert, format, toggle } = useMultiCurrency()
+// ≈ Rp 525.000.000 shown below amount input
+```
+
+### 2. Transaction Simulation Preview
+
+Client-side simulation before signing: checks balance, fees, and rules.
+
+```tsx
+import TransactionSimulation from './components/v4/TransactionSimulation'
+
+<TransactionSimulation
+  amount="0.05"
+  asset="ETH"
+  currentBalance="1.25"
+  onComplete={(result) => console.log(result.decision)}
+/>
+```
+
+### 3. Policy Marketplace UI
+
+Browse and subscribe to rule templates: Freelancer Safe Pay, Parental Control, Business Hours, DAO Payroll, etc.
+
+Route: `/v4/app/marketplace`
+
+### 4. VRAN Reputation Badge
+
+Dashboard shows reputation score with color-coded badges:
+- Green (800+): Trusted
+- Yellow (500-799): Neutral
+- Red (<500): Low reputation
+- Blacklisted: Warning banner before sending
+
+### 5. Push Notifications
+
+Web Push API integration with Service Worker for payment alerts.
+
+```tsx
+const { subscribe, state, sendLocalNotification } = usePushNotifications()
+```
+
+### 6. Advanced Tools (Batch, Recurring, Escrow, Vesting)
+
+Interactive UI for all new smart contract extensions.
+
+Route: `/v4/app/tools`
+
+Tabs:
+- **Batch Pay** — Multi-recipient ETH/ERC20 payroll
+- **Recurring** — Subscription creation with max amount & period
+- **Escrow** — Milestone-based freelancer escrow
+- **Vesting** — Time-locked token vesting with cliff
+
+---
+
+## Smart Contract Extensions (May 2026)
+
+### 1. Batch Payment (`PayWithPayIDBatch.sol`)
+
+Execute multiple ETH or ERC20 payments in a single transaction.
+
+```solidity
+function batchPayETH(
+    PayIDVerifier.Decision[] calldata decisions,
+    bytes[] calldata sigs,
+    bytes32[][] calldata attestationUIDs
+) external payable
+```
+
+### 2. Recurring Payments (`RecurringPayments.sol`)
+
+Subscription billing with pre-approved max amounts per period.
+
+```solidity
+function createSubscription(
+    address receiver,
+    address asset,
+    uint256 maxAmount,
+    uint256 period
+) external returns (uint256 subId)
+
+function charge(uint256 subId, Decision, sig, attestationUIDs) external
+```
+
+### 3. Escrow with Milestones (`EscrowMilestone.sol`)
+
+Freelancer escrow with VRAN arbiter confirmation for each milestone.
+
+```solidity
+function createEscrow(
+    address freelancer,
+    address asset,
+    uint256[] calldata amounts,
+    string[] calldata descriptions,
+    uint256 deadline
+) external payable
+
+function releaseMilestone(uint256 escrowId, uint256 index) external onlyArbiter
+```
+
+### 4. Time-Locked Vesting (`TimeLockVesting.sol`)
+
+Token vesting with cliff and linear release. Integrates with rule engine `env.timestamp`.
+
+```solidity
+function createSchedule(
+    address beneficiary,
+    address asset,
+    uint256 totalAmount,
+    uint256 startTime,
+    uint256 cliff,
+    uint256 duration,
+    bool revocable,
+    address revoker
+) external payable
+
+function release(uint256 scheduleId) external
+```
+
+---
+
+## Off-Chain Keeper / Cron (May 2026)
+
+Schedules need an off-chain trigger because blockchains do not run cron natively.
+
+Script: `packages/contracts/scripts/keeper.ts`
+
+### What it does
+- **Recurring** — scans subscriptions; calls `charge()` when `nextChargeTime <= now`
+- **Vesting** — scans schedules; calls `release()` when `releasable > 0`
+- **Escrow** — scans escrows; calls `autoRefund()` when `deadline <= now`
+
+### Run locally
+```bash
+cd packages/contracts
+PRIVATE_KEY=0x... RPC_URL=http://127.0.0.1:8545 \
+  bun run keeper --chainId 31337
+```
+
+### Options
+- `--dry-run` — scan only, no transactions
+- `--once` — single pass, then exit
+- default — loops every 60 seconds
+
+### Production deployment
+For production, deploy this script as:
+- **Gelato Relay / Web3 Functions**
+- **Chainlink Automation (upkeep)**
+- **AWS Lambda + EventBridge (cron)**
+- **Self-hosted Bun service with systemd / PM2**

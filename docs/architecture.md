@@ -348,15 +348,63 @@ PAY.ID dapat diperluas ke:
 - DAO / multisig
 - Spending limits
 - Time-based policies
+- Batch, recurring, escrow, vesting
 
 Tanpa mengubah:
 
 - Smart contract
 - Rule engine binary
 
+### Off-Chain Automation
+
+Time-based contracts (recurring, vesting, escrow) require an off-chain keeper/cron to trigger on-chain state transitions:
+
+- `RecurringPayments.charge()` — triggered per schedule
+- `TimeLockVesting.release()` — triggered when vested > 0
+- `EscrowMilestone.autoRefund()` — triggered after deadline
+
+Provided: `packages/contracts/scripts/keeper.ts` (Bun/Viem loop).
+Production: Gelato Relay, Chainlink Automation, or self-hosted cron.
+
 ---
 
-## 13. Comparison
+## 13. Smart Contract Extensions
+
+PAY.ID core contracts handle single payment verification. Extensions provide advanced payment primitives:
+
+### 13.1 Batch Payment (`PayWithPayIDBatch`)
+
+Execute multiple ETH or ERC20 payments in a single transaction.
+- Payroll / airdrop scenarios
+- Gas savings vs individual calls
+- Each payment still requires valid Decision Proof
+
+### 13.2 Recurring Payments (`RecurringPayments`)
+
+Subscription billing with pre-approved max amounts per period.
+- Payer creates subscription: maxAmount + period
+- Receiver triggers `charge()` with valid Decision Proof
+- Auto-renewal until cancelled
+
+### 13.3 Escrow with Milestones (`EscrowMilestone`)
+
+Freelancer escrow with milestone-based release.
+- Client locks total funds
+- Freelancer submits delivery evidence (IPFS hash)
+- VRAN arbiter confirms and releases per milestone
+- Auto-refund if deadline passed
+
+### 13.4 Time-Locked Vesting (`TimeLockVesting`)
+
+Token vesting with cliff and linear release.
+- Cliff period before first release
+- Pro-rata releasable amount based on elapsed time
+- Optional revocation by revoker (employer/DAO)
+- Integrates with rule engine `env.timestamp` checks
+
+---
+
+## 14. Comparison
 
 | Feature             | PAY.ID | Wallet | Payment Gateway |
 | ------------------- | ------ | ------ | --------------- |

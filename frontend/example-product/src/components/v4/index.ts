@@ -9,4 +9,8 @@ export { default as LandingPageV4 } from './LandingPageV4';
 export { default as ProofVisualizer } from './ProofVisualizer';
 export { default as PolicyCard } from './PolicyCard';
 export type { PolicyCardData } from './PolicyCard';
+export { default as PolicyMarketplace } from './PolicyMarketplace';
+export { default as TransactionSimulation } from './TransactionSimulation';
+export { default as AdvancedTools } from './AdvancedTools';
+export { default as DAOPayroll } from './DAOPayroll';
 export { ThemeProvider, useV4Theme } from './theme';

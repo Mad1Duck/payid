@@ -14,7 +14,13 @@ export const addresses = {
     PayWithPayID: "0x52173b6ac069619c206b9A0e75609fC92860AB2A" as `0x${string}`,
     RuleAuthority: "0x40A633EeF249F21D95C8803b7144f19AAfeEF7ae" as `0x${string}`,
     RuleItemERC721: "0x532802f2F9E0e3EE9d5Ba70C35E1F43C0498772D" as `0x${string}`,
-    VindexRegistry: "0x0000000000000000000000000000000000000000" as `0x${string}`, // TODO: redeploy with VindexRegistry
+    VindexRegistry: "0x0000000000000000000000000000000000000000" as `0x${string}`, // TODO: run ignition deploy + sync
+    AgentPayID: "0x0000000000000000000000000000000000000000" as `0x${string}`, // TODO: run ignition deploy + sync
+    MockAgentRegistry: "0x0000000000000000000000000000000000000000" as `0x${string}`, // TODO: run ignition deploy + sync
+    RecurringPayments: "0x0000000000000000000000000000000000000000" as `0x${string}`, // TODO: deploy AdvancedToolsModule + sync
+    PayWithPayIDBatch: "0x0000000000000000000000000000000000000000" as `0x${string}`, // TODO: deploy AdvancedToolsModule + sync
+    EscrowMilestone: "0x0000000000000000000000000000000000000000" as `0x${string}`, // TODO: deploy AdvancedToolsModule + sync
+    TimeLockVesting: "0x0000000000000000000000000000000000000000" as `0x${string}`, // TODO: deploy AdvancedToolsModule + sync
   }
 } as const;
 

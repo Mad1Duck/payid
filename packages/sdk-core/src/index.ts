@@ -6,6 +6,38 @@ export type { PayIDClient, PayIDServer } from "./core/types";
 
 // ─── Resolver options ───────────────────────────────────────────────────────────
 export type { ResolverOptions } from "./resolver/types";
+export {
+  reverseResolvePayID,
+  batchReverseResolve,
+} from "./resolver/reverse";
+export type {
+  ReverseResolutionResult,
+  ReverseResolutionOptions,
+} from "./resolver/reverse";
+
+// ─── Offline-first cache (browser-only) ───────────────────────────────────────
+export {
+  ruleCache,
+  contactCache,
+  draftCache,
+  historyCache,
+  getCacheStats,
+  clearAllCache,
+} from "./cache/indexedDBCache";
+export type {
+  CachedRule,
+  CachedContact,
+  DraftPayment,
+  DraftStatus,
+  CachedTx,
+  CacheStats,
+} from "./cache/indexedDBCache";
+
+// ─── CLI tools ────────────────────────────────────────────────────────────────
+export { deployRule } from "./cli/deployRule";
+export type { DeployRuleOptions, DeployRuleResult } from "./cli/deployRule";
+export { verifyProof } from "./cli/verifyProof";
+export type { VerifyProofOptions, VerifyProofResult } from "./cli/verifyProof";
 
 // ─── Decision proof ───────────────────────────────────────────────────────────
 export type { DecisionProof, DecisionPayload } from "./decision-proof/types";

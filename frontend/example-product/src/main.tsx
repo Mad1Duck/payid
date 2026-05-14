@@ -46,6 +46,9 @@ import {
   RulesPage as V4RulesPage,
   SettingsPage as V4SettingsPage,
   ProofVisualizer as V4ProofVisualizer,
+  PolicyMarketplace as V4PolicyMarketplace,
+  AdvancedTools as V4AdvancedTools,
+  DAOPayroll as V4DAOPayroll,
   LandingPageV4,
   ThemeProvider as V4ThemeProvider,
 } from './components/v4'
@@ -322,6 +325,24 @@ const v4ProofRoute = createRoute({
   component: V4ProofVisualizer,
 })
 
+const v4MarketplaceRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'marketplace',
+  component: V4PolicyMarketplace,
+})
+
+const v4AdvancedToolsRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'tools',
+  component: V4AdvancedTools,
+})
+
+const v4DAOPayrollRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'payroll',
+  component: V4DAOPayroll,
+})
+
 const v4SettingsRoute = createRoute({
   getParentRoute: () => v4AppRoute,
   path: 'settings',
@@ -365,6 +386,9 @@ const routeTree = rootRoute.addChildren([
       v4HistoryRoute,
       v4RulesRoute,
       v4ProofRoute,
+      v4MarketplaceRoute,
+      v4AdvancedToolsRoute,
+      v4DAOPayrollRoute,
       v4SettingsRoute,
     ]),
   ]),

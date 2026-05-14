@@ -64,5 +64,9 @@ export {
   useVranConfig,
 } from './hooks/useReputation';
 
+// Hooks: Offline Cache
+export { useOfflineCache } from './hooks/useOfflineCache';
+export type { CacheStats, DraftPayment } from './hooks/useOfflineCache';
+
 // Contract addresses
 export { PAYID_CONTRACTS, getContracts } from './contracts/addresses';

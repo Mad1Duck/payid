@@ -14,11 +14,15 @@ import {
   Clock,
   Wallet,
   ChevronRight,
+  Database,
+  Save,
+  FileText,
+  History,
 } from 'lucide-react'
 import { useAccount, useBalance } from 'wagmi'
 import { formatUnits } from 'viem'
 import { useV4Palette } from './theme'
-import { useReputation } from 'payid-react'
+import { useReputation, useOfflineCache } from 'payid-react'
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + '...' + addr.slice(-4)
@@ -88,6 +92,7 @@ export default function Dashboard() {
   const displayBalance = useCountUp(balanceValue, 1500)
   const p = useV4Palette()
   const [copied, setCopied] = useState(false)
+  const { stats: cacheStats, isReady: cacheReady } = useOfflineCache()
   const [activeTab, setActiveTab] = useState<'all' | 'incoming' | 'outgoing'>('all')
   const { score, isBlacklisted, isTrusted, isLoading: repLoading } = useReputation({})
 
@@ -302,6 +307,42 @@ export default function Dashboard() {
           </div>
         </div>
       </motion.div>
+
+      {/* Offline Cache Stats */}
+      {cacheReady && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.14 }}
+          className="rounded-2xl p-5 relative"
+          style={{ background: p.cardBg }}
+        >
+          <div className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`} />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className={`text-sm font-semibold ${p.textMain}`}>Offline Cache</h3>
+                <p className={`text-xs ${p.textMuted} mt-0.5`}>IndexedDB local storage</p>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-1 rounded-full bg-[#0EA5E9]/10 text-[#0EA5E9]">Local</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { label: 'Rules', value: cacheStats.rules, icon: Database },
+                { label: 'Contacts', value: cacheStats.contacts, icon: Save },
+                { label: 'Drafts', value: cacheStats.drafts, icon: FileText },
+                { label: 'History', value: cacheStats.history, icon: History },
+              ].map((item) => (
+                <div key={item.label} className={`p-2.5 rounded-xl text-center ${p.dark ? 'bg-white/3' : 'bg-black/3'}`}>
+                  <item.icon className="w-3.5 h-3.5 mx-auto mb-1 text-[#64748B]" />
+                  <div className={`text-sm font-bold font-mono ${p.textMain}`}>{item.value}</div>
+                  <div className={`text-[10px] ${p.textMuted}`}>{item.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Activity Feed — PIVY Style with Tabs */}
       <motion.div
