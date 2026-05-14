@@ -28,9 +28,9 @@ import {
 } from 'payid-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { keccak256, stringToBytes } from 'viem'
-import { WalletButton } from '@/components/WalletButton'
+import { WalletButton } from '@/components/v2/WalletButton'
 import { cn } from '@/lib/utils'
-import { MobileLayout } from '@/components/Layouts/MobileLayout'
+import { MobileLayout } from '@/components/v2/Layouts/MobileLayout'
 
 function shortAddr(addr?: string): string {
   return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—'

@@ -13,9 +13,9 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAccount } from 'wagmi'
 import { Link } from '@tanstack/react-router'
-import { Button } from '@/components/ui/button'
-import { WalletButton } from '@/components/WalletButton'
-import { MobileLayout } from '@/components/Layouts/MobileLayout'
+import { Button } from '@/components/v2/ui/button'
+import { WalletButton } from '@/components/v2/WalletButton'
+import { MobileLayout } from '@/components/v2/Layouts/MobileLayout'
 
 // Mock proof data
 const proofData = {

@@ -13,12 +13,12 @@ import { keccak256, encodePacked } from 'viem'
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { CartridgeTray } from './components/CartridgeTray'
 import { GameConsole } from './components/GameConsole'
-import { WalletButton } from '@/components/WalletButton'
+import { WalletButton } from '@/components/v2/WalletButton'
 import type { CartridgeData } from './components/CartridgeTray'
 import type { SlotData } from './components/GameConsole'
 import { cn } from '@/lib/utils'
-import { MobileLayout } from '@/components/Layouts/MobileLayout'
-import { Switch } from '@/components/ui/switch'
+import { MobileLayout } from '@/components/v2/Layouts/MobileLayout'
+import { Switch } from '@/components/v2/ui/switch'
 
 // CombinedRuleStorage ABI (registerCombinedRule)
 const COMBINED_ABI = [

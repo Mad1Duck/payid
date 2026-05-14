@@ -8,12 +8,12 @@ import {
   useActiveCombinedRule,
   useSubscription,
 } from 'payid-react'
-import { MobileLayout } from '@/components/Layouts/MobileLayout'
-import { BalanceCard } from '@/components/BalanceCard'
-import { PaymentCard } from '@/components/PaymentCard'
-import { MiniRuleMonitor } from '@/components/MiniRuleMonitor'
-import { WalletButton } from '@/components/WalletButton'
-import { Button } from '@/components/ui/button'
+import { MobileLayout } from '@/components/v2/Layouts/MobileLayout'
+import { BalanceCard } from '@/components/v2/BalanceCard'
+import { PaymentCard } from '@/components/v2/PaymentCard'
+import { MiniRuleMonitor } from '@/components/v2/MiniRuleMonitor'
+import { WalletButton } from '@/components/v2/WalletButton'
+import { Button } from '@/components/v2/ui/button'
 import { motion } from 'framer-motion'
 
 // Mock data for payments (no on-chain history hook yet)

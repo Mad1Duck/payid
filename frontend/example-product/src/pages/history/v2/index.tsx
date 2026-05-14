@@ -4,9 +4,9 @@ import { format } from 'date-fns'
 import { motion } from 'framer-motion'
 import { useAccount } from 'wagmi'
 import { Link } from '@tanstack/react-router'
-import { PaymentCard } from '@/components/PaymentCard'
-import { WalletButton } from '@/components/WalletButton'
-import { MobileLayout } from '@/components/Layouts/MobileLayout'
+import { MobileLayout } from '@/components/v2/Layouts/MobileLayout'
+import { PaymentCard } from '@/components/v2/PaymentCard'
+import { WalletButton } from '@/components/v2/WalletButton'
 import { cn } from '@/lib/utils'
 
 // Mock history data grouped by date

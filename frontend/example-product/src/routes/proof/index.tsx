@@ -1,7 +1,7 @@
 import { createRoute } from '@tanstack/react-router'
 
 import type { RootRoute } from '@tanstack/react-router'
-import Page from '@/pages/proof'
+import Page from '@/pages/proof/v2'
 
 function Index() {
   return (

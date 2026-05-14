@@ -3,11 +3,11 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAccount } from 'wagmi'
 import { Link } from '@tanstack/react-router'
-import { Button } from '@/components/ui/button'
-import { QRCodeDisplay } from '@/components/QRCodeDisplay'
-import { WalletButton } from '@/components/WalletButton'
+import { Button } from '@/components/v2/ui/button'
+import { QRCodeDisplay } from '@/components/v2/QRCodeDisplay'
+import { WalletButton } from '@/components/v2/WalletButton'
 import { cn } from '@/lib/utils'
-import { MobileLayout } from '@/components/Layouts/MobileLayout'
+import { MobileLayout } from '@/components/v2/Layouts/MobileLayout'
 
 const tokenOptions = ['USDC', 'USDT', 'ETH', 'SOL']
 const expirationOptions = [
