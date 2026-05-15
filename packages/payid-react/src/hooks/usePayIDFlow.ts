@@ -106,6 +106,9 @@ export interface PayIDFlowParams {
   context?: Record<string, unknown>;
   attestationUIDs?: Hash[];
   ruleAuthorityAddress?: Address;
+  tokenDecimals?: number;
+  tokenPriceOracle?: Address;
+  minUsdValue?: bigint;
 }
 
 export interface PayIDFlowResult {
@@ -425,6 +428,48 @@ export function usePayIDFlow(): PayIDFlowResult {
         );
       }
 
+      // ── Auto-inject oracle.txValueUsd if tokenPriceOracle is provided ──
+      let oracleContext: Record<string, unknown> = {};
+      if (params.tokenPriceOracle && params.tokenDecimals !== undefined && publicClient) {
+        try {
+          const oracleData = await publicClient.readContract({
+            address: params.tokenPriceOracle,
+            abi: [
+              {
+                name: 'latestRoundData',
+                type: 'function',
+                stateMutability: 'view',
+                inputs: [],
+                outputs: [
+                  { name: 'roundId', type: 'uint80' },
+                  { name: 'answer', type: 'int256' },
+                  { name: 'startedAt', type: 'uint256' },
+                  { name: 'updatedAt', type: 'uint256' },
+                  { name: 'answeredInRound', type: 'uint80' },
+                ],
+              },
+            ] as const,
+            functionName: 'latestRoundData',
+          });
+          const priceInUsd = oracleData[1] as bigint;
+          if (priceInUsd > 0n) {
+            // computeTxValueUsd = (amount * price) / (10^(decimals + 8))
+            const denominator = 10n ** BigInt(params.tokenDecimals + 8);
+            const txValueUsd = (params.amount * priceInUsd) / denominator;
+            oracleContext = {
+              oracle: {
+                txValueUsd: txValueUsd.toString(),
+                txValueUsdFormatted: `$${(Number(txValueUsd) / 1e8).toFixed(2)}`,
+                tokenPrice: priceInUsd.toString(),
+              },
+            };
+            log('step-3', 'oracle.txValueUsd injected', { txValueUsd: txValueUsd.toString(), price: priceInUsd.toString() });
+          }
+        } catch (e) {
+          warn('step-3', 'oracle price fetch failed, skipping txValueUsd', e);
+        }
+      }
+
       const context = {
         tx: {
           sender: payer,
@@ -435,6 +480,7 @@ export function usePayIDFlow(): PayIDFlowResult {
         },
         env: { timestamp: chainTimestamp },
         state: { spentToday: '0', period: new Date().toISOString().slice(0, 10) },
+        ...oracleContext,
         ...params.context,
       };
 
@@ -544,6 +590,9 @@ export function usePayIDFlow(): PayIDFlowResult {
         warn('step-5', 'verifyDecision check failed', e);
       }
 
+      // Decide which payment function to use
+      const useOracleGuard = !isETH && params.tokenPriceOracle && params.minUsdValue !== undefined && params.tokenDecimals !== undefined;
+
       // Simulate before sending to MetaMask — catches reverts with decoded errors
       await publicClient!.simulateContract(
         isETH
@@ -555,13 +604,28 @@ export function usePayIDFlow(): PayIDFlowResult {
             value: params.amount,
             account: payer as `0x${string}`,
           }
-          : {
-            address: contracts.payWithPayID,
-            abi: PayWithPayIDABI,
-            functionName: 'payERC20',
-            args: [d, sig, params.attestationUIDs ?? []],
-            account: payer as `0x${string}`,
-          },
+          : useOracleGuard
+            ? {
+              address: contracts.payWithPayID,
+              abi: PayWithPayIDABI,
+              functionName: 'payERC20WithOracleGuard',
+              args: [
+                d,
+                sig,
+                params.attestationUIDs ?? [],
+                params.tokenPriceOracle,
+                params.minUsdValue,
+                params.tokenDecimals,
+              ],
+              account: payer as `0x${string}`,
+            }
+            : {
+              address: contracts.payWithPayID,
+              abi: PayWithPayIDABI,
+              functionName: 'payERC20',
+              args: [d, sig, params.attestationUIDs ?? []],
+              account: payer as `0x${string}`,
+            },
       );
 
       setStatus('awaiting-wallet');
@@ -575,12 +639,26 @@ export function usePayIDFlow(): PayIDFlowResult {
             args: [d, sig, params.attestationUIDs ?? []],
             value: params.amount,
           }
-          : {
-            address: contracts.payWithPayID,
-            abi: PayWithPayIDABI,
-            functionName: 'payERC20',
-            args: [d, sig, params.attestationUIDs ?? []],
-          },
+          : useOracleGuard
+            ? {
+              address: contracts.payWithPayID,
+              abi: PayWithPayIDABI,
+              functionName: 'payERC20WithOracleGuard',
+              args: [
+                d,
+                sig,
+                params.attestationUIDs ?? [],
+                params.tokenPriceOracle,
+                params.minUsdValue,
+                params.tokenDecimals,
+              ],
+            }
+            : {
+              address: contracts.payWithPayID,
+              abi: PayWithPayIDABI,
+              functionName: 'payERC20',
+              args: [d, sig, params.attestationUIDs ?? []],
+            },
       );
 
       log('step-5', 'tx submitted', hash);

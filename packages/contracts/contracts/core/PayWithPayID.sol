@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "./PayIDVerifier.sol";
 import "./AttestationVerifier.sol";
+import "../interfaces/IAggregatorV3.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -94,13 +95,11 @@ contract PayWithPayID {
         bytes                   calldata sig,
         bytes32[]               calldata attestationUIDs
     ) external payable onlyInitialized {
-        // Validate asset and amount before consuming the nonce in requireAllowed
         require(d.asset == address(0), "ASSET_NOT_NATIVE");
         require(msg.value == d.amount,  "AMOUNT_MISMATCH");
 
         if (d.requiresAttestation) {
             require(attestationUIDs.length > 0, "ATTESTATION_REQUIRED");
-            // Bind attestations to the signed decision
             require(keccak256(abi.encode(attestationUIDs)) == d.attestationUIDsHash, "INVALID_UID_HASH");
             attestationVerifier.verifyAttestationBatch(attestationUIDs, d.payer);
         }
@@ -122,12 +121,10 @@ contract PayWithPayID {
         bytes                   calldata sig,
         bytes32[]               calldata attestationUIDs
     ) external onlyInitialized {
-        // Validate asset type before consuming the nonce in requireAllowed
         require(d.asset != address(0), "ASSET_NOT_ERC20");
 
         if (d.requiresAttestation) {
             require(attestationUIDs.length > 0, "ATTESTATION_REQUIRED");
-            // Bind attestations to the signed decision
             require(keccak256(abi.encode(attestationUIDs)) == d.attestationUIDsHash, "INVALID_UID_HASH");
             attestationVerifier.verifyAttestationBatch(attestationUIDs, d.payer);
         }
@@ -140,7 +137,49 @@ contract PayWithPayID {
         emit PaymentERC20(d.payer, d.receiver, d.asset, d.amount, d.payId, d.nonce);
     }
 
-    /* ===================== VIEW ===================== */
+    /**
+     * @notice Pay with ERC20 + on-chain USD oracle guard (defense-in-depth).
+     *         If tokenPriceOracle != address(0) and minUsdValue > 0, the contract
+     *         queries Chainlink latestRoundData and reverts if the USD value of
+     *         d.amount is below minUsdValue.
+     *
+     * @param tokenPriceOracle Chainlink AggregatorV3 address for the token/USD feed.
+     *                         Pass address(0) to skip the oracle check.
+     * @param minUsdValue      Minimum USD value allowed (8 decimals, e.g. 45_00000000 = $45.00).
+     *                         Pass 0 to skip the oracle check.
+     * @param tokenDecimals    Token decimals (e.g. 6 for USDC, 18 for ETH).
+     */
+    function payERC20WithOracleGuard(
+        PayIDVerifier.Decision  calldata d,
+        bytes                   calldata sig,
+        bytes32[]               calldata attestationUIDs,
+        address                 tokenPriceOracle,
+        uint256                 minUsdValue,
+        uint8                   tokenDecimals
+    ) external onlyInitialized {
+        require(d.asset != address(0), "ASSET_NOT_ERC20");
+
+        if (tokenPriceOracle != address(0) && minUsdValue > 0) {
+            (, int256 price,,,) = IAggregatorV3(tokenPriceOracle).latestRoundData();
+            require(price > 0, "INVALID_ORACLE_PRICE");
+
+            uint256 usdValue = (d.amount * uint256(price)) / (10 ** (tokenDecimals + 8));
+            require(usdValue >= minUsdValue, "BELOW_USD_MINIMUM");
+        }
+
+        if (d.requiresAttestation) {
+            require(attestationUIDs.length > 0, "ATTESTATION_REQUIRED");
+            require(keccak256(abi.encode(attestationUIDs)) == d.attestationUIDsHash, "INVALID_UID_HASH");
+            attestationVerifier.verifyAttestationBatch(attestationUIDs, d.payer);
+        }
+
+        verifier.requireAllowed(d, sig);
+
+        bool ok = IERC20(d.asset).transferFrom(d.payer, d.receiver, d.amount);
+        require(ok, "TRANSFER_FAILED");
+
+        emit PaymentERC20(d.payer, d.receiver, d.asset, d.amount, d.payId, d.nonce);
+    }
 
     function isInitialized() external view returns (bool) {
         return _initialized;

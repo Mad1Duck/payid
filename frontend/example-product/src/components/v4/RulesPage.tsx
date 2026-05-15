@@ -194,15 +194,15 @@ async function pinJson(
 /* ── 0G Storage helpers (used when chainId === 16601) ── */
 const get0GIndexer = () =>
   (
-    (import.meta.env.VITE_0G_STORAGE_INDEXER as string | undefined) ??
+    (import.meta.env.VITE_ZGS_INDEXER_URL as string | undefined) ??
     'https://indexer-storage-testnet-turbo.0g.ai'
   ).replace(/\/$/, '')
 const get0GRpc = () =>
-  (import.meta.env.VITE_0G_STORAGE_RPC as string | undefined) ??
-  'http://100.73.196.95:8550'
+  (import.meta.env.VITE_ZGS_RPC_URL as string | undefined) ??
+  'https://evmrpc-testnet.0g.ai'
 const get0GGateway = () =>
   (
-    (import.meta.env.VITE_0G_STORAGE_GATEWAY as string | undefined) ??
+    (import.meta.env.VITE_ZGS_INDEXER_URL as string | undefined) ??
     'https://indexer-storage-testnet-turbo.0g.ai'
   ).replace(/\/$/, '')
 
@@ -679,10 +679,16 @@ export default function RulesPage() {
       let tokenUri: string
 
       if (is0G) {
-        /* ── 0G Storage path ── */
+        /* ── 0G Storage path (Optimized Parallel) ── */
         const imgBytes = dataUrlToUint8Array(imgToPin)
-        const { url: imgUrl } = await upload0G(imgBytes)
-        imageURL = imgUrl
+        
+        // Calculate image hash locally first (fast)
+        const { MemData } = await import('@0gfoundation/0g-storage-ts-sdk')
+        const imgMem = new MemData(imgBytes)
+        const [imgTree, imgTreeErr] = await imgMem.merkleTree()
+        if (imgTreeErr) throw new Error(`0G merkle error: ${imgTreeErr}`)
+        const imgRootHash = (imgTree as { rootHash: () => string }).rootHash()
+        imageURL = `${get0GGateway()}/file?root=${imgRootHash}`
 
         const metadata = {
           name: nftName || `PAY.ID Rule — ${ruleName}`,
@@ -700,9 +706,17 @@ export default function RulesPage() {
           ruleHash,
           standard: 'payid.rule.v1',
         }
+        
         const jsonBytes = new TextEncoder().encode(JSON.stringify(metadata))
-        const { rootHash, url: jsonUrl } = await upload0G(jsonBytes)
-        tokenUri = jsonUrl
+        
+        // Upload both in parallel
+        setDeployMsg('Uploading assets to 0G Storage in parallel...')
+        const [imgRes, jsonRes] = await Promise.all([
+          upload0G(imgBytes),
+          upload0G(jsonBytes)
+        ])
+        
+        tokenUri = jsonRes.url
       } else {
         /* ── Pinata / IPFS path ── */
         const { url: imgUrl } = await pinImage(imgToPin, `rule-${ruleName}.png`)

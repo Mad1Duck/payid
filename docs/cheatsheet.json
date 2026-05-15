@@ -131,17 +131,24 @@
     },
 
     "13_usd_spending_limit": {
-      "_comment": "USD-based spending limit regardless of token type (USDC, USDT, ETH)",
+      "_comment": "USD-based spending limit regardless of token type (USDC, USDT, ETH). SDK pre-computes oracle.txValueUsd from Chainlink price feed.",
       "id": "usd_limit_35",
-      "if": { "field": "tx.amountUsd", "op": "<=", "value": 35000000 },
-      "message": "Payment exceeds $35 USD limit (amount: {tx.amountUsd|div:1000000} USD)"
+      "if": { "field": "oracle.txValueUsd", "op": "<=", "value": 3500000000 },
+      "message": "Payment exceeds $35 USD limit (amount: {oracle.txValueUsd|div:100000000} USD)"
     },
 
     "14_usd_minimum_threshold": {
-      "_comment": "USD minimum threshold for any token",
+      "_comment": "USD minimum threshold for any token. SDK injects oracle.txValueUsd before evaluate().",
       "id": "usd_min_10",
-      "if": { "field": "tx.amountUsd", "op": ">=", "value": 10000000 },
-      "message": "Payment below $10 USD minimum (amount: {tx.amountUsd|div:1000000} USD)"
+      "if": { "field": "oracle.txValueUsd", "op": ">=", "value": 1000000000 },
+      "message": "Payment below $10 USD minimum (amount: {oracle.txValueUsd|div:100000000} USD)"
+    },
+
+    "14b_cross_token_min_45": {
+      "_comment": "Kirim token ERC20 apapun (USDC, USDT, WBTC, UNI) tapi minimal $45 USD-equivalent. SDK computeTxValueUsd(amount, decimals, price) → oracle.txValueUsd.",
+      "id": "cross_token_min_45",
+      "if": { "field": "oracle.txValueUsd", "op": ">=", "value": 4500000000 },
+      "message": "Min $45 required. You sent ${oracle.txValueUsd|div:100000000} USD-worth of {tx.asset} 💸"
     },
 
     "15_multi_token_daily_limit": {

@@ -47,14 +47,14 @@ import {
   CHAINLINK_ORACLE_ABI,
   CHAINLINK_ORACLE_ADDRESSES,
 } from '../../constants/oracles'
-import { GameConsole } from '../../pages/rule-console/v2/components/GameConsole'
-import { CartridgeTray } from '../../pages/rule-console/v2/components/CartridgeTray'
-import { RuleCartridge } from '../../pages/rule-console/v2/components/RuleCartridge'
+import { GameConsole } from './console/GameConsole'
+import { CartridgeTray } from './console/CartridgeTray'
+import { RuleCartridge } from './console/RuleCartridge'
 import { useV4Palette } from './theme'
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
-import type { SlotData } from '../../pages/rule-console/v2/components/GameConsole'
-import type { CartridgeData } from '../../pages/rule-console/v2/components/CartridgeTray'
-import type { CartridgeType } from '../../pages/rule-console/v2/components/RuleCartridge'
+import type { SlotData } from './console/GameConsole'
+import type { CartridgeData } from './console/CartridgeTray'
+import type { CartridgeType } from './console/RuleCartridge'
 import { useTokenPrice } from '@/hooks/useTokenPrice'
 
 // Utility to format price nicely
@@ -321,16 +321,19 @@ export default function RulesConsolePage() {
   const [showDemo, setShowDemo] = useState(false)
 
   /* ── NFT images + rule details ── */
-  const [nftImages, setNftImages] = useState<Record<string, string | undefined>>({})
+  const [nftImages, setNftImages] = useState<
+    Record<string, string | undefined>
+  >({})
   const [ruleDetails, setRuleDetails] = useState<
     Record<
       string,
-      {
-        if?: { field?: string; op?: string; value?: unknown }
-        conditions?: Array<{ field: string; op: string; value: unknown }>
-        logic?: string
-        message?: string
-      } | undefined
+      | {
+          if?: { field?: string; op?: string; value?: unknown }
+          conditions?: Array<{ field: string; op: string; value: unknown }>
+          logic?: string
+          message?: string
+        }
+      | undefined
     >
   >({})
   useEffect(() => {
@@ -338,12 +341,13 @@ export default function RulesConsolePage() {
       const imgs: Record<string, string> = {}
       const details: Record<
         string,
-        {
-          if?: { field?: string; op?: string; value?: unknown }
-          conditions?: Array<{ field: string; op: string; value: unknown }>
-          logic?: string
-          message?: string
-        } | undefined
+        | {
+            if?: { field?: string; op?: string; value?: unknown }
+            conditions?: Array<{ field: string; op: string; value: unknown }>
+            logic?: string
+            message?: string
+          }
+        | undefined
       > = {}
       for (const r of myRules) {
         if (!r.uri) continue
@@ -819,197 +823,195 @@ export default function RulesConsolePage() {
 
               {/* Token Price Info — Multi-Token Pricing */}
               <div
-                  className={`${card} p-4 w-full space-y-3`}
-                  style={{ backgroundColor: p.cardBg }}
-                >
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-[#00D084]" />
-                    <p
-                      className={`text-xs font-semibold uppercase tracking-wide ${p.textMuted}`}
-                    >
-                      Token Prices (USD)
-                    </p>
-                  </div>
+                className={`${card} p-4 w-full space-y-3`}
+                style={{ backgroundColor: p.cardBg }}
+              >
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-[#00D084]" />
+                  <p
+                    className={`text-xs font-semibold uppercase tracking-wide ${p.textMuted}`}
+                  >
+                    Token Prices (USD)
+                  </p>
+                </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div
-                      className="flex justify-between items-center p-2 rounded"
-                      style={{ background: p.bgElevated }}
-                    >
-                      <span className={p.textMuted}>USDC</span>
-                      <span className={p.textMain}>
-                        {usdcPriceHook.priceInUsd
-                          ? usdcPriceHook.formatUsd(usdcPriceHook.priceInUsd)
-                          : 'Loading...'}
-                      </span>
-                    </div>
-                    <div
-                      className="flex justify-between items-center p-2 rounded"
-                      style={{ background: p.bgElevated }}
-                    >
-                      <span className={p.textMuted}>USDT</span>
-                      <span className={p.textMain}>
-                        {usdtPriceHook.priceInUsd
-                          ? usdtPriceHook.formatUsd(usdtPriceHook.priceInUsd)
-                          : 'Loading...'}
-                      </span>
-                    </div>
-                    <div
-                      className="flex justify-between items-center p-2 rounded"
-                      style={{ background: p.bgElevated }}
-                    >
-                      <span className={p.textMuted}>DAI</span>
-                      <span className={p.textMain}>
-                        {daiPriceHook.priceInUsd
-                          ? daiPriceHook.formatUsd(daiPriceHook.priceInUsd)
-                          : 'Loading...'}
-                      </span>
-                    </div>
-                    <div
-                      className="flex justify-between items-center p-2 rounded"
-                      style={{ background: p.bgElevated }}
-                    >
-                      <span className={p.textMuted}>WBTC</span>
-                      <span className={p.textMain}>
-                        {wbtcPriceHook.priceInUsd
-                          ? wbtcPriceHook.formatUsd(wbtcPriceHook.priceInUsd)
-                          : 'Loading...'}
-                      </span>
-                    </div>
-                    <div
-                      className="flex justify-between items-center p-2 rounded"
-                      style={{ background: p.bgElevated }}
-                    >
-                      <span className={p.textMuted}>LINK</span>
-                      <span className={p.textMain}>
-                        {linkPriceHook.priceInUsd
-                          ? linkPriceHook.formatUsd(linkPriceHook.priceInUsd)
-                          : 'Loading...'}
-                      </span>
-                    </div>
-                    <div
-                      className="flex justify-between items-center p-2 rounded"
-                      style={{ background: p.bgElevated }}
-                    >
-                      <span className={p.textMuted}>UNI</span>
-                      <span className={p.textMain}>
-                        {uniPriceHook.priceInUsd
-                          ? uniPriceHook.formatUsd(uniPriceHook.priceInUsd)
-                          : 'Loading...'}
-                      </span>
-                    </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div
+                    className="flex justify-between items-center p-2 rounded"
+                    style={{ background: p.bgElevated }}
+                  >
+                    <span className={p.textMuted}>USDC</span>
+                    <span className={p.textMain}>
+                      {usdcPriceHook.priceInUsd
+                        ? usdcPriceHook.formatUsd(usdcPriceHook.priceInUsd)
+                        : 'Loading...'}
+                    </span>
+                  </div>
+                  <div
+                    className="flex justify-between items-center p-2 rounded"
+                    style={{ background: p.bgElevated }}
+                  >
+                    <span className={p.textMuted}>USDT</span>
+                    <span className={p.textMain}>
+                      {usdtPriceHook.priceInUsd
+                        ? usdtPriceHook.formatUsd(usdtPriceHook.priceInUsd)
+                        : 'Loading...'}
+                    </span>
+                  </div>
+                  <div
+                    className="flex justify-between items-center p-2 rounded"
+                    style={{ background: p.bgElevated }}
+                  >
+                    <span className={p.textMuted}>DAI</span>
+                    <span className={p.textMain}>
+                      {daiPriceHook.priceInUsd
+                        ? daiPriceHook.formatUsd(daiPriceHook.priceInUsd)
+                        : 'Loading...'}
+                    </span>
+                  </div>
+                  <div
+                    className="flex justify-between items-center p-2 rounded"
+                    style={{ background: p.bgElevated }}
+                  >
+                    <span className={p.textMuted}>WBTC</span>
+                    <span className={p.textMain}>
+                      {wbtcPriceHook.priceInUsd
+                        ? wbtcPriceHook.formatUsd(wbtcPriceHook.priceInUsd)
+                        : 'Loading...'}
+                    </span>
+                  </div>
+                  <div
+                    className="flex justify-between items-center p-2 rounded"
+                    style={{ background: p.bgElevated }}
+                  >
+                    <span className={p.textMuted}>LINK</span>
+                    <span className={p.textMain}>
+                      {linkPriceHook.priceInUsd
+                        ? linkPriceHook.formatUsd(linkPriceHook.priceInUsd)
+                        : 'Loading...'}
+                    </span>
+                  </div>
+                  <div
+                    className="flex justify-between items-center p-2 rounded"
+                    style={{ background: p.bgElevated }}
+                  >
+                    <span className={p.textMuted}>UNI</span>
+                    <span className={p.textMain}>
+                      {uniPriceHook.priceInUsd
+                        ? uniPriceHook.formatUsd(uniPriceHook.priceInUsd)
+                        : 'Loading...'}
+                    </span>
                   </div>
                 </div>
+              </div>
 
               {/* Additional Slots — Subscription Manager */}
               <div
-                  className={`${card} p-4 w-full space-y-3`}
-                  style={{ backgroundColor: p.cardBg }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Crown className="w-4 h-4 text-[#F59E0B]" />
-                    <p
-                      className={`text-xs font-semibold uppercase tracking-wide ${p.textMuted}`}
-                    >
-                      Additional Slots
-                    </p>
-                    <span
-                      className={`ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                        sub?.isActive
-                          ? 'bg-[#00D084]/10 text-[#00D084]'
-                          : 'bg-amber-500/10 text-amber-400'
+                className={`${card} p-4 w-full space-y-3`}
+                style={{ backgroundColor: p.cardBg }}
+              >
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-[#F59E0B]" />
+                  <p
+                    className={`text-xs font-semibold uppercase tracking-wide ${p.textMuted}`}
+                  >
+                    Additional Slots
+                  </p>
+                  <span
+                    className={`ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                      sub?.isActive
+                        ? 'bg-[#00D084]/10 text-[#00D084]'
+                        : 'bg-amber-500/10 text-amber-400'
+                    }`}
+                  >
+                    {sub?.isActive ? 'Pro' : 'Free'}
+                  </span>
+                </div>
+
+                {/* Slot usage */}
+                <div className="flex items-center gap-3">
+                  {[...Array(sub?.maxSlots ?? 1)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`flex-1 h-2 rounded-full transition-colors ${
+                        i < myRules.length ? 'bg-[#00D084]' : 'bg-[#00D084]/20'
                       }`}
-                    >
-                      {sub?.isActive ? 'Pro' : 'Free'}
-                    </span>
-                  </div>
-
-                  {/* Slot usage */}
-                  <div className="flex items-center gap-3">
-                    {[...Array(sub?.maxSlots ?? 1)].map((_, i) => (
-                      <div
-                        key={i}
-                        className={`flex-1 h-2 rounded-full transition-colors ${
-                          i < myRules.length
-                            ? 'bg-[#00D084]'
-                            : 'bg-[#00D084]/20'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className={`text-[11px] ${p.textMuted}`}>
-                      {myRules.length} of {sub?.maxSlots ?? 1} slot
-                      {sub?.maxSlots !== 1 ? 's' : ''} used
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className={`text-[11px] ${p.textMuted}`}>
+                    {myRules.length} of {sub?.maxSlots ?? 1} slot
+                    {sub?.maxSlots !== 1 ? 's' : ''} used
+                  </p>
+                  {!sub?.isActive && (
+                    <p className="text-[10px] text-amber-400">
+                      Free tier = 1 slot
                     </p>
-                    {!sub?.isActive && (
-                      <p className="text-[10px] text-amber-400">
-                        Free tier = 1 slot
-                      </p>
-                    )}
-                  </div>
+                  )}
+                </div>
 
-                  {/* Upgrade / Extend */}
-                  {!sub?.isActive ? (
+                {/* Upgrade / Extend */}
+                {!sub?.isActive ? (
+                  <button
+                    onClick={() => subscribe(price)}
+                    disabled={subPending || subConfirming}
+                    className="w-full py-2.5 rounded-xl bg-[#F59E0B] text-black text-xs font-semibold hover:bg-[#F59E0B]/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {subPending ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Confirm
+                        in wallet…
+                      </>
+                    ) : subConfirming ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />{' '}
+                        Waiting…
+                      </>
+                    ) : (
+                      <>
+                        <Crown className="w-3.5 h-3.5" /> Unlock 3 Slots —{' '}
+                        {formatPriceWithUSD(price, nativeSymbol, ethUsdPrice)} /
+                        30d
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <div
+                    className={`p-3 rounded-xl border ${p.cardBorder} space-y-1`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className={`text-[11px] ${p.textMuted}`}>
+                        Subscription active
+                      </p>
+                      <span className="text-[10px] text-[#00D084] font-medium">
+                        {sub.maxSlots} slots
+                      </span>
+                    </div>
+                    {sub.expiry ? (
+                      <p className={`text-[10px] ${p.textMuted}`}>
+                        Expires{' '}
+                        {new Date(
+                          Number(sub.expiry) * 1000,
+                        ).toLocaleDateString()}
+                      </p>
+                    ) : null}
                     <button
                       onClick={() => subscribe(price)}
                       disabled={subPending || subConfirming}
-                      className="w-full py-2.5 rounded-xl bg-[#F59E0B] text-black text-xs font-semibold hover:bg-[#F59E0B]/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full mt-1 py-2 rounded-lg border border-[#00D084]/30 text-[#00D084] text-[11px] font-semibold hover:bg-[#00D084]/5 disabled:opacity-50 flex items-center justify-center gap-1.5"
                     >
-                      {subPending ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />{' '}
-                          Confirm in wallet…
-                        </>
-                      ) : subConfirming ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />{' '}
-                          Waiting…
-                        </>
+                      {subPending || subConfirming ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
                       ) : (
                         <>
-                          <Crown className="w-3.5 h-3.5" /> Unlock 3 Slots —{' '}
-                          {formatPriceWithUSD(price, nativeSymbol, ethUsdPrice)}{' '}
-                          / 30d
+                          <Clock className="w-3 h-3" /> Renew Subscription
                         </>
                       )}
                     </button>
-                  ) : (
-                    <div
-                      className={`p-3 rounded-xl border ${p.cardBorder} space-y-1`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className={`text-[11px] ${p.textMuted}`}>
-                          Subscription active
-                        </p>
-                        <span className="text-[10px] text-[#00D084] font-medium">
-                          {sub.maxSlots} slots
-                        </span>
-                      </div>
-                      {sub.expiry ? (
-                        <p className={`text-[10px] ${p.textMuted}`}>
-                          Expires{' '}
-                          {new Date(
-                            Number(sub.expiry) * 1000,
-                          ).toLocaleDateString()}
-                        </p>
-                      ) : null}
-                      <button
-                        onClick={() => subscribe(price)}
-                        disabled={subPending || subConfirming}
-                        className="w-full mt-1 py-2 rounded-lg border border-[#00D084]/30 text-[#00D084] text-[11px] font-semibold hover:bg-[#00D084]/5 disabled:opacity-50 flex items-center justify-center gap-1.5"
-                      >
-                        {subPending || subConfirming ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <>
-                            <Clock className="w-3 h-3" /> Renew Subscription
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* RIGHT: Policy info + Register panel */}

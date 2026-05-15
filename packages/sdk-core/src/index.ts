@@ -56,6 +56,13 @@ export * from "./attestation/verify";
 export { FiatAdapter } from "./adapters/fiatAdapter";
 export type { QRISPayload, FiatEvaluationResult } from "./adapters/fiatAdapter";
 
+// ─── Oracle / Price helpers ───────────────────────────────────────────────────
+export {
+  computeTxValueUsd,
+  formatUsdValue,
+  CHAINLINK_AGGREGATOR_ABI,
+} from "./oracle/price";
+
 // ─── Modules (namespace-qualified to avoid collision) ─────────────────────────
 export * as sessionPolicy from "./sessionPolicy";
 export * as rule from "./rule";
