@@ -15,9 +15,9 @@ All notable changes to the PAY.ID ecosystem across packages, contracts, and fron
 
 ### ✨ New Features
 
-#### 1. V4 Dashboard Redesign (PIVY-Inspired)
+#### 1. V4 Dashboard Redesign (Inspired)
 
-The entire V4 app UI has been redesigned with a clean, card-based layout inspired by modern fintech apps (PIVY concept). Changes span across 5 components:
+The entire V4 app UI has been redesigned with a clean, card-based layout inspired by modern fintech apps (concept). Changes span across 5 components:
 
 - **Dashboard (`frontend/example-product/src/components/v4/Dashboard.tsx`)**
   - Stealth Balance Card — gradient green (`#00D084`) with prominent USD display, QR button
@@ -128,22 +128,26 @@ packages/sdk-core/src/index.ts
 ### Additional May 2026 Updates
 
 #### 5. FiatAdapter SDK Implementation
+
 - `packages/sdk-core/src/adapters/fiatAdapter.ts` — Reference implementation for QRIS/PSP integration
 - Exports: `FiatAdapter`, `QRISPayload`, `FiatEvaluationResult`
 - Methods: `evaluatePayment()`, `buildContext()`
 
 #### 6. VRAN Hook Context Integration
+
 - `useReputation({ target })` — now reads `vindexRegistry` from `PayIDContext` automatically
 - `useCanReport()` — checks if connected wallet can submit staked reports
 - `useVranConfig()` — reads `minStake` and `consensusThreshold`
 - All hooks exported from `payid-react`
 
 #### 7. V4 Dashboard Reputation Card
+
 - `frontend/example-product/src/components/v4/Dashboard.tsx`
 - Displays live reputation score with color-coded badge (Trusted / Neutral / Blacklisted)
 - Shows between Quick Actions and Activity Feed
 
 #### 8. Frontend Documentation
+
 - `docs/integration/bank-qris-bridge.md` — New doc page for Bank/QRIS Bridge
 - `docs/integration/vran-reputation.md` — New doc page for VRAN
 - `docs/changelog.md` — This changelog page
@@ -203,7 +207,7 @@ const { allowed, proof, reason } = await adapter.evaluatePayment(
     verifyingContract: '0x...',
     ruleAuthority: '0x...',
     chainId: 31337,
-  }
+  },
 );
 ```
 
@@ -219,17 +223,13 @@ Resolve wallet addresses back to human-readable PayIDs.
 import { reverseResolvePayID, batchReverseResolve } from 'payid';
 
 // Single lookup
-const result = await reverseResolvePayID(
-  '0x1234567890123456789012345678901234567890',
-  { registryUrl: 'https://registry.pay.id/v1' }
-);
+const result = await reverseResolvePayID('0x1234567890123456789012345678901234567890', {
+  registryUrl: 'https://registry.pay.id/v1',
+});
 console.log(result?.payId); // "alice.pay.id"
 
 // Batch lookup (for contact lists / tx history)
-const map = await batchReverseResolve([
-  '0x1234...',
-  '0xabcd...',
-]);
+const map = await batchReverseResolve(['0x1234...', '0xabcd...']);
 ```
 
 ### 2. Offline-First IndexedDB Cache
@@ -291,9 +291,9 @@ npx payid verify-proof 0xabc123... \
 Toggle between USD / IDR / ETH in real-time on the Send Flow amount input.
 
 ```tsx
-import { useMultiCurrency } from './hooks/useMultiCurrency'
+import { useMultiCurrency } from './hooks/useMultiCurrency';
 
-const { displayCurrency, convert, format, toggle } = useMultiCurrency()
+const { displayCurrency, convert, format, toggle } = useMultiCurrency();
 // ≈ Rp 525.000.000 shown below amount input
 ```
 
@@ -302,14 +302,14 @@ const { displayCurrency, convert, format, toggle } = useMultiCurrency()
 Client-side simulation before signing: checks balance, fees, and rules.
 
 ```tsx
-import TransactionSimulation from './components/v4/TransactionSimulation'
+import TransactionSimulation from './components/v4/TransactionSimulation';
 
 <TransactionSimulation
   amount="0.05"
   asset="ETH"
   currentBalance="1.25"
   onComplete={(result) => console.log(result.decision)}
-/>
+/>;
 ```
 
 ### 3. Policy Marketplace UI
@@ -321,6 +321,7 @@ Route: `/v4/app/marketplace`
 ### 4. VRAN Reputation Badge
 
 Dashboard shows reputation score with color-coded badges:
+
 - Green (800+): Trusted
 - Yellow (500-799): Neutral
 - Red (<500): Low reputation
@@ -331,7 +332,7 @@ Dashboard shows reputation score with color-coded badges:
 Web Push API integration with Service Worker for payment alerts.
 
 ```tsx
-const { subscribe, state, sendLocalNotification } = usePushNotifications()
+const { subscribe, state, sendLocalNotification } = usePushNotifications();
 ```
 
 ### 6. Advanced Tools (Batch, Recurring, Escrow, Vesting)
@@ -341,6 +342,7 @@ Interactive UI for all new smart contract extensions.
 Route: `/v4/app/tools`
 
 Tabs:
+
 - **Batch Pay** — Multi-recipient ETH/ERC20 payroll
 - **Recurring** — Subscription creation with max amount & period
 - **Escrow** — Milestone-based freelancer escrow
@@ -421,11 +423,13 @@ Schedules need an off-chain trigger because blockchains do not run cron natively
 Script: `packages/contracts/scripts/keeper.ts`
 
 ### What it does
+
 - **Recurring** — scans subscriptions; calls `charge()` when `nextChargeTime <= now`
 - **Vesting** — scans schedules; calls `release()` when `releasable > 0`
 - **Escrow** — scans escrows; calls `autoRefund()` when `deadline <= now`
 
 ### Run locally
+
 ```bash
 cd packages/contracts
 PRIVATE_KEY=0x... RPC_URL=http://127.0.0.1:8545 \
@@ -433,12 +437,15 @@ PRIVATE_KEY=0x... RPC_URL=http://127.0.0.1:8545 \
 ```
 
 ### Options
+
 - `--dry-run` — scan only, no transactions
 - `--once` — single pass, then exit
 - default — loops every 60 seconds
 
 ### Production deployment
+
 For production, deploy this script as:
+
 - **Gelato Relay / Web3 Functions**
 - **Chainlink Automation (upkeep)**
 - **AWS Lambda + EventBridge (cron)**

@@ -31,18 +31,26 @@ export default function LandingPageV4() {
   const p = useV4Palette()
 
   return (
-    <div className={`min-h-screen ${p.rootBg} ${p.rootText} relative overflow-hidden`}>
+    <div
+      className={`min-h-screen ${p.rootBg} ${p.rootText} relative overflow-hidden`}
+    >
       {/* Ambient background blobs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <motion.div
           className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full opacity-[0.07]"
-          style={{ background: 'radial-gradient(circle, #00D084 0%, transparent 70%)', filter: 'blur(100px)' }}
+          style={{
+            background: 'radial-gradient(circle, #00D084 0%, transparent 70%)',
+            filter: 'blur(100px)',
+          }}
           animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
           transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
           className="absolute -bottom-20 -left-20 w-[400px] h-[400px] rounded-full opacity-[0.05]"
-          style={{ background: 'radial-gradient(circle, #00D084 0%, transparent 70%)', filter: 'blur(80px)' }}
+          style={{
+            background: 'radial-gradient(circle, #00D084 0%, transparent 70%)',
+            filter: 'blur(80px)',
+          }}
           animate={{ x: [0, -20, 0], y: [0, 20, 0] }}
           transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
         />
@@ -91,24 +99,30 @@ export default function LandingPageV4() {
             {...fadeUp(0.08)}
             className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] mb-6"
           >
-            Pay Smart.{" "}
-            <span className="text-[#00D084]">Stay Safe.</span>
+            Pay Smart. <span className="text-[#00D084]">Stay Safe.</span>
           </motion.h1>
 
           <motion.p
             {...fadeUp(0.16)}
             className={`text-lg md:text-xl ${p.textMuted} max-w-2xl mx-auto mb-10 leading-relaxed`}
           >
-            Policy-powered payments on EVM. Set rules. Generate proofs. Pay with confidence — your wallet stays in control.
+            Policy-powered payments on EVM. Set rules. Generate proofs. Pay with
+            confidence — your wallet stays in control.
           </motion.p>
 
-          <motion.div {...fadeUp(0.24)} className="flex items-center justify-center gap-4">
+          <motion.div
+            {...fadeUp(0.24)}
+            className="flex items-center justify-center gap-4"
+          >
             <Link to="/v4/app/dashboard">
               <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 transition-colors shadow-lg shadow-[#00D084]/10 cursor-pointer">
                 Launch App <ArrowRight className="w-4 h-4" />
               </button>
             </Link>
-            <a href="#how-it-works" className={`flex items-center gap-2 px-6 py-3 rounded-xl border ${p.cardBorder} text-sm font-medium ${p.cardHover} transition-colors`}>
+            <a
+              href="#how-it-works"
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl border ${p.cardBorder} text-sm font-medium ${p.cardHover} transition-colors`}
+            >
               How it works <ChevronRight className="w-4 h-4" />
             </a>
           </motion.div>
@@ -124,20 +138,30 @@ export default function LandingPageV4() {
               { label: 'Proof Standard', value: 'EIP-712' },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
-                <div className="text-2xl font-bold font-mono text-[#00D084]">{stat.value}</div>
-                <div className={`text-[11px] ${p.textMuted} mt-1 uppercase tracking-wider`}>{stat.label}</div>
+                <div className="text-2xl font-bold font-mono text-[#00D084]">
+                  {stat.value}
+                </div>
+                <div
+                  className={`text-[11px] ${p.textMuted} mt-1 uppercase tracking-wider`}
+                >
+                  {stat.label}
+                </div>
               </div>
             ))}
           </motion.div>
         </div>
       </section>
 
-      {/* FEATURES — PIVY STYLE */}
       <section className="relative z-10 py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <motion.div {...fadeUp(0)} className="text-center mb-16">
-            <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${p.textMain}`}>Everything you need to pay with policy.</h2>
-            <p className={`${p.textMuted} max-w-xl mx-auto`}>Set your rules. We enforce them. Every payment gets evaluated off-chain, proven on-chain.</p>
+            <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${p.textMain}`}>
+              Everything you need to pay with policy.
+            </h2>
+            <p className={`${p.textMuted} max-w-xl mx-auto`}>
+              Set your rules. We enforce them. Every payment gets evaluated
+              off-chain, proven on-chain.
+            </p>
           </motion.div>
 
           <motion.div
@@ -190,18 +214,33 @@ export default function LandingPageV4() {
                 variants={fadeUp()}
                 {...cardHover}
                 className="rounded-2xl p-6 relative overflow-hidden group cursor-default"
-                style={{ background: p.dark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}
+                style={{
+                  background: p.dark
+                    ? 'rgba(255,255,255,0.02)'
+                    : 'rgba(0,0,0,0.02)',
+                }}
               >
-                <div className={`absolute inset-0 rounded-2xl border ${p.cardBorder} group-hover:${p.dark ? 'border-white/10' : 'border-black/10'} transition-colors`} />
+                <div
+                  className={`absolute inset-0 rounded-2xl border ${p.cardBorder} group-hover:${p.dark ? 'border-white/10' : 'border-black/10'} transition-colors`}
+                />
                 <div className="relative">
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
                     style={{ background: `${feat.color}15` }}
                   >
-                    <feat.icon className="w-5 h-5" style={{ color: feat.color }} />
+                    <feat.icon
+                      className="w-5 h-5"
+                      style={{ color: feat.color }}
+                    />
                   </div>
-                  <h3 className={`text-[15px] font-semibold mb-2 ${p.textMain}`}>{feat.title}</h3>
-                  <p className={`text-[13px] ${p.textMuted} leading-relaxed`}>{feat.desc}</p>
+                  <h3
+                    className={`text-[15px] font-semibold mb-2 ${p.textMain}`}
+                  >
+                    {feat.title}
+                  </h3>
+                  <p className={`text-[13px] ${p.textMuted} leading-relaxed`}>
+                    {feat.desc}
+                  </p>
                 </div>
               </motion.div>
             ))}
@@ -213,8 +252,13 @@ export default function LandingPageV4() {
       <section id="how-it-works" className="relative z-10 py-24 px-6">
         <div className="max-w-4xl mx-auto">
           <motion.div {...fadeUp(0)} className="text-center mb-16">
-            <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${p.textMain}`}>How it works</h2>
-            <p className={`${p.textMuted} max-w-xl mx-auto`}>Three steps. Off-chain evaluation. On-chain proof. Bulletproof payments.</p>
+            <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${p.textMain}`}>
+              How it works
+            </h2>
+            <p className={`${p.textMuted} max-w-xl mx-auto`}>
+              Three steps. Off-chain evaluation. On-chain proof. Bulletproof
+              payments.
+            </p>
           </motion.div>
 
           <div className="space-y-8">
@@ -228,7 +272,7 @@ export default function LandingPageV4() {
               {
                 step: '02',
                 title: 'Send a payment',
-                desc: 'Enter PayID or wallet address, amount, and asset. PAY.ID fetches the receiver\'s rules, evaluates them in WASM, and generates an EIP-712 Decision Proof.',
+                desc: "Enter PayID or wallet address, amount, and asset. PAY.ID fetches the receiver's rules, evaluates them in WASM, and generates an EIP-712 Decision Proof.",
                 icon: Zap,
               },
               {
@@ -249,17 +293,34 @@ export default function LandingPageV4() {
                   </div>
                   {i < 2 && <div className="w-px h-16 bg-[#00D084]/15 mt-2" />}
                 </div>
-                <div className={`flex-1 rounded-2xl p-6 relative overflow-hidden`} style={{ background: p.dark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
-                  <div className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`} />
+                <div
+                  className={`flex-1 rounded-2xl p-6 relative overflow-hidden`}
+                  style={{
+                    background: p.dark
+                      ? 'rgba(255,255,255,0.02)'
+                      : 'rgba(0,0,0,0.02)',
+                  }}
+                >
+                  <div
+                    className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`}
+                  />
                   <div className="relative">
                     <div className="flex items-center gap-3 mb-3 md:hidden">
                       <div className="w-8 h-8 rounded-full bg-[#00D084]/10 flex items-center justify-center text-[#00D084] text-xs font-bold font-mono">
                         {item.step}
                       </div>
-                      <h3 className={`text-lg font-semibold ${p.textMain}`}>{item.title}</h3>
+                      <h3 className={`text-lg font-semibold ${p.textMain}`}>
+                        {item.title}
+                      </h3>
                     </div>
-                    <h3 className={`hidden md:block text-lg font-semibold mb-2 ${p.textMain}`}>{item.title}</h3>
-                    <p className={`text-[13px] ${p.textMuted} leading-relaxed`}>{item.desc}</p>
+                    <h3
+                      className={`hidden md:block text-lg font-semibold mb-2 ${p.textMain}`}
+                    >
+                      {item.title}
+                    </h3>
+                    <p className={`text-[13px] ${p.textMuted} leading-relaxed`}>
+                      {item.desc}
+                    </p>
                   </div>
                 </div>
               </motion.div>
@@ -273,12 +334,23 @@ export default function LandingPageV4() {
         <motion.div
           {...fadeUp(0)}
           className="max-w-3xl mx-auto text-center rounded-3xl p-10 md:p-16 relative overflow-hidden"
-          style={{ background: p.dark ? 'linear-gradient(160deg, rgba(0,208,132,0.08) 0%, rgba(11,15,26,0.6) 50%, rgba(11,15,26,0.4) 100%)' : 'linear-gradient(160deg, rgba(0,208,132,0.12) 0%, rgba(241,245,249,0.9) 50%, rgba(241,245,249,0.8) 100%)' }}
+          style={{
+            background: p.dark
+              ? 'linear-gradient(160deg, rgba(0,208,132,0.08) 0%, rgba(11,15,26,0.6) 50%, rgba(11,15,26,0.4) 100%)'
+              : 'linear-gradient(160deg, rgba(0,208,132,0.12) 0%, rgba(241,245,249,0.9) 50%, rgba(241,245,249,0.8) 100%)',
+          }}
         >
-          <div className={`absolute inset-0 rounded-3xl border ${p.cardBorder}`} />
+          <div
+            className={`absolute inset-0 rounded-3xl border ${p.cardBorder}`}
+          />
           <div className="relative">
-            <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${p.textMain}`}>Ready to pay with policy?</h2>
-            <p className={`${p.textMuted} mb-8 max-w-md mx-auto`}>Launch the app and experience policy-driven payments. Set rules. Generate proofs. Pay smarter.</p>
+            <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${p.textMain}`}>
+              Ready to pay with policy?
+            </h2>
+            <p className={`${p.textMuted} mb-8 max-w-md mx-auto`}>
+              Launch the app and experience policy-driven payments. Set rules.
+              Generate proofs. Pay smarter.
+            </p>
             <Link to="/v4/app/dashboard">
               <button className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 transition-colors shadow-lg shadow-[#00D084]/10 cursor-pointer">
                 <Wallet className="w-4 h-4" /> Launch App
@@ -297,7 +369,9 @@ export default function LandingPageV4() {
             </div>
             <span className="text-sm font-semibold">PAY.ID</span>
           </div>
-          <p className={`text-[11px] ${p.textMuted}`}>Policy & Proof Layer for EVM Chains · Built for Hackathons</p>
+          <p className={`text-[11px] ${p.textMuted}`}>
+            Policy & Proof Layer for EVM Chains · Built for Hackathons
+          </p>
         </div>
       </footer>
     </div>

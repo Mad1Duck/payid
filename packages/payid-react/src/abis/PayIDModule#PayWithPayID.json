@@ -229,6 +229,11 @@
               "internalType": "bool",
               "name": "requiresAttestation",
               "type": "bool"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "attestationUIDsHash",
+              "type": "bytes32"
             }
           ],
           "internalType": "struct PayIDVerifier.Decision",
@@ -319,6 +324,11 @@
               "internalType": "bool",
               "name": "requiresAttestation",
               "type": "bool"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "attestationUIDsHash",
+              "type": "bytes32"
             }
           ],
           "internalType": "struct PayIDVerifier.Decision",

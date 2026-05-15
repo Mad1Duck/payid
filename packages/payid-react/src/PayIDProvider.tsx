@@ -5,12 +5,14 @@ import { PAYID_CONTRACTS } from './contracts/addresses';
 
 //  Constants
 export const DEFAULT_IPFS_GATEWAY = 'https://gateway.pinata.cloud/ipfs/';
+export const DEFAULT_ZG_GATEWAY = 'https://indexer-storage-testnet-turbo.0g.ai';
 
 //  Context
 export interface PayIDContextValue {
   contracts: PayIDContracts;
   chainId: number;
   ipfsGateway: string;
+  zgGateway: string;
 }
 
 const PayIDContext = createContext<PayIDContextValue | null>(null);
@@ -44,9 +46,17 @@ interface PayIDProviderProps {
    * <PayIDProvider> // → pakai https://gateway.pinata.cloud/ipfs/
    */
   ipfsGateway?: string;
+  /**
+   * 0G Storage gateway URL untuk fetch metadata rule yang disimpan di 0G.
+   * Digunakan otomatis ketika tokenURI rule adalah `0g://<rootHash>`.
+   *
+   * @example
+   * <PayIDProvider zgGateway="https://indexer-storage-testnet-turbo.0g.ai">
+   */
+  zgGateway?: string;
 }
 
-export function PayIDProvider({ children, contracts: overrides, ipfsGateway }: PayIDProviderProps) {
+export function PayIDProvider({ children, contracts: overrides, ipfsGateway, zgGateway }: PayIDProviderProps) {
   const chainId = useChainId();
 
   const defaults = PAYID_CONTRACTS[chainId];
@@ -66,9 +76,11 @@ export function PayIDProvider({ children, contracts: overrides, ipfsGateway }: P
 
   const resolvedGateway =
     ipfsGateway && ipfsGateway.trim().length > 0 ? ipfsGateway : DEFAULT_IPFS_GATEWAY;
+  const resolvedZgGateway =
+    zgGateway && zgGateway.trim().length > 0 ? zgGateway.replace(/\/$/, '') : DEFAULT_ZG_GATEWAY;
 
   return (
-    <PayIDContext.Provider value={{ contracts, chainId, ipfsGateway: resolvedGateway }}>
+    <PayIDContext.Provider value={{ contracts, chainId, ipfsGateway: resolvedGateway, zgGateway: resolvedZgGateway }}>
       {children}
     </PayIDContext.Provider>
   );

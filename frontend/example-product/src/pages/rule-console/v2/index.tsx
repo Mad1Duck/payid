@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, Wrench, Zap, Info, CheckCircle2 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import {
+  DndContext, DragOverlay, rectIntersection,
+  PointerSensor, TouchSensor, useSensor, useSensors,
+} from '@dnd-kit/core'
+import type { DragStartEvent, DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { useAccount } from 'wagmi'
 import {
   useMyRules,
@@ -16,6 +21,8 @@ import { GameConsole } from './components/GameConsole'
 import { WalletButton } from '@/components/v2/WalletButton'
 import type { CartridgeData } from './components/CartridgeTray'
 import type { SlotData } from './components/GameConsole'
+import { RuleCartridge } from './components/RuleCartridge'
+import type { CartridgeType } from './components/RuleCartridge'
 import { cn } from '@/lib/utils'
 import { MobileLayout } from '@/components/v2/Layouts/MobileLayout'
 import { Switch } from '@/components/v2/ui/switch'
@@ -79,6 +86,12 @@ export default function RuleConsole() {
 
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [highlightedSlot, setHighlightedSlot] = useState<string | null>(null)
+  const [activeCartridgeId, setActiveCartridgeId] = useState<string | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  )
   const consoleRef = useRef<HTMLDivElement>(null)
   const [direction, setDirection] = useState<'none' | 'inbound' | 'outbound'>('none')
   const [version, setVersion] = useState('1')
@@ -190,6 +203,58 @@ export default function RuleConsole() {
     }
   }
 
+  // ── dnd-kit handlers ──
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveCartridgeId(event.active.id as string)
+  }, [])
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const overId = event.over?.id
+    if (typeof overId === 'string' && overId.startsWith('slot_')) {
+      setHighlightedSlot(overId)
+    } else {
+      setHighlightedSlot(null)
+    }
+  }, [])
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveCartridgeId(null)
+    setHighlightedSlot(null)
+
+    if (!over) return
+
+    const cartridgeId = active.id as string
+    const overId = over.id as string
+
+    if (overId === 'tray') {
+      // Eject from slot back to tray
+      const srcSlot = slots.find((s) => s.cartridge?.id === cartridgeId)
+      if (srcSlot) handleCartridgeEject(srcSlot.id)
+      return
+    }
+
+    // Dropped onto a slot
+    const isFromSlot = slots.some((s) => s.cartridge?.id === cartridgeId)
+    if (isFromSlot) {
+      // Slot → slot: swap
+      const srcSlot = slots.find((s) => s.cartridge?.id === cartridgeId)!
+      if (srcSlot.id === overId) return
+      setSlots((prev) => prev.map((s) => {
+        const src = prev.find((x) => x.id === srcSlot.id)!
+        const tgt = prev.find((x) => x.id === overId)!
+        if (s.id === srcSlot.id) return { ...s, cartridge: tgt.cartridge }
+        if (s.id === overId)     return { ...s, cartridge: src.cartridge }
+        return s
+      }))
+      toast.success('Rules Swapped', { description: `Swapped ${srcSlot.label} ↔ ${overId.replace('slot_', 'SLOT ').toUpperCase()}` })
+    } else {
+      // Tray → slot
+      handleCartridgeDrop(cartridgeId, overId)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots])
+
   const nowStr = () => new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
   // ── Register Combined Rule on-chain ──
@@ -254,6 +319,12 @@ export default function RuleConsole() {
       toast.error('Registration Failed', { description: msg })
     }
   }, [registerSuccess, registerError, registerHash])
+
+  // Find the active cartridge data for DragOverlay
+  const activeCartridge = activeCartridgeId
+    ? (availableCartridges.find((c) => c.id === activeCartridgeId)
+      ?? slots.flatMap((s) => s.cartridge ? [s.cartridge] : []).find((c) => c.id === activeCartridgeId))
+    : null
 
   return (
     <MobileLayout hideNav>
@@ -326,7 +397,14 @@ export default function RuleConsole() {
         </motion.div>
       )}
 
-      {/* ── MAIN: Console + Tray ── */}
+      {/* ── MAIN: Console + Tray wrapped in DndContext ── */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={rectIntersection}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
       <motion.div
         ref={consoleRef}
         initial={{ opacity: 0, y: 20 }}
@@ -348,16 +426,14 @@ export default function RuleConsole() {
 
         {/* Hint */}
         <p className="text-[9px] font-mono text-slate-400/40 uppercase tracking-wider mt-1 mb-3">
-          drag cartridge up to insert · pull down to eject
+          drag to slot · drag to tray to eject · tap to quick-insert
         </p>
 
         {/* Cartridge Tray */}
         <CartridgeTray
           cartridges={trayCartridges}
           showAdvanced={showAdvanced}
-          onCartridgeDrop={handleCartridgeDrop}
           onCartridgeClick={handleCartridgeClick}
-          onHoverSlot={(slotId) => setHighlightedSlot(slotId)}
         />
 
         {/* ── Register panel ── */}
@@ -431,6 +507,23 @@ export default function RuleConsole() {
           <p className="text-center text-[10px] text-slate-400 mt-4">Connect wallet to register</p>
         )}
       </motion.div>
+
+      {/* DragOverlay — floating cartridge preview while dragging */}
+      <DragOverlay dropAnimation={null}>
+        {activeCartridge ? (
+          <div style={{ transform: 'scale(1.08)', filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.55))' }}>
+            <RuleCartridge
+              id={activeCartridge.id}
+              type={(activeCartridge as { type: CartridgeType }).type ?? 'minAmount'}
+              name={activeCartridge.name}
+              summary={activeCartridge.summary}
+              image={activeCartridge.image}
+              isActive
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
+      </DndContext>
     </MobileLayout>
   )
 }

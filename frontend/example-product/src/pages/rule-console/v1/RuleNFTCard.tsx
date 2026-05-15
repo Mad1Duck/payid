@@ -37,8 +37,18 @@ const toHttpUrl = (uri: string): string => {
   return uri
 }
 
-function useNFTImage(uri: string | undefined) {
+interface RuleDetail {
+  id?: string
+  _comment?: string
+  if?: { field: string; op: string; value: unknown }
+  logic?: string
+  conditions?: Array<{ field: string; op: string; value: unknown }>
+  message?: string
+}
+
+function useNFTMeta(uri: string | undefined) {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [ruleDetail, setRuleDetail] = useState<RuleDetail | null>(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -49,12 +59,32 @@ function useNFTImage(uri: string | undefined) {
       .then((meta) => {
         const img = meta?.image
         if (img) setImageUrl(toHttpUrl(img))
+        if (meta?.rule) {
+          const parsed = typeof meta.rule === 'string' ? JSON.parse(meta.rule) : meta.rule
+          setRuleDetail(parsed as RuleDetail)
+        }
       })
-      .catch(() => setImageUrl(null))
+      .catch(() => {
+        setImageUrl(null)
+        setRuleDetail(null)
+      })
       .finally(() => setLoading(false))
   }, [uri])
 
-  return { imageUrl, loading }
+  return { imageUrl, ruleDetail, loading }
+}
+
+function formatRuleDetail(r: RuleDetail | null): string {
+  if (!r) return ''
+  if (r.if) {
+    const { field, op, value } = r.if
+    return `${field} ${op} ${JSON.stringify(value)}`
+  }
+  if (r.conditions && r.conditions.length > 0) {
+    const join = r.logic || 'AND'
+    return r.conditions.map((c) => `${c.field} ${c.op} ${JSON.stringify(c.value)}`).join(` ${join} `)
+  }
+  return r.id || 'Rule'
 }
 
 export function RuleNFTCard({
@@ -68,7 +98,7 @@ export function RuleNFTCard({
   tx: TxState
   contracts: ReturnType<typeof usePayIDContext>['contracts']
 }) {
-  const { imageUrl, loading } = useNFTImage(rule.uri)
+  const { imageUrl, ruleDetail, loading } = useNFTMeta(rule.uri)
 
   return (
     <div
@@ -110,6 +140,13 @@ export function RuleNFTCard({
           RULE #{rule.ruleId.toString()} · v{rule.version} ·{' '}
           {shortHash(rule.ruleHash)}
         </div>
+        {ruleDetail && (
+          <div className="rule-detail" style={{ fontSize: 10, color: 'var(--neon)', fontFamily: 'var(--mono)', marginTop: 4, lineHeight: 1.5 }}>
+            {ruleDetail._comment && <div style={{ opacity: 0.7, marginBottom: 2 }}>{ruleDetail._comment}</div>}
+            <div>{formatRuleDetail(ruleDetail)}</div>
+            {ruleDetail.message && <div style={{ opacity: 0.6, marginTop: 2 }}>→ {ruleDetail.message}</div>}
+          </div>
+        )}
         <div className="rule-uri" title={rule.uri}>
           {rule.uri || '—'}
         </div>

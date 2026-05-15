@@ -36,7 +36,7 @@ export default defineConfig({
   },
 
   optimizeDeps: {
-    include: ['payid-react'],
+    include: ['payid-react', 'payid', 'payid > ethers'],
     exclude: ['payid-rule-engine'],
   },
 

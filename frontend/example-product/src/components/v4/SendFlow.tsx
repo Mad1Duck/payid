@@ -76,6 +76,7 @@ export default function SendFlow() {
 
   const {
     status: flowStatus,
+    isPending: flowIsPending,
     txHash: flowTxHash,
     denyReason: flowDenyReason,
     error: flowError,
@@ -121,10 +122,14 @@ export default function SendFlow() {
       setStep('review')
     }
     if (flowStatus === 'error') {
-      setDenyReason(String(flowError ?? 'Transaction failed'))
-      setStep('review')
+      const rawErr = String(flowError ?? 'Transaction failed')
+      // Show only the first line of long viem errors; the full text is available in console
+      const shortErr = rawErr.split('\n')[0].split('Contract Call:')[0].trim()
+      setDenyReason(shortErr || rawErr)
+      // Stay on signing step if error happened during/after wallet prompt, else go back to review
+      if (step !== 'signing') setStep('review')
     }
-    if (flowStatus === 'awaiting-wallet') setStep('signing')
+    if (flowStatus === 'awaiting-wallet' || flowStatus === 'confirming') setStep('signing')
   }, [flowStatus, flowTxHash])
 
   const reset = useCallback(() => {
@@ -325,9 +330,12 @@ export default function SendFlow() {
 
             <button
               onClick={handleRunPolicy}
-              className={`w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl ${p.dark ? 'bg-white/6 border border-white/8' : 'bg-black/4 border border-black/8'} ${p.textMain} text-sm font-medium ${p.cardHover} transition-colors cursor-pointer`}
+              disabled={flowIsPending}
+              className={`w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl ${p.dark ? 'bg-white/6 border border-white/8' : 'bg-black/4 border border-black/8'} ${p.textMain} text-sm font-medium ${p.cardHover} transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed`}
             >
-              <Shield className="w-4 h-4 text-[#00D084]" /> Run Policy Check
+              {flowIsPending
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Evaluating…</>
+                : <><Shield className="w-4 h-4 text-[#00D084]" /> Run Policy Check</>}
             </button>
           </motion.div>
         )}
@@ -407,23 +415,59 @@ export default function SendFlow() {
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                className="w-14 h-14 rounded-full bg-[#00D084]/10 flex items-center justify-center mx-auto mb-3"
+                className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 ${flowStatus === 'error' ? 'bg-red-500/10' : 'bg-[#00D084]/10'}`}
               >
-                <Loader2 className="w-7 h-7 text-[#00D084] animate-spin" />
+                {flowStatus === 'error'
+                  ? <X className="w-7 h-7 text-red-400" />
+                  : <Loader2 className="w-7 h-7 text-[#00D084] animate-spin" />}
               </motion.div>
-              <h2 className={`text-xl font-semibold ${p.textMain}`}>Awaiting Signature</h2>
-              <p className={`text-xs ${p.textMuted} mt-1`}>Check your wallet — sign the EIP-712 Decision Proof.</p>
+              <h2 className={`text-xl font-semibold ${flowStatus === 'error' ? 'text-red-400' : p.textMain}`}>
+                {flowStatus === 'error' ? 'Transaction Failed' : flowStatus === 'confirming' ? 'Confirming…' : 'Awaiting Signature'}
+              </h2>
+              <p className={`text-xs ${p.textMuted} mt-1`}>
+                {flowStatus === 'error' ? 'The transaction was rejected or reverted.' : flowStatus === 'confirming' ? 'Waiting for on-chain confirmation.' : 'Check your wallet — sign the EIP-712 Decision Proof.'}
+              </p>
             </div>
+
+            {flowStatus === 'error' && denyReason && (
+              <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/20 space-y-2">
+                <p className="text-[10px] font-mono uppercase tracking-wider text-red-400/60">Revert Reason</p>
+                <p className="text-xs text-red-400 wrap-break-word leading-relaxed">{denyReason}</p>
+                <button
+                  onClick={() => { navigator.clipboard?.writeText(String(flowError ?? denyReason)); }}
+                  className="text-[10px] text-red-400/50 hover:text-red-400 underline cursor-pointer transition-colors"
+                >
+                  Copy full error
+                </button>
+              </div>
+            )}
 
             <div className={`${cardBase} p-4`} style={cardBg}>
               <div className={cardBorder} />
               <div className="relative">
                 <div className={`text-[10px] ${p.textMuted} font-mono uppercase tracking-wider mb-1`}>Status</div>
                 <div className={`text-sm font-medium ${p.textMain}`}>
-                  {flowStatus === 'confirming' ? 'Transaction confirming on-chain...' : 'Please sign the EIP-712 typed data in your wallet extension.'}
+                  {flowStatus === 'error'
+                    ? 'Transaction failed. You can retry or go back to edit.'
+                    : flowStatus === 'confirming'
+                      ? 'Transaction submitted — waiting for block confirmation.'
+                      : 'Please sign the EIP-712 typed data in your wallet extension.'}
                 </div>
               </div>
             </div>
+
+            {flowStatus === 'error' && (
+              <div className="flex gap-3">
+                <button onClick={() => { reset(); setStep('review') }}
+                  className={`flex-1 py-3 rounded-xl text-sm font-semibold border ${p.cardBorder} ${p.textMuted}`}>
+                  ← Edit Payment
+                </button>
+                <button onClick={() => { resetFlow(); handleRunPolicy() }}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold text-white bg-[#00D084]">
+                  Retry
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
 

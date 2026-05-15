@@ -4,14 +4,19 @@ import {
   Outlet,
   RouterProvider,
   createRootRoute,
-  createRouter,
   createRoute,
+  createRouter,
   useNavigate,
 } from '@tanstack/react-router'
 import { WagmiProvider, createConfig, http, useAccount } from 'wagmi'
 import { hardhat } from 'wagmi/chains'
 import { injected, metaMask } from 'wagmi/connectors'
-import { PayIDProvider, useMyRules, useActiveCombinedRule, useSubscription } from 'payid-react'
+import {
+  PayIDProvider,
+  useActiveCombinedRule,
+  useMyRules,
+  useSubscription,
+} from 'payid-react'
 
 import HomeRoute from './routes/home/index.tsx'
 import RuleConsole from './routes/rule-console/index.tsx'
@@ -27,31 +32,32 @@ import * as TanStackQueryProvider from './integrations/tanstack-query/root-provi
 
 // V3 redesigned UI
 import {
-  AppLayout as NewAppLayout,
-  Dashboard,
-  SendFlow,
-  ReceivePage,
-  HistoryPage,
   ContactsPage,
-  SettingsPage,
+  Dashboard,
+  HistoryPage,
+  AppLayout as NewAppLayout,
   Onboarding,
+  ReceivePage,
+  SendFlow,
+  SettingsPage,
 } from './components/v3'
 
 // V4 hackathon futuristic UI
 import {
-  AppLayout as V4AppLayout,
-  Dashboard as V4Dashboard,
-  SendFlow as V4SendFlow,
-  ReceivePage as V4ReceivePage,
-  HistoryPage as V4HistoryPage,
-  RulesPage as V4RulesPage,
-  SettingsPage as V4SettingsPage,
-  ProofVisualizer as V4ProofVisualizer,
-  PolicyMarketplace as V4PolicyMarketplace,
-  AdvancedTools as V4AdvancedTools,
-  DAOPayroll as V4DAOPayroll,
-  AdminPage as V4AdminPage,
   LandingPageV4,
+  AdminPage as V4AdminPage,
+  AdvancedTools as V4AdvancedTools,
+  AppLayout as V4AppLayout,
+  DAOPayroll as V4DAOPayroll,
+  Dashboard as V4Dashboard,
+  HistoryPage as V4HistoryPage,
+  PolicyMarketplace as V4PolicyMarketplace,
+  ProofVisualizer as V4ProofVisualizer,
+  ReceivePage as V4ReceivePage,
+  RulesConsolePage as V4RulesConsolePage,
+  RulesPage as V4RulesPage,
+  SendFlow as V4SendFlow,
+  SettingsPage as V4SettingsPage,
   ThemeProvider as V4ThemeProvider,
 } from './components/v4'
 
@@ -61,13 +67,14 @@ import { QRPage } from './components/v2/QRPage'
 import { RuleBuilderPage } from './components/v2/RuleBuilderPage'
 import { VerifyPage } from './components/v2/VerifyPage'
 import { CartridgeComposer } from './components/v2/CartridgeComposer'
-import { SessionPolicyPanel, type SessionPolicy } from './components/v2/SessionPolicyPanel'
+import { SessionPolicyPanel } from './components/v2/SessionPolicyPanel'
 import { addresses } from './constants/contracts'
 import { Toaster } from './components/v2/ui/sonner'
 import './globals.css'
 import reportWebVitals from './reportWebVitals.ts'
 
-import { type Chain } from 'viem'
+import type { Chain } from 'viem'
+import type { SessionPolicy } from './components/v2/SessionPolicyPanel'
 
 export const zeroGTestnet = {
   id: 16600,
@@ -82,11 +89,21 @@ export const zeroGTestnet = {
   },
 } as const satisfies Chain
 
+export const devNode = {
+  id: 31337,
+  name: 'DevNode',
+  nativeCurrency: { decimals: 18, name: 'Ether', symbol: 'ETH' },
+  rpcUrls: {
+    default: { http: ['http://100.73.196.95:8545'] },
+    public: { http: ['http://100.73.196.95:8545'] },
+  },
+} as const satisfies Chain
+
 const wagmiConfig = createConfig({
-  chains: [hardhat, zeroGTestnet],
+  chains: [devNode, zeroGTestnet],
   connectors: [injected(), metaMask()],
   transports: {
-    [hardhat.id]: http('http://100.73.196.95:8545'),
+    [devNode.id]: http(),
     [zeroGTestnet.id]: http(),
   },
 })
@@ -192,7 +209,10 @@ const v3RulesConsoleRoute = createRoute({
 
     return (
       <div className="space-y-6">
-        <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+        <div
+          className="text-sm font-medium"
+          style={{ color: 'var(--text-primary)' }}
+        >
           Cartridge System
         </div>
         <CartridgeComposer availableCartridges={cartridges} />
@@ -207,12 +227,16 @@ const v3ProofRoute = createRoute({
   component: () => {
     return (
       <div className="card p-5">
-        <div className="text-sm font-medium mb-4" style={{ color: 'var(--text-primary)' }}>
+        <div
+          className="text-sm font-medium mb-4"
+          style={{ color: 'var(--text-primary)' }}
+        >
           Decision Proof Viewer
         </div>
         <div className="separator mb-4" />
         <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          Decision proofs are generated during payment flows. Use the payment flow to create and view proofs.
+          Decision proofs are generated during payment flows. Use the payment
+          flow to create and view proofs.
         </div>
       </div>
     )
@@ -245,7 +269,9 @@ const v3SubscriptionRoute = createRoute({
       maxVolume: sub?.isActive ? '$10,000' : '$1,000',
       currentTx: 0,
       currentVolume: '$0',
-      expiresAt: sub?.expiry ? Number(sub.expiry.toString()) * 1000 : Date.now(),
+      expiresAt: sub?.expiry
+        ? Number(sub.expiry.toString()) * 1000
+        : Date.now(),
       enabled: sub?.isActive ?? false,
     }
 
@@ -319,6 +345,12 @@ const v4HistoryRoute = createRoute({
 const v4RulesRoute = createRoute({
   getParentRoute: () => v4AppRoute,
   path: 'rules',
+  component: V4RulesConsolePage,
+})
+
+const v4RulesBuilderRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'rules/builder',
   component: V4RulesPage,
 })
 
@@ -397,6 +429,7 @@ const routeTree = rootRoute.addChildren([
       v4ReceiveRoute,
       v4HistoryRoute,
       v4RulesRoute,
+      v4RulesBuilderRoute,
       v4ProofRoute,
       v4MarketplaceRoute,
       v4AdvancedToolsRoute,
@@ -445,26 +478,22 @@ if (rootElement && !rootElement.innerHTML) {
       <WagmiProvider config={wagmiConfig}>
         <TanStackQueryProvider.Provider {...TanStackQueryProviderContext}>
           <PayIDProvider
-            contracts={{
-              [hardhat.id]: {
-                ruleAuthority:       addresses[31337].RuleAuthority,
-                ruleItemERC721:      addresses[31337].RuleItemERC721,
-                payIDVerifier:       addresses[31337].PayIDVerifier,
-                payWithPayID:        addresses[31337].PayWithPayID,
-                combinedRuleStorage: addresses[31337].CombinedRuleStorage ,
-                vindexRegistry:      addresses[31337].VindexRegistry ,
-                attestationVerifier: addresses[31337].AttestationVerifier ,
-              },
-              [zeroGTestnet.id]: {
-                ruleAuthority:       '0x0000000000000000000000000000000000000000',
-                ruleItemERC721:      '0x0000000000000000000000000000000000000000',
-                payIDVerifier:       '0x0000000000000000000000000000000000000000',
-                payWithPayID:        '0x0000000000000000000000000000000000000000',
-                combinedRuleStorage: '0x0000000000000000000000000000000000000000',
-                vindexRegistry:      '0x0000000000000000000000000000000000000000',
-                attestationVerifier: '0x0000000000000000000000000000000000000000',
-              },
-            }}
+            contracts={Object.keys(addresses).reduce((acc, cid) => {
+              const chainId = Number(cid)
+              const addr = (addresses as any)[chainId]
+              acc[chainId] = {
+                ruleAuthority: addr.RuleAuthority,
+                ruleItemERC721: addr.RuleItemERC721,
+                payIDVerifier: addr.PayIDVerifier,
+                payWithPayID: addr.PayWithPayID,
+                combinedRuleStorage: addr.CombinedRuleStorage,
+                vindexRegistry: addr.VindexRegistry,
+                attestationVerifier: addr.AttestationVerifier,
+              }
+              return acc
+            }, {} as any)}
+            ipfsGateway={(import.meta.env.VITE_PINATA_GATEWAY as string | undefined) ?? 'https://gateway.pinata.cloud/ipfs/'}
+            zgGateway={(import.meta.env.VITE_0G_STORAGE_GATEWAY as string | undefined) ?? 'https://indexer-storage-testnet-turbo.0g.ai'}
           >
             <RouterProvider router={router} />
             <Toaster position="bottom-right" richColors />

@@ -47,6 +47,37 @@ const ERC20_ABI = [
 
 const ETH_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
 
+const VERIFY_DECISION_ABI = [
+  {
+    name: 'verifyDecision',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      {
+        name: 'd', type: 'tuple',
+        components: [
+          { name: 'version', type: 'bytes32' },
+          { name: 'payId', type: 'bytes32' },
+          { name: 'payer', type: 'address' },
+          { name: 'receiver', type: 'address' },
+          { name: 'asset', type: 'address' },
+          { name: 'amount', type: 'uint256' },
+          { name: 'contextHash', type: 'bytes32' },
+          { name: 'ruleSetHash', type: 'bytes32' },
+          { name: 'ruleAuthority', type: 'address' },
+          { name: 'issuedAt', type: 'uint64' },
+          { name: 'expiresAt', type: 'uint64' },
+          { name: 'nonce', type: 'bytes32' },
+          { name: 'requiresAttestation', type: 'bool' },
+          { name: 'attestationUIDsHash', type: 'bytes32' },
+        ],
+      },
+      { name: 'sig', type: 'bytes' },
+    ],
+    outputs: [{ type: 'bool' }],
+  },
+] as const;
+
 const log = (step: string, label: string, value?: unknown) =>
   value !== undefined
     ? console.log(`[usePayIDFlow][${step}] ${label}`, value)
@@ -89,10 +120,13 @@ export interface PayIDFlowResult {
   reset: () => void;
 }
 
-function toHttpUrl(uri: string, gateway: string): string {
+function toHttpUrl(uri: string, ipfsGateway: string, zgGateway: string): string {
   if (uri.startsWith('ipfs://')) {
-    const base = gateway.endsWith('/') ? gateway : `${gateway}/`;
+    const base = ipfsGateway.endsWith('/') ? ipfsGateway : `${ipfsGateway}/`;
     return `${base}${uri.slice(7)}`;
+  }
+  if (uri.startsWith('0g://')) {
+    return `${zgGateway}/file?root=${uri.slice(5)}`;
   }
   return uri;
 }
@@ -101,6 +135,7 @@ async function loadRuleConfigs(
   ruleRefs: Array<{ ruleNFT: Address; tokenId: bigint; }>,
   publicClient: NonNullable<ReturnType<typeof usePublicClient>>,
   ipfsGateway: string,
+  zgGateway: string,
 ): Promise<unknown[]> {
   log('loadRuleConfigs', `loading ${ruleRefs.length} rule ref(s)`);
 
@@ -113,16 +148,17 @@ async function loadRuleConfigs(
         args: [tokenId],
       })) as string;
 
-      // Reject dangerous URI schemes — only http(s) and ipfs are allowed
+      // Reject dangerous URI schemes — only http(s), ipfs://, and 0g:// are allowed
       if (
         !tokenUri.startsWith('http://') &&
         !tokenUri.startsWith('https://') &&
-        !tokenUri.startsWith('ipfs://')
+        !tokenUri.startsWith('ipfs://') &&
+        !tokenUri.startsWith('0g://')
       ) {
         throw new Error(`INVALID_TOKEN_URI_SCHEME: ${tokenUri.slice(0, 40)}`);
       }
 
-      const url = toHttpUrl(tokenUri, ipfsGateway);
+      const url = toHttpUrl(tokenUri, ipfsGateway, zgGateway);
       log('loadRuleConfigs', `[${i}] fetch`, url);
 
       const controller = new AbortController();
@@ -150,11 +186,18 @@ async function loadRuleConfigs(
         throw new Error(`RULE_METADATA_INVALID_JSON: ${url}`);
       }
 
-      if (!metadata.rule || typeof metadata.rule !== 'object') {
+      let ruleVal = metadata.rule;
+      if (typeof ruleVal === 'string') {
+        try { ruleVal = JSON.parse(ruleVal); } catch { throw new Error(`RULE_METADATA_INVALID_RULE_JSON: ${url}`); }
+      }
+      if (!ruleVal || typeof ruleVal !== 'object') {
         throw new Error(`Missing 'rule' in metadata: ${url}`);
       }
-
-      return metadata.rule;
+      // Unwrap double-nested { rule: { if, ... } } written by older RulesPage v4
+      if ((ruleVal as any).rule && !(ruleVal as any).if && !(ruleVal as any).conditions) {
+        ruleVal = (ruleVal as any).rule;
+      }
+      return ruleVal;
     }),
   );
 }
@@ -162,7 +205,7 @@ async function loadRuleConfigs(
 export function usePayIDFlow(): PayIDFlowResult {
   const { address: payer } = useAccount();
   const chainId = useChainId();
-  const { contracts, ipfsGateway } = usePayIDContext();
+  const { contracts, ipfsGateway, zgGateway } = usePayIDContext();
   const publicClient = usePublicClient();
 
   /**
@@ -201,14 +244,37 @@ export function usePayIDFlow(): PayIDFlowResult {
   const [txHash, setTxHash] = useState<Hash | undefined>();
 
   const { writeContractAsync } = useWriteContract();
-  const { isSuccess: isTxConfirmed } = useWaitForTransactionReceipt({ hash: txHash });
+  const { isSuccess: isTxConfirmed, isError: isTxFailed, error: txReceiptError } = useWaitForTransactionReceipt({ hash: txHash });
 
   useEffect(() => {
     if (isTxConfirmed && status === 'confirming') {
       log('tx', 'confirmed on-chain', txHash);
       setStatus('success');
     }
-  }, [isTxConfirmed, status, txHash]);
+    if (isTxFailed && status === 'confirming') {
+      warn('tx', 'reverted', txReceiptError);
+      const raw = txReceiptError instanceof Error ? txReceiptError.message : 'Transaction reverted on-chain';
+      const low = raw.toLowerCase();
+      const causeData: string | undefined =
+        (txReceiptError as any)?.cause?.data ??
+        (txReceiptError as any)?.data ??
+        (txReceiptError as any)?.cause?.cause?.data;
+      let msg = raw;
+      if (causeData?.toLowerCase().startsWith('0xd7e6bcf8')) {
+        msg = 'Contracts not initialized — go to Admin page and call Initialize.';
+      } else if (low.includes('unknown reason') && causeData) {
+        msg = `Contract reverted: ${causeData.slice(0, 10)}`;
+      } else if (low.includes('unknown reason') || low.includes('notinitialized')) {
+        msg = 'Contracts not initialized — go to Admin page and call Initialize.';
+      } else if (low.includes('invalid_proof') || low.includes('payid: invalid')) {
+        msg = 'Invalid decision proof — proof may be expired or chain mismatch.';
+      } else if (low.includes('nonce_already_used')) {
+        msg = 'Nonce already used — reset and try again.';
+      }
+      setError(msg);
+      setStatus('error');
+    }
+  }, [isTxConfirmed, isTxFailed, txReceiptError, status, txHash]);
 
   const reset = useCallback(() => {
     setStatus('idle');
@@ -242,28 +308,50 @@ export function usePayIDFlow(): PayIDFlowResult {
       return;
     }
 
+    if (!contracts.payIDVerifier || contracts.payIDVerifier === '0x0000000000000000000000000000000000000000') {
+      setError(`PayID contracts not configured for chainId ${chainId}. Please check PayIDProvider config.`);
+      setStatus('error');
+      return;
+    }
+
     try {
       reset();
+
+      // Preflight: verify PayWithPayID is initialized — fail early with clear message
+      try {
+        const isInit = await publicClient!.readContract({
+          address: contracts.payWithPayID,
+          abi: PayWithPayIDABI,
+          functionName: 'isInitialized',
+        }) as boolean;
+        if (!isInit) {
+          throw new Error('Contracts not initialized — go to Admin page and call Initialize.');
+        }
+      } catch (e: unknown) {
+        if (e instanceof Error && e.message.includes('not initialized')) throw e;
+        warn('preflight', 'isInitialized check failed', e);
+      }
 
       setStatus('fetching-rule');
       log('step-1', 'fetching active rule for receiver', params.receiver);
 
       const ruleAuthorityAddr: Address =
-        params.ruleAuthorityAddress ?? contracts.combinedRuleStorage;
+        params.ruleAuthorityAddress ?? ETH_ADDRESS; // ZeroAddress = no specific authority
 
       let activeHash: Hash | null = null;
       let activeVersion: bigint = 1n;
       let ruleRefs: Array<{ ruleNFT: Address; tokenId: bigint; }> = [];
 
       try {
-        const result = await publicClient.readContract({
+        const result = (await publicClient.readContract({
           address: contracts.combinedRuleStorage,
           abi: CombinedRuleStorageABI,
           functionName: 'getActiveRuleOf',
           args: [params.receiver],
-        });
-        if (result) {
-          activeHash = result as Hash;
+        })) as Hash;
+
+        if (result && result !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
+          activeHash = result;
           log('step-1', 'activeHash', activeHash);
         }
       } catch (e) {
@@ -284,6 +372,7 @@ export function usePayIDFlow(): PayIDFlowResult {
           log('step-1', 'ruleRefs', ruleRefs.map(r => ({ ruleNFT: r.ruleNFT, tokenId: r.tokenId.toString() })));
         } catch (e) {
           warn('step-1', 'getRuleByHash failed', e);
+          activeHash = null;
         }
       }
 
@@ -292,7 +381,7 @@ export function usePayIDFlow(): PayIDFlowResult {
       let authorityRule: any;
 
       if (ruleRefs.length > 0) {
-        const ruleConfigs = await loadRuleConfigs(ruleRefs, publicClient, ipfsGateway);
+        const ruleConfigs = await loadRuleConfigs(ruleRefs, publicClient, ipfsGateway, zgGateway);
         authorityRule = {
           version: String(activeVersion),
           logic: 'AND' as const,
@@ -323,8 +412,17 @@ export function usePayIDFlow(): PayIDFlowResult {
       log('step-3', 'signer', await signer.getAddress());
       log('step-3', 'chainId', { wagmi: chainId, signer: signerChainId });
 
+      // Use chain's block.timestamp to stay in sync with Hardhat/testnet
+      // (Hardhat block.timestamp lags behind wall clock if no recent blocks)
+      const latestBlock = await publicClient!.getBlock({ blockTag: 'latest' });
+      const chainTimestamp = Number(latestBlock.timestamp);
+      log('step-3', 'chainTimestamp', chainTimestamp);
+
       if (signerChainId !== chainId) {
-        warn('step-3', `chainId MISMATCH: wallet=${signerChainId}, wagmi=${chainId}`);
+        throw new Error(
+          `CHAIN_MISMATCH: Wallet is on chainId ${signerChainId} but app expects ${chainId}. ` +
+          `Please switch your wallet network to match the app.`
+        );
       }
 
       const context = {
@@ -335,7 +433,7 @@ export function usePayIDFlow(): PayIDFlowResult {
           amount: params.amount.toString(),
           chainId: signerChainId,
         },
-        env: { timestamp: Math.floor(Date.now() / 1000) },
+        env: { timestamp: chainTimestamp },
         state: { spentToday: '0', period: new Date().toISOString().slice(0, 10) },
         ...params.context,
       };
@@ -359,7 +457,7 @@ export function usePayIDFlow(): PayIDFlowResult {
         ruleAuthority: activeHash ? ruleAuthorityAddr : ETH_ADDRESS,
         ruleSetHashOverride: activeHash ?? undefined,
         chainId: signerChainId,
-        blockTimestamp: Math.floor(Date.now() / 1000),
+        blockTimestamp: chainTimestamp,
       });
 
       log('step-4', 'result', { decision: result.decision, reason: (result as any).reason });
@@ -400,12 +498,73 @@ export function usePayIDFlow(): PayIDFlowResult {
         }
       }
 
-      setStatus('awaiting-wallet');
-
       const d = proof.payload;
       const sig = proof.signature as Hash;
 
       log('step-5', 'submitting', { isETH, asset: params.asset, amount: params.amount.toString() });
+
+      // Diagnostic: verify PayWithPayID.verifier matches the configured payIDVerifier address
+      try {
+        const storedVerifier = await publicClient!.readContract({
+          address: contracts.payWithPayID,
+          abi: PayWithPayIDABI,
+          functionName: 'verifier',
+        }) as string;
+        if (storedVerifier.toLowerCase() !== contracts.payIDVerifier.toLowerCase()) {
+          throw new Error(
+            `Contract misconfiguration: PayWithPayID.verifier=${storedVerifier} does not match ` +
+            `contracts.payIDVerifier=${contracts.payIDVerifier}. ` +
+            `Re-initialize PayWithPayID with the correct PayIDVerifier address.`
+          );
+        }
+        log('step-5', 'verifier address check', { storedVerifier, expected: contracts.payIDVerifier });
+      } catch (e: unknown) {
+        if (e instanceof Error && e.message.includes('misconfiguration')) throw e;
+        warn('step-5', 'verifier address check failed', e);
+      }
+
+      // Diagnostic: call verifyDecision to detect INVALID_PROOF early
+      try {
+        const isValid = await publicClient!.readContract({
+          address: contracts.payIDVerifier,
+          abi: VERIFY_DECISION_ABI,
+          functionName: 'verifyDecision',
+          args: [d, sig],
+        }) as boolean;
+        if (!isValid) {
+          throw new Error(
+            `INVALID_PROOF: verifyDecision returned false. ` +
+            `issuedAt=${d.issuedAt}, expiresAt=${d.expiresAt}, payer=${d.payer}. ` +
+            `Check chain timestamp, verifyingContract address, and chainId.`
+          );
+        }
+        log('step-5', 'verifyDecision', 'valid');
+      } catch (e: unknown) {
+        if (e instanceof Error && e.message.includes('INVALID_PROOF')) throw e;
+        warn('step-5', 'verifyDecision check failed', e);
+      }
+
+      // Simulate before sending to MetaMask — catches reverts with decoded errors
+      await publicClient!.simulateContract(
+        isETH
+          ? {
+            address: contracts.payWithPayID,
+            abi: PayWithPayIDABI,
+            functionName: 'payETH',
+            args: [d, sig, params.attestationUIDs ?? []],
+            value: params.amount,
+            account: payer as `0x${string}`,
+          }
+          : {
+            address: contracts.payWithPayID,
+            abi: PayWithPayIDABI,
+            functionName: 'payERC20',
+            args: [d, sig, params.attestationUIDs ?? []],
+            account: payer as `0x${string}`,
+          },
+      );
+
+      setStatus('awaiting-wallet');
 
       const hash = await writeContractAsync(
         isETH
@@ -429,16 +588,49 @@ export function usePayIDFlow(): PayIDFlowResult {
       setStatus('confirming');
 
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const raw = err instanceof Error ? err.message : String(err);
       warn('execute', 'error', err);
-      setError(
-        msg.toLowerCase().includes('user rejected')
-          ? 'Transaction rejected by user'
-          : msg,
-      );
+
+      // Decode 4-byte custom error selectors from viem's cause.data
+      // keccak256("NotInitialized()") = 0xd7e6bcf8
+      // keccak256("AlreadyInitialized()") = 0x0dc149f0
+      const causeData: string | undefined =
+        (err as any)?.cause?.data ??
+        (err as any)?.data ??
+        (err as any)?.cause?.cause?.data;
+
+      let msg = raw;
+      const low = raw.toLowerCase();
+
+      if (causeData?.startsWith('0xd7e6bcf8') || causeData?.startsWith('0xd7e6BCF8')) {
+        msg = 'Contracts not initialized — go to Admin page and call Initialize.';
+      } else if (low.includes('unknown reason') && causeData) {
+        // Unknown custom error — show selector to help debugging
+        msg = `Contract reverted with unknown error: ${causeData.slice(0, 10)}`;
+      } else if (low.includes('user rejected') || low.includes('user denied')) {
+        msg = 'Transaction rejected by user';
+      } else if (low.includes('notinitialized') || low.includes('not_initialized')) {
+        msg = 'Contracts not initialized — go to Admin page and call Initialize.';
+      } else if (low.includes('unknown reason')) {
+        msg = 'Contracts not initialized — go to Admin page and call Initialize.';
+      } else if (low.includes('invalid_proof') || low.includes('payid: invalid')) {
+        msg = 'Invalid decision proof — check wallet chain and contract setup.';
+      } else if (low.includes('nonce_already_used')) {
+        msg = 'Nonce already used — reset and try again.';
+      } else if (low.includes('rule_license_expired')) {
+        msg = 'Rule NFT license expired — extend or recreate the rule.';
+      } else if (low.includes('rule_authority_not_trusted')) {
+        msg = 'Rule authority not trusted — set it in Admin > Trusted Authorities.';
+      } else if (low.includes('chain_mismatch')) {
+        msg = raw;
+      } else if (low.includes('wasm') || low.includes('failed to fetch wasm')) {
+        msg = 'WASM engine failed to load. Check network/CORS or VITE_WASM_URL env.';
+      }
+
+      setError(msg);
       setStatus('error');
     }
-  }, [payer, chainId, contracts, ipfsGateway, publicClient, connectorClient, writeContractAsync, reset, getSdk]);
+  }, [payer, chainId, contracts, ipfsGateway, zgGateway, publicClient, connectorClient, writeContractAsync, reset, getSdk]);
 
   return {
     status,

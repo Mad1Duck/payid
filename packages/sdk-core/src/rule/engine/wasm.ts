@@ -47,7 +47,10 @@ export async function loadWasm(binary?: Buffer | Uint8Array): Promise<WebAssembl
   _loading = (async () => {
     let wasmBinary: Uint8Array;
 
-    if (typeof process !== 'undefined' && process.versions?.node) {
+    // Use `typeof window === 'undefined'` instead of `process.versions.node`
+    // because Vite's node polyfills inject a `process` global in the browser
+    // that makes the process-based check unreliable.
+    if (typeof window === 'undefined' && typeof process !== 'undefined' && process.versions?.node) {
       const { readFileSync } = await import(/* webpackIgnore: true */ 'fs');
       const { join, dirname } = await import(/* webpackIgnore: true */ 'path');
       const { fileURLToPath } = await import(/* webpackIgnore: true */ 'url');

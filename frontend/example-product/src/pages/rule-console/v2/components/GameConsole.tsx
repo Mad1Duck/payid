@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { useDroppable } from '@dnd-kit/core'
 import { DraggableCartridge } from './DraggableCartridge'
 import type { CartridgeType } from './RuleCartridge'
 
@@ -23,6 +24,91 @@ interface GameConsoleProps {
   txLog?: Array<{ time: string; msg: string; type: 'info' | 'ok' | 'err' }>
   onSlotClick?: (slotId: string) => void
   onCartridgeEject?: (slotId: string) => void
+}
+
+interface DroppableSlotZoneProps {
+  slot: SlotData
+  highlighted: boolean
+  showAdvanced: boolean
+  onSlotClick?: (slotId: string) => void
+  onCartridgeEject?: (slotId: string) => void
+}
+
+function DroppableSlotZone({ slot, highlighted, showAdvanced, onSlotClick, onCartridgeEject }: DroppableSlotZoneProps) {
+  const { isOver, setNodeRef } = useDroppable({ id: slot.id })
+  const active = isOver || highlighted
+
+  return (
+    <div
+      style={{ width: '56px', minHeight: 36, position: 'relative' }}
+      className="cursor-pointer"
+      onClick={() => !slot.cartridge && onSlotClick?.(slot.id)}
+    >
+      {/* Invisible tall hit area: extends 80px upward into the console slot opening */}
+      <div
+        ref={setNodeRef}
+        style={{
+          position: 'absolute',
+          top: '-80px',
+          left: 0,
+          right: 0,
+          height: '116px',
+          zIndex: 20,
+          pointerEvents: 'none',
+        }}
+      />
+      {/* Green glow ring when active drop target */}
+      {active && !slot.cartridge && (
+        <motion.div
+          className="absolute -inset-1 rounded pointer-events-none z-10"
+          animate={{ opacity: [0.4, 0.9, 0.4] }}
+          transition={{ duration: 0.65, repeat: Infinity }}
+          style={{ border: '1.5px solid rgba(61,255,61,0.5)', borderRadius: 4 }}
+        />
+      )}
+
+      <AnimatePresence>
+        {slot.cartridge ? (
+          <motion.div
+            key={slot.cartridge.id}
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: -58, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+            className="absolute top-0 left-0 right-0"
+            style={{ zIndex: 5 }}
+          >
+            <DraggableCartridge
+              id={slot.cartridge.id}
+              type={slot.cartridge.type}
+              name={slot.cartridge.name}
+              summary={slot.cartridge.summary}
+              image={slot.cartridge.image}
+              isActive
+              isInSlot
+              showAdvanced={showAdvanced}
+              ruleHash={slot.cartridge.ruleHash}
+              authorityAddress={slot.cartridge.authorityAddress}
+              onEject={() => onCartridgeEject?.(slot.id)}
+            />
+          </motion.div>
+        ) : (
+          <motion.div key="empty" className="h-9 flex items-center justify-center">
+            {active && (
+              <motion.span
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 0.7, repeat: Infinity }}
+                className="text-[7px] font-mono font-bold tracking-widest"
+                style={{ color: '#3dff3d', textShadow: '0 0 6px #3dff3d' }}
+              >
+                ↑ INSERT
+              </motion.span>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
 }
 
 export function GameConsole({
@@ -239,112 +325,67 @@ export function GameConsole({
           </div>
         </div>
 
-        {/* Slot openings at bottom of console */}
+        {/* Slot openings at bottom of console — highlight driven by overSlot prop */}
         <div
           className="flex justify-center gap-2.5 px-4 pt-2.5 pb-3 rounded-b-[20px]"
           style={{
             background: 'linear-gradient(180deg, #a8acb0 0%, #989c9e 100%)',
           }}
         >
-          {slots.map((slot) => (
-            <div key={slot.id} className="flex flex-col items-center" style={{ width: '56px' }}>
-              <span
-                className="text-[6px] font-mono mb-1 font-bold tracking-widest"
-                style={{ color: highlightedSlot === slot.id ? '#00cc00' : '#6a6e72' }}
-              >
-                {slot.label}
-              </span>
-              {/* Slot opening hole */}
-              <div
-                className="w-full h-7 rounded-t-sm relative overflow-hidden transition-all duration-200"
-                style={{
-                  background: highlightedSlot === slot.id ? '#0a1a0a' : '#060906',
-                  border: highlightedSlot === slot.id
-                    ? '1px solid rgba(93,255,93,0.35)'
-                    : '1px solid rgba(0,0,0,0.7)',
-                  borderBottom: 'none',
-                  boxShadow: highlightedSlot === slot.id
-                    ? 'inset 0 2px 8px rgba(0,0,0,0.8), inset 0 0 12px rgba(61,255,61,0.15)'
-                    : 'inset 0 2px 8px rgba(0,0,0,0.95)',
-                }}
-              >
-                {/* Gold connector pins */}
-                <div className="flex justify-center gap-px items-end h-full pb-px">
-                  {[...Array(9)].map((_, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: '4px',
-                        height: '16px',
-                        background: highlightedSlot === slot.id
-                          ? 'rgba(61,255,61,0.4)'
-                          : 'rgba(184,150,64,0.45)',
-                        borderRadius: '1px 1px 0 0',
-                      }}
-                    />
-                  ))}
+          {slots.map((slot) => {
+            const lit = highlightedSlot === slot.id
+            return (
+              <div key={slot.id} className="flex flex-col items-center" style={{ width: '56px' }}>
+                <span
+                  className="text-[6px] font-mono mb-1 font-bold tracking-widest transition-colors duration-150"
+                  style={{ color: lit ? '#00cc00' : '#6a6e72' }}
+                >
+                  {slot.label}
+                </span>
+                {/* Slot opening hole */}
+                <div
+                  className="w-full h-7 rounded-t-sm relative overflow-hidden transition-all duration-150"
+                  style={{
+                    background: lit ? '#0a1a0a' : '#060906',
+                    border: lit ? '1px solid rgba(93,255,93,0.35)' : '1px solid rgba(0,0,0,0.7)',
+                    borderBottom: 'none',
+                    boxShadow: lit
+                      ? 'inset 0 2px 8px rgba(0,0,0,0.8), inset 0 0 12px rgba(61,255,61,0.15)'
+                      : 'inset 0 2px 8px rgba(0,0,0,0.95)',
+                  }}
+                >
+                  <div className="flex justify-center gap-px items-end h-full pb-px">
+                    {[...Array(9)].map((_, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          width: '4px',
+                          height: '16px',
+                          background: lit ? 'rgba(61,255,61,0.4)' : 'rgba(184,150,64,0.45)',
+                          borderRadius: '1px 1px 0 0',
+                          transition: 'background 0.15s',
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
-      {/* ── CARTRIDGE DISPLAY ZONE (below console) ── */}
-      {/* data-slot-id lives here so drop detection works when dragging from tray */}
+      {/* ── CARTRIDGE DISPLAY ZONE — each slot is a dnd-kit droppable ── */}
       <div className="flex justify-center gap-2.5 px-4 relative z-0" style={{ width: '244px', marginTop: '-1px' }}>
         {slots.map((slot) => (
-          <div
+          <DroppableSlotZone
             key={slot.id}
-            data-slot-id={slot.id}
-            style={{ width: '56px', minHeight: 36 }}
-            className="relative cursor-pointer"
-            onClick={() => !slot.cartridge && onSlotClick?.(slot.id)}
-          >
-            <AnimatePresence>
-              {slot.cartridge ? (
-                <motion.div
-                  key={slot.cartridge.id}
-                  initial={{ y: 50, opacity: 0 }}
-                  animate={{ y: -58, opacity: 1 }}
-                  exit={{ y: 50, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-                  className="absolute top-0 left-0 right-0"
-                  style={{ zIndex: 5 }}
-                >
-                  <DraggableCartridge
-                    id={slot.cartridge.id}
-                    type={slot.cartridge.type}
-                    name={slot.cartridge.name}
-                    summary={slot.cartridge.summary}
-                    image={slot.cartridge.image}
-                    isActive
-                    isInSlot
-                    showAdvanced={showAdvanced}
-                    ruleHash={slot.cartridge.ruleHash}
-                    authorityAddress={slot.cartridge.authorityAddress}
-                    onEject={() => onCartridgeEject?.(slot.id)}
-                  />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="empty"
-                  className="h-9 flex items-center justify-center"
-                >
-                  {highlightedSlot === slot.id && (
-                    <motion.span
-                      animate={{ opacity: [0.3, 1, 0.3] }}
-                      transition={{ duration: 0.7, repeat: Infinity }}
-                      className="text-[7px] font-mono font-bold tracking-widest"
-                      style={{ color: '#3dff3d', textShadow: '0 0 6px #3dff3d' }}
-                    >
-                      ↑ INSERT
-                    </motion.span>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+            slot={slot}
+            highlighted={highlightedSlot === slot.id}
+            showAdvanced={showAdvanced}
+            onSlotClick={onSlotClick}
+            onCartridgeEject={onCartridgeEject}
+          />
         ))}
       </div>
     </div>
