@@ -16,8 +16,9 @@ import {
 import { useAccount } from 'wagmi'
 import { useV4Palette, useV4Theme } from './theme'
 import { usePushNotifications } from '../../hooks/usePushNotifications'
-import { useSubscription, useSubscribe } from 'payid-react'
+import { useSubscription, useSubscribe, useSubscriptionPrice } from 'payid-react'
 import { parseEther } from 'viem'
+import PremiumButton from './PremiumButton'
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + '...' + addr.slice(-4)
@@ -66,9 +67,11 @@ export default function SettingsPage() {
   /* ─── Subscription ─── */
   const { data: sub } = useSubscription(address)
   const { subscribe, isPending: subPending } = useSubscribe()
+  const { data: subPrice } = useSubscriptionPrice()
   const daysLeft = sub?.expiry
     ? Math.max(0, Math.floor((Number(sub.expiry) - Date.now() / 1000) / 86400))
     : 0
+  const price = subPrice ? (subPrice as bigint) : parseEther('0.001')
 
   const settings = [
     { icon: Globe, label: 'Currency', value: 'USD', color: '#0EA5E9' },
@@ -102,28 +105,36 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      {/* Profile Card */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="rounded-[24px] p-6 relative overflow-hidden"
+        className="rounded-3xl p-6 relative overflow-hidden"
         style={{
-          background:
-            'linear-gradient(135deg, #00D084 0%, #00B86E 50%, #009E5C 100%)',
+          background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 50%, #6D28D9 100%)',
         }}
       >
-        <div className="relative z-10 flex items-center gap-4">
-          <Avatar name={isConnected && address ? address : 'demo'} size={56} />
-          <div>
-            <div className="text-white text-lg font-semibold">
-              {isConnected && address ? shortAddr(address) : 'Not Connected'}
+        <div className="relative z-10">
+          <div className="flex items-center gap-4">
+            <Avatar name={isConnected && address ? address : 'demo'} size={56} />
+            <div className="flex-1">
+              <div className="text-white text-lg font-semibold">{payId}</div>
+              <div className="text-white/70 text-xs font-mono mt-0.5">
+                {isConnected && address ? shortAddr(address) : 'Not connected'}
+              </div>
             </div>
-            <div className="text-white/70 text-sm font-mono">{payId}</div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
+            >
+              <ChevronRight className="w-4 h-4 text-white" />
+            </motion.button>
           </div>
         </div>
-        {/* Decorative circles */}
         <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/5" />
-        <div className="absolute -bottom-8 -right-4 w-24 h-24 rounded-full bg-white/5" />
+        <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full bg-white/5" />
       </motion.div>
 
       {/* Subscription Card */}
@@ -132,16 +143,15 @@ export default function SettingsPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.05 }}
-          className="rounded-2xl p-5 relative overflow-hidden"
+          whileHover={{ scale: 1.01 }}
+          className="rounded-2xl p-5 relative backdrop-blur-20 overflow-hidden"
           style={{
             background: sub?.isActive
-              ? 'linear-gradient(135deg, rgba(0,208,132,0.08) 0%, rgba(0,184,110,0.04) 100%)'
-              : p.cardBg,
+              ? 'rgba(0,208,132,0.08)'
+              : p.glass.bg,
+            border: p.glass.border,
           }}
         >
-          <div
-            className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`}
-          />
           <div className="relative flex items-center gap-4">
             <div
               className={`w-12 h-12 rounded-2xl flex items-center justify-center ${sub?.isActive ? 'bg-[#00D084]/10' : 'bg-[#F59E0B]/10'}`}
@@ -159,21 +169,18 @@ export default function SettingsPage() {
               <div className={`text-xs ${p.textMuted}`}>
                 {sub?.isActive
                   ? `${daysLeft} days remaining · ${sub.logicalRuleCount} / ${sub.maxSlots} slots`
-                  : '1 rule slot · upgrade for 3 slots'}
+                  : `${sub?.logicalRuleCount ?? 0} / 1 slot · upgrade for 3 slots`}
               </div>
             </div>
             {!sub?.isActive ? (
-              <button
-                onClick={() => subscribe(parseEther('0.001'))}
+              <PremiumButton
+                onClick={() => subscribe(price)}
                 disabled={subPending}
-                className="px-4 py-2 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 disabled:opacity-50 shrink-0"
+                isLoading={subPending}
+                size="sm"
               >
-                {subPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  'Upgrade'
-                )}
-              </button>
+                Upgrade
+              </PremiumButton>
             ) : (
               <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#00D084]/10 text-[#00D084]">
                 Active
@@ -188,12 +195,9 @@ export default function SettingsPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.05 }}
-        className="rounded-2xl p-5 relative"
-        style={{ background: p.cardBg }}
+        className="rounded-2xl p-5 relative backdrop-blur-20"
+        style={{ background: p.glass.bg, border: p.glass.border }}
       >
-        <div
-          className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`}
-        />
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
@@ -214,14 +218,17 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={toggle}
-            className={`relative w-12 h-7 rounded-full transition-colors ${p.dark ? 'bg-[#00D084]/30' : 'bg-[#00D084]/20'}`}
+            className={`relative w-12 h-7 rounded-full transition-colors cursor-pointer ${p.dark ? 'bg-[#00D084]/30' : 'bg-[#00D084]/20'}`}
           >
-            <div
-              className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${p.dark ? 'left-1' : 'translate-x-5 left-1'}`}
+            <motion.div
+              animate={{ x: p.dark ? 0 : 20 }}
+              className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform`}
             />
-          </button>
+          </motion.button>
         </div>
       </motion.div>
 
@@ -230,34 +237,37 @@ export default function SettingsPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.1 }}
-        className="rounded-2xl p-2 relative"
-        style={{ background: p.cardBg }}
+        className="rounded-2xl p-2 relative backdrop-blur-20"
+        style={{ background: p.glass.bg, border: p.glass.border }}
       >
-        <div
-          className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`}
-        />
         <div className="relative space-y-1">
-          {settings.map((row) => (
-            <div
-              key={row.label}
-              onClick={(row as any).onClick}
-              className={`flex items-center gap-3 p-3 rounded-xl transition-colors cursor-pointer ${p.cardHover}`}
-            >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: `${row.color}15` }}
+          {settings.map((item, i) => {
+            const Icon = item.icon
+            return (
+              <motion.button
+                key={item.label}
+                onClick={item.onClick}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className={`flex items-center gap-3 p-3 rounded-xl w-full text-left transition-colors ${p.cardHover} cursor-pointer`}
               >
-                <row.icon className="w-5 h-5" style={{ color: row.color }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className={`text-sm font-medium ${p.textMain}`}>
-                  {row.label}
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: `${item.color}15` }}
+                >
+                  <Icon className="w-5 h-5" style={{ color: item.color }} />
                 </div>
-                <div className={`text-xs ${p.textMuted}`}>{row.value}</div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-[#475569]" />
-            </div>
-          ))}
+                <div className="flex-1">
+                  <div className={`text-sm font-medium ${p.textMain}`}>{item.label}</div>
+                </div>
+                <div className={`text-xs ${p.textMuted}`}>{item.value}</div>
+                <ChevronRight className={`w-4 h-4 ${p.textMuted}`} />
+              </motion.button>
+            )
+          })}
         </div>
       </motion.div>
 
@@ -266,25 +276,24 @@ export default function SettingsPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.15 }}
-        className="rounded-2xl p-5 relative"
-        style={{ background: 'rgba(239,68,68,0.04)' }}
+        className="rounded-2xl p-5 relative backdrop-blur-20"
+        style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}
       >
-        <div
-          className="absolute inset-0 rounded-2xl border pointer-events-none"
-          style={{ borderColor: 'rgba(239,68,68,0.12)' }}
-        />
-        <div className="relative flex items-center gap-3 cursor-pointer">
-          <div className="w-10 h-10 rounded-xl bg-[#EF4444]/10 flex items-center justify-center">
+        <div className="relative flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#EF4444]/10">
             <LogOut className="w-5 h-5 text-[#EF4444]" />
           </div>
           <div className="flex-1">
-            <div className="text-sm text-[#EF4444] font-medium">
-              Disconnect Wallet
-            </div>
-            <div className={`text-xs ${p.textMuted}`}>
-              Sign out from your current session
-            </div>
+            <div className={`text-sm font-medium ${p.textMain}`}>Disconnect Wallet</div>
+            <div className={`text-xs ${p.textMuted}`}>Sign out of your account</div>
           </div>
+          <PremiumButton
+            variant="ghost"
+            size="sm"
+            className="text-[#EF4444] hover:bg-[#EF4444]/10"
+          >
+            Disconnect
+          </PremiumButton>
         </div>
       </motion.div>
     </div>

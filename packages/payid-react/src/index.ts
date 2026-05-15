@@ -38,6 +38,7 @@ export {
   usePayNative as usePayETH, // @deprecated use usePayNative
   usePayERC20,
   useSubscribe,
+  useSubscriptionPrice,
   useCreateRule,
   useCreateRuleVersion,
   useActivateRule,

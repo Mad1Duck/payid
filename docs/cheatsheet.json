@@ -130,7 +130,32 @@
       ]
     },
 
-    "13_full_funny_config": {
+    "13_usd_spending_limit": {
+      "_comment": "USD-based spending limit regardless of token type (USDC, USDT, ETH)",
+      "id": "usd_limit_35",
+      "if": { "field": "tx.amountUsd", "op": "<=", "value": 35000000 },
+      "message": "Payment exceeds $35 USD limit (amount: {tx.amountUsd|div:1000000} USD)"
+    },
+
+    "14_usd_minimum_threshold": {
+      "_comment": "USD minimum threshold for any token",
+      "id": "usd_min_10",
+      "if": { "field": "tx.amountUsd", "op": ">=", "value": 10000000 },
+      "message": "Payment below $10 USD minimum (amount: {tx.amountUsd|div:1000000} USD)"
+    },
+
+    "15_multi_token_daily_limit": {
+      "_comment": "Daily USD limit across all tokens",
+      "id": "daily_usd_limit",
+      "logic": "AND",
+      "conditions": [
+        { "field": "tx.amountUsd", "op": "<=", "value": "$state.dailyUsdLimit" },
+        { "field": "state.dailyUsdLimit", "op": "exists" }
+      ],
+      "message": "Payment exceeds daily USD limit of {state.dailyUsdLimit|div:1000000} USD"
+    },
+
+    "16_full_funny_config": {
       "version": "4",
       "logic": "AND",
       "rules": [

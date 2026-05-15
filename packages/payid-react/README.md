@@ -35,6 +35,7 @@ Built on top of [wagmi](https://wagmi.sh) v3 + [viem](https://viem.sh) v2.
     - [`useRuleCount`](#userulecount)
     - [`useRuleExpiry`](#useruleexpiry)
     - [`useSubscription`](#usesubscription)
+    - [`useSubscriptionPrice`](#usesubscriptionprice)
     - [`useAllCombinedRules`](#useallcombinedrules)
     - [`useActiveCombinedRule`](#useactivecombinedrule)
     - [`useActiveCombinedRuleByDirection`](#useactivecombinedrulebydirection)
@@ -493,6 +494,42 @@ if (sub?.isActive) {
 - Free tier: 1 rule slot
 - With active subscription: up to `MAX_SLOT` (3) rule slots
 - Subscription renewed via `RuleItemERC721.subscribe()` — costs ~0.0001 ETH / 30 days
+
+---
+
+### `useSubscriptionPrice`
+
+Get the current subscription price from the contract (dynamic pricing via Chainlink oracle).
+
+```tsx
+import { useSubscriptionPrice } from 'payid-react';
+import { useSubscribe } from 'payid-react';
+
+const { data: subPrice } = useSubscriptionPrice();
+const { subscribe } = useSubscribe();
+
+// Use dynamic price instead of hardcoded value
+const price = subPrice ? (subPrice as bigint) : parseEther('0.001');
+subscribe(price);
+```
+
+**Returns:**
+
+```ts
+{
+  data: bigint | undefined; // Current subscription price in wei
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+}
+```
+
+**Pricing logic:**
+
+The contract uses Chainlink ETH/USD oracle to calculate price dynamically:
+- Formula: `(subscriptionUsdCents * 1e24) / (ethUsdPrice * 100)`
+- Falls back to `0.0001 ether` if oracle is stale or unavailable
+- Price is calculated on-chain, ensuring consistency across all clients
 
 ---
 

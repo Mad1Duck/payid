@@ -3,6 +3,7 @@ export interface RuleContext {
     sender?: string;
     asset: string;
     amount: string;
+    amountUsd?: string;
     chainId: number;
     receiver?: string;
   };
@@ -22,6 +23,7 @@ export interface TxContext {
   receiver: string;
   asset: string;
   amount: string;
+  amountUsd?: string; // USD equivalent (calculated from token price oracle)
   chainId: number;
   memo?: string;
 }

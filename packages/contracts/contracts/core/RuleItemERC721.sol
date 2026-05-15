@@ -127,7 +127,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     /**
      * @notice Ganti price oracle ETH/USD.
      * @dev Berguna untuk:
-     *      - Swap dari MockEthUsdOracle ke Chainlink feed asli di testnet/mainnet
+     *      - Swap dari Mock ke Chainlink feed asli di testnet/mainnet
      *      - Update ke feed address baru jika Chainlink deprecated feed lama
      *      - Emergency switch ke mock jika feed bermasalah
      *
@@ -304,9 +304,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     ) external whenNotPaused returns (uint256 ruleId) {
         require(ruleHash != bytes32(0), "INVALID_RULE_HASH");
 
-        uint8 limit = hasSubscription(msg.sender) ? MAX_SLOT : 1;
-        require(logicalRuleCount[msg.sender] < limit, "RULE_SLOT_FULL");
-
         ruleId = ++nextRuleId;
 
         rules[ruleId] = RuleDefinition({
@@ -320,7 +317,6 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         });
 
         rootRuleOf[ruleId] = ruleId;
-        logicalRuleCount[msg.sender]++;
 
         emit RuleCreated(ruleId, ruleId, 0, 1);
     }
@@ -382,23 +378,25 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
                 _pendingBurn[oldToken] = true;
                 _burn(oldToken);
                 delete tokenRule[oldToken];
+                logicalRuleCount[msg.sender]--;
             }
             rules[oldActive].tokenId    = 0;
             rules[oldActive].deprecated = true;
             emit RuleDeprecated(oldActive);
         }
 
-        // Require active subscription so ruleExpiry is always a future timestamp.
-        // Without this, ruleExpiry = subscriptionExpiry = 0 (or past), making the
-        // license immediately invalid in PayIDVerifier.requireAllowed().
-        require(hasSubscription(msg.sender), "SUBSCRIPTION_REQUIRED_FOR_ACTIVATION");
+        uint8 currentCount = logicalRuleCount[msg.sender];
+        uint8 limit = hasSubscription(msg.sender) ? MAX_SLOT : 1;
+        require(currentCount < limit, "SUBSCRIPTION_REQUIRED_FOR_ACTIVATION");
 
         tokenId = ++nextTokenId;
         r.tokenId            = tokenId;
         tokenRule[tokenId]   = ruleId;
         activeRuleOf[root]   = ruleId;
-        ruleExpiry[tokenId]  = subscriptionExpiry[msg.sender];
+        ruleExpiry[tokenId]  = hasSubscription(msg.sender) ? subscriptionExpiry[msg.sender] : block.timestamp + 365 days;
         ruleTokenId[ruleId]  = tokenId;
+
+        logicalRuleCount[msg.sender]++;
 
         _mint(msg.sender, tokenId);
         _setTokenURI(tokenId, r.uri);

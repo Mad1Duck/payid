@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, CheckCircle, Loader2, Calculator } from 'lucide-react'
+import { useChainId, useChains } from 'wagmi'
 import { useV4Palette } from './theme'
 
 interface SimulationResult {
@@ -24,6 +25,10 @@ export default function TransactionSimulation({
   onComplete: (result: SimulationResult) => void
 }) {
   const p = useV4Palette()
+  const chainId = useChainId()
+  const chains = useChains()
+  const currentChain = chains.find(c => c.id === chainId)
+  const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
   const [result, setResult] = useState<SimulationResult | null>(null)
   const [isSimulating, setIsSimulating] = useState(true)
 
@@ -124,11 +129,11 @@ export default function TransactionSimulation({
               </div>
               <div className="flex justify-between">
                 <span className={p.textMuted}>Network Fee</span>
-                <span className={`${p.textMain} font-mono`}>{result.fee} ETH</span>
+                <span className={`${p.textMain} font-mono`}>{result.fee} {nativeSymbol}</span>
               </div>
               <div className="flex justify-between">
                 <span className={p.textMuted}>Total</span>
-                <span className={`${p.textMain} font-mono font-semibold`}>{result.total} {asset === 'ETH' ? asset : 'ETH'}</span>
+                <span className={`${p.textMain} font-mono font-semibold`}>{result.total} {asset === nativeSymbol ? asset : nativeSymbol}</span>
               </div>
               <div className="flex justify-between">
                 <span className={p.textMuted}>New Balance</span>

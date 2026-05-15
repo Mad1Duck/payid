@@ -16,7 +16,7 @@ import {
   Wallet,
   Zap,
 } from 'lucide-react'
-import { useAccount } from 'wagmi'
+import { useAccount, useChainId, useChains, useReadContract } from 'wagmi'
 import {
   useActivateRule,
   useActiveCombinedRule,
@@ -25,10 +25,39 @@ import {
   usePayIDContext,
   useSubscribe,
   useSubscription,
+  useSubscriptionPrice,
 } from 'payid-react'
 import { keccak256, parseEther, stringToBytes } from 'viem'
+import { CHAINLINK_ORACLE_ADDRESSES, CHAINLINK_ORACLE_ABI } from '../../constants/oracles'
+
+// Utility to format price nicely
+const formatPrice = (priceWei: bigint): string => {
+  const price = Number(priceWei) / 1e18
+  if (price < 0.0001) return price.toFixed(8)
+  if (price < 0.01) return price.toFixed(6)
+  if (price < 1) return price.toFixed(4)
+  return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Utility to format price with USD equivalent
+// Query Chainlink oracle for real-time ETH/USD price
+const formatPriceWithUSD = (priceWei: bigint, nativeSymbol: string, ethUsdPrice?: bigint): string => {
+  const formattedPrice = formatPrice(priceWei)
+  const price = Number(priceWei) / 1e18
+  
+  // If oracle price is available, calculate USD equivalent
+  if (ethUsdPrice && ethUsdPrice > 0n) {
+    const ethPrice = Number(ethUsdPrice) / 1e8 // Chainlink uses 8 decimals
+    const usdPrice = (price * ethPrice).toFixed(2)
+    return `$${usdPrice} (${formattedPrice} ${nativeSymbol})`
+  }
+  
+  // Fallback if oracle price not available
+  return `${formattedPrice} ${nativeSymbol}`
+}
 import { toast } from 'sonner'
 import { useV4Palette } from './theme'
+import PremiumButton from './PremiumButton'
 
 /* ── Image Generator ── */
 function genImage(ruleId: string, ruleHash: string): string {
@@ -162,7 +191,7 @@ async function pinJson(
   return { cid, url: `${getPinataGW()}/ipfs/${cid}` }
 }
 
-/* ── 0G Storage helpers (used when chainId === 16600) ── */
+/* ── 0G Storage helpers (used when chainId === 16601) ── */
 const get0GIndexer = () =>
   (
     (import.meta.env.VITE_0G_STORAGE_INDEXER as string | undefined) ??
@@ -170,7 +199,7 @@ const get0GIndexer = () =>
   ).replace(/\/$/, '')
 const get0GRpc = () =>
   (import.meta.env.VITE_0G_STORAGE_RPC as string | undefined) ??
-  'https://16600.rpc.thirdweb.com'
+  'http://100.73.196.95:8550'
 const get0GGateway = () =>
   (
     (import.meta.env.VITE_0G_STORAGE_GATEWAY as string | undefined) ??
@@ -524,12 +553,23 @@ function plain(c: Cond): string {
 
 export default function RulesPage() {
   const { address, isConnected, chainId } = useAccount()
-  const is0G = chainId === 16600
+  const chains = useChains()
+  const currentChain = chains.find(c => c.id === chainId)
+  const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
+  const is0G = chainId === 16601
   const { data: myRules = [], refetch: refetchMyRules } = useMyRules()
   const { data: activeCombined } = useActiveCombinedRule(address)
   const { data: sub, refetch: refetchSub } = useSubscription(address)
   const { contracts } = usePayIDContext()
   const p = useV4Palette()
+
+  /* ── Query Chainlink Oracle for ETH/USD price ── */
+  const { data: oracleData } = useReadContract({
+    address: CHAINLINK_ORACLE_ADDRESSES[chainId ?? 31337] || CHAINLINK_ORACLE_ADDRESSES[31337],
+    abi: CHAINLINK_ORACLE_ABI,
+    functionName: 'latestRoundData',
+  })
+  const ethUsdPrice = oracleData?.[1] as bigint | undefined
 
   /* ── Builder state ── */
   const [conds, setConds] = useState<Array<Cond>>([makeBlank()])
@@ -575,6 +615,8 @@ export default function RulesPage() {
     isSuccess: subOk,
     isConfirming: subConfirming,
   } = useSubscribe()
+
+  const { data: subPrice } = useSubscriptionPrice()
 
   const activeCount = myRules.filter((r) => r.active).length
 
@@ -795,11 +837,11 @@ export default function RulesPage() {
               <span>
                 {sub?.isActive
                   ? `Pro · ${myRules.length}/${sub.maxSlots} slots`
-                  : 'Free tier'}
+                  : `Free · ${myRules.length}/1 slot`}
               </span>
               {!sub?.isActive && (
                 <button
-                  onClick={() => subscribe(parseEther('0.001'))}
+                  onClick={() => subscribe((subPrice as bigint | undefined) ?? parseEther('0.001'))}
                   disabled={subPending || subConfirming}
                   className="ml-1 px-2.5 py-0.5 rounded-lg bg-[#F59E0B] text-black font-semibold disabled:opacity-50 text-[11px]"
                 >
@@ -1695,35 +1737,27 @@ export default function RulesPage() {
                 )}
               </>
             )}
-            <button
+            <PremiumButton
               onClick={handleDeploy}
               disabled={
                 deployStage === 'uploading' ||
                 deployStage === 'creating' ||
                 !isConnected
               }
-              className="w-full py-3 rounded-xl bg-[#00D084] text-[#0B0F1A] font-semibold text-sm hover:bg-[#00D084]/90 disabled:opacity-50 flex items-center justify-center gap-2"
+              isLoading={deployStage === 'uploading' || deployStage === 'creating'}
+              icon={<Upload className="w-4 h-4" />}
+              className="w-full"
             >
-              {deployStage === 'uploading' ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Preparing rule…
-                </>
-              ) : deployStage === 'creating' ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Confirm in
-                  wallet…
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4" />{' '}
-                  {simpleMode
+              {deployStage === 'uploading'
+                ? 'Preparing rule…'
+                : deployStage === 'creating'
+                  ? 'Confirm in wallet…'
+                  : simpleMode
                     ? 'Deploy Rule'
                     : is0G
                       ? 'Upload to 0G & Deploy NFT'
                       : 'Upload to IPFS & Deploy NFT'}
-                </>
-              )}
-            </button>
+            </PremiumButton>
             {deployMsg && (
               <p
                 className={`text-xs text-center ${
@@ -1901,22 +1935,21 @@ export default function RulesPage() {
         </div>
 
         <div className="p-5 space-y-4">
-          {!sub?.isActive ? (
+          {(sub?.logicalRuleCount ?? 0) >= (sub?.maxSlots ?? 1) ? (
             <div className="rounded-xl p-4 border border-amber-500/30 bg-amber-500/8 space-y-3">
               <div className="flex items-start gap-2.5">
                 <Crown className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-xs font-semibold text-amber-400">
-                    Subscription required
+                    Slot limit reached
                   </p>
                   <p className="text-[11px] text-amber-400/70 mt-0.5">
-                    The contract requires an active subscription to mint rule
-                    NFT licenses.
+                    You've used all your rule slots. Subscribe to unlock up to 3 slots.
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => subscribe(parseEther('0.001'))}
+                onClick={() => subscribe((subPrice as bigint | undefined) ?? parseEther('0.001'))}
                 disabled={subPending || subConfirming}
                 className="w-full py-2.5 rounded-xl bg-amber-500 text-black text-sm font-semibold hover:bg-amber-400 disabled:opacity-50 flex items-center justify-center gap-2"
               >
@@ -1932,7 +1965,7 @@ export default function RulesPage() {
                   </>
                 ) : (
                   <>
-                    <Crown className="w-4 h-4" /> Subscribe — ~0.001 ETH / 30
+                    <Crown className="w-4 h-4" /> Subscribe — {formatPriceWithUSD((subPrice as bigint | undefined) ?? parseEther('0.001'), nativeSymbol, ethUsdPrice)} / 30
                     days
                   </>
                 )}

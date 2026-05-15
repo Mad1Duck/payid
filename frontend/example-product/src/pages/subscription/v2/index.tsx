@@ -1,9 +1,36 @@
 import { ArrowLeft, Check, Clock, Shield, Zap } from 'lucide-react'
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useAccount, useReadContract } from 'wagmi'
+import { useAccount, useReadContract, useChainId, useChains } from 'wagmi'
 import { useSubscription, usePayIDContext, useSubscribe } from 'payid-react'
 import { parseEther } from 'viem'
+import { CHAINLINK_ORACLE_ADDRESSES, CHAINLINK_ORACLE_ABI } from '@/constants/oracles'
+
+// Utility to format price nicely
+const formatPrice = (priceWei: bigint): string => {
+  const price = Number(priceWei) / 1e18
+  if (price < 0.0001) return price.toFixed(8)
+  if (price < 0.01) return price.toFixed(6)
+  if (price < 1) return price.toFixed(4)
+  return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Utility to format price with USD equivalent
+// Query Chainlink oracle for real-time ETH/USD price
+const formatPriceWithUSD = (priceWei: bigint, nativeSymbol: string, ethUsdPrice?: bigint): string => {
+  const formattedPrice = formatPrice(priceWei)
+  const price = Number(priceWei) / 1e18
+  
+  // If oracle price is available, calculate USD equivalent
+  if (ethUsdPrice && ethUsdPrice > 0n) {
+    const ethPrice = Number(ethUsdPrice) / 1e8 // Chainlink uses 8 decimals
+    const usdPrice = (price * ethPrice).toFixed(2)
+    return `$${usdPrice} (${formattedPrice} ${nativeSymbol})`
+  }
+  
+  // Fallback if oracle price not available
+  return `${formattedPrice} ${nativeSymbol}`
+}
 import { MobileLayout } from '@/components/v2/Layouts/MobileLayout'
 import { WalletButton } from '@/components/v2/WalletButton'
 import { Link } from '@tanstack/react-router'
@@ -21,6 +48,10 @@ const PRICE_ABI = [
 
 export default function SubscriptionPage() {
   const { address, isConnected } = useAccount()
+  const chainId = useChainId()
+  const chains = useChains()
+  const currentChain = chains.find(c => c.id === chainId)
+  const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
   const { contracts } = usePayIDContext()
   const { data: sub, refetch } = useSubscription(address)
   const { subscribe, hash, isPending, isSuccess, isConfirming, error } = useSubscribe()
@@ -31,6 +62,14 @@ export default function SubscriptionPage() {
     functionName: 'subscriptionPriceETH',
   })
 
+  /* ── Query Chainlink Oracle for ETH/USD price ── */
+  const { data: oracleData } = useReadContract({
+    address: CHAINLINK_ORACLE_ADDRESSES[chainId] || CHAINLINK_ORACLE_ADDRESSES[31337],
+    abi: CHAINLINK_ORACLE_ABI,
+    functionName: 'latestRoundData',
+  })
+  const ethUsdPrice = oracleData?.[1] as bigint | undefined
+
   useEffect(() => {
     if (isSuccess) void refetch()
   }, [isSuccess, refetch])
@@ -40,7 +79,7 @@ export default function SubscriptionPage() {
     ? Math.max(0, Math.floor((Number(sub.expiry) - Date.now() / 1000) / 86400))
     : 0
 
-  const priceEth = subPrice ? (Number(subPrice) / 1e18).toFixed(6) : '0.001'
+  const priceEth = subPrice ? formatPriceWithUSD(subPrice, nativeSymbol, ethUsdPrice) : '0.001'
 
   const handleSubscribe = () => {
     const price = subPrice ? (subPrice as bigint) : parseEther('0.001')
@@ -161,7 +200,7 @@ export default function SubscriptionPage() {
               Subscription Price
             </span>
             <span className="text-lg font-bold text-amber-800">
-              {priceEth} ETH
+              {priceEth} {nativeSymbol}
             </span>
           </div>
           <p className="text-xs text-amber-600/80 mt-1">

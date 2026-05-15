@@ -7,7 +7,8 @@ export function normalizeContext(ctx: RuleContext): RuleContext {
       ...ctx.tx,
       sender: ctx.tx.sender,
       receiver: ctx.tx.receiver,
-      asset: ctx.tx.asset
+      asset: ctx.tx.asset,
+      amountUsd: ctx.tx.amountUsd
     }
   };
 }

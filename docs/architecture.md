@@ -436,6 +436,110 @@ untuk **policy-driven payments** di era crypto & account abstraction.
 
 ---
 
+## 16. Multi-Token Pricing Support
+
+PAY.ID supports USD-equivalent pricing across multiple tokens, allowing rules to check payment values in USD regardless of the token used.
+
+### 16.1 Token Price Oracles
+
+PAY.ID uses Chainlink Price Feeds for token-to-USD conversion:
+
+- **USDC/USD**: Circle USD Coin price feed
+- **USDT/USD**: Tether USD price feed
+- **ETH/USD**: Ethereum price feed (for native ETH payments)
+
+Oracle addresses are configured per chain:
+- Mainnet: Real Chainlink price feed addresses
+- Sepolia: Testnet price feed addresses
+- Localhost: Mock oracle addresses for development
+
+### 16.2 USD Equivalent Calculation
+
+When issuing context for multi-token payments, the USD equivalent is calculated:
+
+```
+amountUsd = (tokenAmount × tokenPrice) / (10^tokenDecimals × 10^8)
+```
+
+Where:
+- `tokenAmount`: Raw token amount in token units
+- `tokenPrice`: Token price in USD (8 decimals, Chainlink standard)
+- `tokenDecimals`: Token decimals (e.g., 6 for USDC, 18 for ETH)
+
+### 16.3 Context Extension
+
+The `TxContext` now includes an optional `amountUsd` field:
+
+```typescript
+export interface TxContext {
+  sender: string;
+  receiver: string;
+  asset: string;
+  amount: string;
+  amountUsd?: string; // USD equivalent (calculated from token price oracle)
+  chainId: number;
+  memo?: string;
+}
+```
+
+### 16.4 Token Price Context Issuer
+
+SDK provides `issueTokenPriceContext()` for issuing USD equivalent with attestation:
+
+```typescript
+import { issueTokenPriceContext } from 'payid';
+
+const { amountUsd, proof } = await issueTokenPriceContext(
+  wallet,
+  tokenPrice,      // Token price in USD (8 decimals)
+  tokenAmount,     // Raw token amount
+  tokenDecimals    // Token decimals (6 for USDC, 18 for ETH)
+);
+```
+
+### 16.5 Rule Examples
+
+**USD-based spending limit:**
+```json
+{
+  "if": {
+    "field": "tx.amountUsd",
+    "op": "<=",
+    "value": 35000000
+  },
+  "message": "Payment exceeds $35 USD limit"
+}
+```
+
+**Multi-token minimum threshold:**
+```json
+{
+  "if": {
+    "field": "tx.amountUsd",
+    "op": ">=",
+    "value": 10000000
+  },
+  "message": "Payment below $10 USD minimum"
+}
+```
+
+### 16.6 Supported Tokens
+
+Currently supported:
+- USDC (Circle USD Coin)
+- USDT (Tether USD)
+- DAI (MakerDAO)
+- WBTC (Wrapped Bitcoin)
+- LINK (Chainlink)
+- UNI (Uniswap)
+- ETH (native Ethereum)
+
+Future extensions may include:
+- More major ERC20 tokens (AAVE, COMP, etc.)
+- Non-EVM tokens (via cross-chain oracles)
+
+---
+
 ## Appendix A — Terminology
 
 - **Policy**: aturan yang membatasi transaksi

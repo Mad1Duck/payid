@@ -21,6 +21,8 @@ import { useV4Palette } from './theme'
 import { Skeleton, SkeletonCard } from './Skeleton'
 import { useReputation, useOfflineCache } from 'payid-react'
 import { useTxHistory, relativeTime } from '@/hooks/useTxHistory'
+import PremiumButton from './PremiumButton'
+import { formatUSD, formatNumber } from '@/lib/utils'
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + '...' + addr.slice(-4)
@@ -116,8 +118,8 @@ export default function Dashboard() {
     {
       symbol: nativeSymbol,
       name: nativeName,
-      balance: balanceValue.toFixed(4),
-      usd: (balanceValue * 3500).toFixed(2),
+      balance: formatNumber(balanceValue, 4),
+      usd: balanceValue * 3500,
       icon: '⟠',
     },
   ]
@@ -133,7 +135,7 @@ export default function Dashboard() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="rounded-[24px] p-6 relative overflow-hidden"
+        className="rounded-3xl p-6 relative overflow-hidden"
         style={{
           background:
             'linear-gradient(135deg, #00D084 0%, #00B86E 50%, #009E5C 100%)',
@@ -155,7 +157,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="text-[40px] font-bold text-white tracking-tight leading-none mb-4">
-              ${balanceValue > 0 ? (balanceValue * 3500).toFixed(2) : '0.00'}
+              {formatUSD(balanceValue > 0 ? balanceValue * 3500 : 0)}
             </div>
           )}
 
@@ -199,7 +201,7 @@ export default function Dashboard() {
                     <div className="text-white/60 text-xs">{token.name}</div>
                   </div>
                   <div className="text-white/80 text-sm font-mono">
-                    ${token.usd}
+                    {formatUSD(token.usd)}
                   </div>
                 </div>
               ))
@@ -239,12 +241,9 @@ export default function Dashboard() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.05 }}
-        className="rounded-2xl p-5 relative"
-        style={{ background: p.cardBg }}
+        className="rounded-2xl p-5 relative backdrop-blur-20"
+        style={{ background: p.glass.bg, border: p.glass.border }}
       >
-        <div
-          className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`}
-        />
         <div className="relative">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -255,9 +254,13 @@ export default function Dashboard() {
                 Share to get paid
               </p>
             </div>
-            <button className="p-1 hover:bg-black/5 rounded-lg transition-colors cursor-pointer">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="p-1 hover:bg-black/5 rounded-lg transition-colors cursor-pointer"
+            >
               <ChevronRight className="w-4 h-4 text-[#64748B]" />
-            </button>
+            </motion.button>
           </div>
 
           <div
@@ -273,8 +276,10 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center gap-1">
-              <button
+              <motion.button
                 onClick={handleCopy}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 className={`p-2 rounded-lg ${p.cardHover} transition-colors cursor-pointer`}
               >
                 {copied ? (
@@ -282,17 +287,21 @@ export default function Dashboard() {
                 ) : (
                   <Copy className="w-4 h-4 text-[#64748B]" />
                 )}
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 className={`p-2 rounded-lg ${p.cardHover} transition-colors cursor-pointer`}
               >
                 <QrCode className="w-4 h-4 text-[#64748B]" />
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
                 className={`p-2 rounded-lg ${p.cardHover} transition-colors cursor-pointer`}
               >
                 <ArrowUpRight className="w-4 h-4 text-[#64748B]" />
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>
@@ -321,8 +330,11 @@ export default function Dashboard() {
           },
         ].map((action) => (
           <Link key={action.label} to={action.to}>
-            <div
-              className={`rounded-2xl p-4 flex flex-col items-center gap-2 text-center transition-colors ${p.cardHover}`}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+              className={`rounded-2xl p-4 flex flex-col items-center gap-2 text-center cursor-pointer`}
               style={{ background: p.cardBg }}
             >
               <div
@@ -337,7 +349,7 @@ export default function Dashboard() {
               <span className={`text-sm font-medium ${p.textMain}`}>
                 {action.label}
               </span>
-            </div>
+            </motion.div>
           </Link>
         ))}
       </motion.div>
@@ -347,12 +359,9 @@ export default function Dashboard() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.12 }}
-        className="rounded-2xl p-5 relative"
-        style={{ background: p.cardBg }}
+        className="rounded-2xl p-5 relative backdrop-blur-20"
+        style={{ background: p.glass.bg, border: p.glass.border }}
       >
-        <div
-          className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`}
-        />
         <div className="relative">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -364,26 +373,40 @@ export default function Dashboard() {
               </p>
             </div>
             {isTrusted && !isBlacklisted && (
-              <span className="px-2 py-1 rounded-full bg-[#00D084]/10 text-[#00D084] text-xs font-medium">
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="px-2 py-1 rounded-full bg-[#00D084]/10 text-[#00D084] text-xs font-medium"
+              >
                 Trusted
-              </span>
+              </motion.span>
             )}
             {isBlacklisted && (
-              <span className="px-2 py-1 rounded-full bg-[#EF4444]/10 text-[#EF4444] text-xs font-medium">
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="px-2 py-1 rounded-full bg-[#EF4444]/10 text-[#EF4444] text-xs font-medium"
+              >
                 Blacklisted
-              </span>
+              </motion.span>
             )}
             {!isTrusted && !isBlacklisted && !repLoading && (
-              <span className="px-2 py-1 rounded-full bg-[#F59E0B]/10 text-[#F59E0B] text-xs font-medium">
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="px-2 py-1 rounded-full bg-[#F59E0B]/10 text-[#F59E0B] text-xs font-medium"
+              >
                 Neutral
-              </span>
+              </motion.span>
             )}
           </div>
 
-          <div
+          <motion.div
+            whileHover={{ scale: 1.01 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
             className={`flex items-center gap-3 p-3 rounded-xl ${p.dark ? 'bg-white/3' : 'bg-black/3'}`}
           >
-            <div
+            <motion.div
               className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
               style={{
                 background: isBlacklisted
@@ -392,9 +415,11 @@ export default function Dashboard() {
                     ? '#00D084'
                     : '#64748B',
               }}
+              animate={repLoading ? { opacity: [0.5, 1, 0.5] } : {}}
+              transition={{ duration: 1.5, repeat: Infinity }}
             >
               {repLoading ? '…' : score}
-            </div>
+            </motion.div>
             <div className="flex-1 min-w-0">
               <div className={`text-sm font-medium ${p.textMain}`}>
                 {repLoading ? 'Loading reputation…' : `${score} / 1000`}
@@ -407,7 +432,7 @@ export default function Dashboard() {
                     : 'Reputation score pending'}
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </motion.div>
 
@@ -417,12 +442,9 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.14 }}
-          className="rounded-2xl p-5 relative"
-          style={{ background: p.cardBg }}
+          className="rounded-2xl p-5 relative backdrop-blur-20"
+          style={{ background: p.glass.bg, border: p.glass.border }}
         >
-          <div
-            className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`}
-          />
           <div className="relative">
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -554,7 +576,7 @@ export default function Dashboard() {
                       className={`text-sm font-mono font-semibold ${tx.type === 'sent' ? 'text-[#EF4444]' : 'text-[#00D084]'}`}
                     >
                       {tx.type === 'sent' ? '−' : '+'}
-                      {tx.amount} {tx.asset}
+                      {formatNumber(parseFloat(tx.amount), 4)} {tx.asset}
                     </div>
                     <div className={`text-xs ${p.textMuted}`}>
                       {relativeTime(tx.timestamp)}

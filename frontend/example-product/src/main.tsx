@@ -8,39 +8,10 @@ import {
   createRouter,
   useNavigate,
 } from '@tanstack/react-router'
-import { WagmiProvider, createConfig, http, useAccount } from 'wagmi'
-import { hardhat } from 'wagmi/chains'
+import { WagmiProvider, createConfig, http } from 'wagmi'
 import { injected, metaMask } from 'wagmi/connectors'
-import {
-  PayIDProvider,
-  useActiveCombinedRule,
-  useMyRules,
-  useSubscription,
-} from 'payid-react'
-
-import HomeRoute from './routes/home/index.tsx'
-import RuleConsole from './routes/rule-console/index.tsx'
-import History from './routes/history/index.tsx'
-import Proof from './routes/proof/index.tsx'
-import Qr from './routes/qr/index.tsx'
-import RuleBuilder from './routes/rule-builder/index.tsx'
-import Subscription from './routes/subscription/index.tsx'
-import Verify from './routes/verify/index.tsx'
-import OldRoute from './routes/old/index.tsx'
-import AdminRoute from './routes/admin/index.tsx'
+import { PayIDProvider } from 'payid-react'
 import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider.tsx'
-
-// V3 redesigned UI
-import {
-  ContactsPage,
-  Dashboard,
-  HistoryPage,
-  AppLayout as NewAppLayout,
-  Onboarding,
-  ReceivePage,
-  SendFlow,
-  SettingsPage,
-} from './components/v3'
 
 // V4 hackathon futuristic UI
 import {
@@ -61,28 +32,22 @@ import {
   ThemeProvider as V4ThemeProvider,
 } from './components/v4'
 
-// V2 components still used in some v3 routes
-import { LandingPage } from './components/v2/LandingPage'
-import { QRPage } from './components/v2/QRPage'
-import { RuleBuilderPage } from './components/v2/RuleBuilderPage'
-import { VerifyPage } from './components/v2/VerifyPage'
-import { CartridgeComposer } from './components/v2/CartridgeComposer'
-import { SessionPolicyPanel } from './components/v2/SessionPolicyPanel'
 import { addresses } from './constants/contracts'
-import { Toaster } from './components/v2/ui/sonner'
+import { Toaster } from './components/ui/sonner'
 import './globals.css'
 import reportWebVitals from './reportWebVitals.ts'
 
 import type { Chain } from 'viem'
-import type { SessionPolicy } from './components/v2/SessionPolicyPanel'
+
+import { RPC_URLS } from './constants/rpc'
 
 export const zeroGTestnet = {
-  id: 16600,
-  name: '0G Newton Testnet',
+  id: 16601,
+  name: '0G Newton Testnet (Fork)',
   nativeCurrency: { decimals: 18, name: 'A0GI', symbol: 'A0GI' },
   rpcUrls: {
-    default: { http: ['https://16600.rpc.thirdweb.com/'] },
-    public: { http: ['https://16600.rpc.thirdweb.com/'] },
+    default: { http: [RPC_URLS.zeroG] },
+    public: { http: [RPC_URLS.zeroG] },
   },
   blockExplorers: {
     default: { name: '0G Explorer', url: 'https://chainscan-newton.0g.ai' },
@@ -92,10 +57,10 @@ export const zeroGTestnet = {
 export const devNode = {
   id: 31337,
   name: 'DevNode',
-  nativeCurrency: { decimals: 18, name: 'Ether', symbol: 'ETH' },
+  nativeCurrency: { decimals: 18, name: 'Dev Token', symbol: 'DEV' },
   rpcUrls: {
-    default: { http: ['http://100.73.196.95:8545'] },
-    public: { http: ['http://100.73.196.95:8545'] },
+    default: { http: [RPC_URLS.devNode] },
+    public: { http: [RPC_URLS.devNode] },
   },
 } as const satisfies Chain
 
@@ -123,166 +88,6 @@ const rootIndexRoute = createRoute({
     }, [])
     return null
   },
-})
-
-// V3 routes
-const v3Route = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/v3',
-  component: () => <Outlet />,
-})
-
-const v3LandingRoute = createRoute({
-  getParentRoute: () => v3Route,
-  path: '/',
-  component: LandingPage,
-})
-
-const v3OnboardingRoute = createRoute({
-  getParentRoute: () => v3Route,
-  path: 'welcome',
-  component: Onboarding,
-})
-
-// V3 app routes (with layout)
-const v3AppRoute = createRoute({
-  getParentRoute: () => v3Route,
-  path: 'app',
-  component: () => (
-    <NewAppLayout>
-      <Outlet />
-    </NewAppLayout>
-  ),
-})
-
-const v3DashboardRoute = createRoute({
-  getParentRoute: () => v3AppRoute,
-  path: 'dashboard',
-  component: Dashboard,
-})
-
-const v3SendRoute = createRoute({
-  getParentRoute: () => v3AppRoute,
-  path: 'send',
-  component: SendFlow,
-})
-
-const v3ReceiveRoute = createRoute({
-  getParentRoute: () => v3AppRoute,
-  path: 'receive',
-  component: ReceivePage,
-})
-
-const v3HistoryRoute = createRoute({
-  getParentRoute: () => v3AppRoute,
-  path: 'history',
-  component: HistoryPage,
-})
-
-const v3ContactsRoute = createRoute({
-  getParentRoute: () => v3AppRoute,
-  path: 'contacts',
-  component: ContactsPage,
-})
-
-const v3SettingsRoute = createRoute({
-  getParentRoute: () => v3AppRoute,
-  path: 'settings',
-  component: SettingsPage,
-})
-
-const v3RulesConsoleRoute = createRoute({
-  getParentRoute: () => v3AppRoute,
-  path: 'rules/console',
-  component: () => {
-    const { address } = useAccount()
-    const { data: myRules = [] } = useMyRules()
-    useActiveCombinedRule(address)
-
-    const cartridges = myRules.map((rule: any) => ({
-      id: rule.id,
-      type: 'custom' as const,
-      name: rule.ruleHash.slice(0, 10) + '...',
-      summary: rule.active ? 'Active' : 'Inactive',
-      active: rule.active,
-    }))
-
-    return (
-      <div className="space-y-6">
-        <div
-          className="text-sm font-medium"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          Cartridge System
-        </div>
-        <CartridgeComposer availableCartridges={cartridges} />
-      </div>
-    )
-  },
-})
-
-const v3ProofRoute = createRoute({
-  getParentRoute: () => v3AppRoute,
-  path: 'proof',
-  component: () => {
-    return (
-      <div className="card p-5">
-        <div
-          className="text-sm font-medium mb-4"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          Decision Proof Viewer
-        </div>
-        <div className="separator mb-4" />
-        <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          Decision proofs are generated during payment flows. Use the payment
-          flow to create and view proofs.
-        </div>
-      </div>
-    )
-  },
-})
-
-const v3QrRoute = createRoute({
-  getParentRoute: () => v3AppRoute,
-  path: 'qr',
-  component: QRPage,
-})
-
-const v3RuleBuilderRoute = createRoute({
-  getParentRoute: () => v3AppRoute,
-  path: 'rule-builder',
-  component: RuleBuilderPage,
-})
-
-const v3SubscriptionRoute = createRoute({
-  getParentRoute: () => v3AppRoute,
-  path: 'subscription',
-  component: () => {
-    const { address } = useAccount()
-    const { data: sub } = useSubscription(address)
-
-    const session: SessionPolicy = {
-      type: 'time',
-      maxTx: sub?.isActive ? 50 : 1,
-      window: 3600,
-      maxVolume: sub?.isActive ? '$10,000' : '$1,000',
-      currentTx: 0,
-      currentVolume: '$0',
-      expiresAt: sub?.expiry
-        ? Number(sub.expiry.toString()) * 1000
-        : Date.now(),
-      enabled: sub?.isActive ?? false,
-    }
-
-    return <SessionPolicyPanel policy={session} />
-  },
-})
-
-const v3VerifyRoute = createRoute({
-  getParentRoute: () => v3AppRoute,
-  path: 'verify',
-  component: VerifyPage,
 })
 
 // V4 hackathon futuristic routes
@@ -390,36 +195,8 @@ const v4AdminRoute = createRoute({
   component: V4AdminPage,
 })
 
-// V2 routes (old routes with /v2 prefix)
-const v2Route = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/v2',
-  component: () => <Outlet />,
-})
-
-const adminRoute = AdminRoute(rootRoute as any)
-
 const routeTree = rootRoute.addChildren([
   rootIndexRoute,
-  adminRoute,
-  v3Route.addChildren([
-    v3LandingRoute,
-    v3OnboardingRoute,
-    v3AppRoute.addChildren([
-      v3DashboardRoute,
-      v3SendRoute,
-      v3ReceiveRoute,
-      v3HistoryRoute,
-      v3ContactsRoute,
-      v3SettingsRoute,
-      v3RulesConsoleRoute,
-      v3ProofRoute,
-      v3QrRoute,
-      v3RuleBuilderRoute,
-      v3SubscriptionRoute,
-      v3VerifyRoute,
-    ]),
-  ]),
   v4Route.addChildren([
     v4IndexRoute,
     v4AppRoute.addChildren([
@@ -437,17 +214,6 @@ const routeTree = rootRoute.addChildren([
       v4SettingsRoute,
       v4AdminRoute,
     ]),
-  ]),
-  v2Route.addChildren([
-    HomeRoute(v2Route as any),
-    RuleConsole(v2Route as any),
-    History(v2Route as any),
-    Proof(v2Route as any),
-    Qr(v2Route as any),
-    RuleBuilder(v2Route as any),
-    Subscription(v2Route as any),
-    Verify(v2Route as any),
-    OldRoute(v2Route as any),
   ]),
 ])
 

@@ -32,5 +32,10 @@
   "dependencies": {
     "dotenv": "^17.2.3",
     "pinata": "^2.5.2"
+  },
+  "overrides": {
+    "viem": "^2.46.3",
+    "wagmi": "^3.5.0",
+    "@wagmi/core": "^3.0.0"
   }
 }

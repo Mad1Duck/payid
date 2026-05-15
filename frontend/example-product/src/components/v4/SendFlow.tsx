@@ -1,24 +1,26 @@
-import { useState, useCallback, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useCallback, useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight,
   Check,
-  X,
-  Shield,
-  Loader2,
   Copy,
+  Loader2,
   RotateCcw,
+  Shield,
   Wallet,
+  X,
 } from 'lucide-react'
 import { useAccount, useBalance, useChainId, useChains } from 'wagmi'
-import { formatUnits, parseEther, isAddress } from 'viem'
-import type { Address } from 'viem'
-import { useV4Palette } from './theme'
-import { useMultiCurrency } from '../../hooks/useMultiCurrency'
-import TransactionSimulation from './TransactionSimulation'
-import { useTxHistory } from '@/hooks/useTxHistory'
+import { formatUnits, isAddress, parseEther } from 'viem'
 import { usePayIDFlow } from 'payid-react'
+import { useMultiCurrency } from '../../hooks/useMultiCurrency'
+import { useV4Palette } from './theme'
+import TransactionSimulation from './TransactionSimulation'
+import PolicyScanning from './PolicyScanning'
+import type { Address } from 'viem'
 import type { PayIDFlowStatus } from 'payid-react'
+import { useTxHistory } from '@/hooks/useTxHistory'
+import { formatNumber } from '@/lib/utils'
 
 type RuleStatus = 'pending' | 'running' | 'done'
 
@@ -27,26 +29,46 @@ type Step = 'who' | 'amount' | 'review' | 'evaluating' | 'signing' | 'success'
 const cardBase = 'rounded-2xl relative overflow-hidden'
 
 const FLOW_STEPS = [
-  { id: 'ctx',      name: 'Build Context' },
-  { id: 'resolve',  name: 'Fetch Rules (IPFS)' },
+  { id: 'ctx', name: 'Build Context' },
+  { id: 'resolve', name: 'Fetch Rules (IPFS)' },
   { id: 'evaluate', name: 'WASM Evaluate' },
   { id: 'decision', name: 'Decision Proof' },
-  { id: 'sign',     name: 'EIP-712 Sign' },
-  { id: 'submit',   name: 'Submit Tx' },
+  { id: 'sign', name: 'EIP-712 Sign' },
+  { id: 'submit', name: 'Submit Tx' },
 ]
 
-function getPipeline(s: PayIDFlowStatus): { id: string; name: string; status: RuleStatus }[] {
-  let doneUpTo = -1, runningAt = -1
-  if (s === 'fetching-rule')        { runningAt = 0 }
-  else if (s === 'evaluating')      { doneUpTo = 0; runningAt = 1 }
-  else if (s === 'proving')         { doneUpTo = 1; runningAt = 2 }
-  else if (s === 'approving')       { doneUpTo = 2; runningAt = 3 }
-  else if (s === 'awaiting-wallet') { doneUpTo = 3; runningAt = 4 }
-  else if (s === 'confirming')      { doneUpTo = 4; runningAt = 5 }
-  else if (s === 'success')         { doneUpTo = 5 }
+function getPipeline(
+  s: PayIDFlowStatus,
+): Array<{ id: string; name: string; status: RuleStatus }> {
+  let doneUpTo = -1,
+    runningAt = -1
+  if (s === 'fetching-rule') {
+    runningAt = 0
+  } else if (s === 'evaluating') {
+    doneUpTo = 0
+    runningAt = 1
+  } else if (s === 'proving') {
+    doneUpTo = 1
+    runningAt = 2
+  } else if (s === 'approving') {
+    doneUpTo = 2
+    runningAt = 3
+  } else if (s === 'awaiting-wallet') {
+    doneUpTo = 3
+    runningAt = 4
+  } else if (s === 'confirming') {
+    doneUpTo = 4
+    runningAt = 5
+  } else if (s === 'success') {
+    doneUpTo = 5
+  }
   return FLOW_STEPS.map((step, i) => ({
     ...step,
-    status: (i <= doneUpTo ? 'done' : i === runningAt ? 'running' : 'pending') as RuleStatus,
+    status: (i <= doneUpTo
+      ? 'done'
+      : i === runningAt
+        ? 'running'
+        : 'pending') as RuleStatus,
   }))
 }
 
@@ -55,13 +77,19 @@ export default function SendFlow() {
   const { data: balance } = useBalance({ address })
   const chainId = useChainId()
   const chains = useChains()
-  const currentChain = chains.find(c => c.id === chainId)
+  const currentChain = chains.find((c) => c.id === chainId)
   const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
   const p = useV4Palette()
 
   const CHAIN_NAMES: Record<number, string> = {
-    31337: 'Hardhat', 16600: '0G Newton', 11155111: 'Sepolia',
-    84532: 'Base Sepolia', 4202: 'Lisk Sepolia', 10143: 'Monad', 1287: 'Moonbase', 80002: 'Amoy',
+    31337: 'Hardhat',
+    16601: '0G Newton',
+    11155111: 'Sepolia',
+    84532: 'Base Sepolia',
+    4202: 'Lisk Sepolia',
+    10143: 'Monad',
+    1287: 'Moonbase',
+    80002: 'Amoy',
   }
   const chainName = CHAIN_NAMES[chainId] ?? `Chain #${chainId}`
   const cardBorder = `absolute inset-0 rounded-2xl border pointer-events-none ${p.cardBorder}`
@@ -87,10 +115,10 @@ export default function SendFlow() {
     reset: resetFlow,
   } = usePayIDFlow()
 
-  const balanceValue = balance ? parseFloat(formatUnits(balance.value, balance.decimals)) : 0
+  const balanceValue = balance
+    ? parseFloat(formatUnits(balance.value, balance.decimals))
+    : 0
   const pipeline = getPipeline(flowStatus)
-  const LOG_LEVELS: PayIDFlowStatus[] = ['fetching-rule', 'evaluating', 'proving', 'approving', 'awaiting-wallet', 'confirming', 'success']
-  const logIdx = LOG_LEVELS.indexOf(flowStatus)
 
   const resolvePayId = useCallback(() => {
     if (!payId.trim()) return
@@ -101,13 +129,15 @@ export default function SendFlow() {
   const handleRunPolicy = useCallback(() => {
     const receiver = payId.trim()
     if (!isAddress(receiver)) {
-      setDenyReason('Enter a valid wallet address (0x...) as receiver to run policy evaluation.')
+      setDenyReason(
+        'Enter a valid wallet address (0x...) as receiver to run policy evaluation.',
+      )
       return
     }
     setDenyReason('')
     setStep('evaluating')
     execute({
-      receiver: receiver as Address,
+      receiver: receiver,
       asset: '0x0000000000000000000000000000000000000000' as Address,
       amount: parseEther(amount || '0'),
       payId: address ? `${address}@pay.id` : 'anon@pay.id',
@@ -118,7 +148,15 @@ export default function SendFlow() {
     if (flowStatus === 'success' && flowTxHash) {
       setTxHash(flowTxHash)
       setStep('success')
-      addTx({ id: flowTxHash, type: 'sent', to: resolvedName ?? payId, from: address ?? '', amount, asset, timestamp: Date.now() })
+      addTx({
+        id: flowTxHash,
+        type: 'sent',
+        to: resolvedName ?? payId,
+        from: address ?? '',
+        amount,
+        asset,
+        timestamp: Date.now(),
+      })
     }
     if (flowStatus === 'denied') {
       setDenyReason(flowDenyReason ?? 'Policy denied this transaction')
@@ -132,10 +170,13 @@ export default function SendFlow() {
       // Stay on signing step if error happened during/after wallet prompt, else go back to review
       if (step !== 'signing') setStep('review')
     }
-    if (flowStatus === 'awaiting-wallet' || flowStatus === 'confirming') setStep('signing')
+    if (flowStatus === 'awaiting-wallet' || flowStatus === 'confirming')
+      setStep('signing')
   }, [flowStatus, flowTxHash])
 
-  useEffect(() => { setAsset(nativeSymbol) }, [nativeSymbol])
+  useEffect(() => {
+    setAsset(nativeSymbol)
+  }, [nativeSymbol])
 
   const reset = useCallback(() => {
     resetFlow()
@@ -156,8 +197,12 @@ export default function SendFlow() {
         className="max-w-md mx-auto text-center py-20"
       >
         <Wallet className="w-10 h-10 text-[#64748B] mx-auto mb-4" />
-        <h2 className={`text-lg font-semibold ${p.textMain} mb-1`}>Connect Wallet</h2>
-        <p className={`text-xs ${p.textMuted}`}>Link your wallet to send payments with policy enforcement.</p>
+        <h2 className={`text-lg font-semibold ${p.textMain} mb-1`}>
+          Connect Wallet
+        </h2>
+        <p className={`text-xs ${p.textMuted}`}>
+          Link your wallet to send payments with policy enforcement.
+        </p>
       </motion.div>
     )
   }
@@ -167,21 +212,41 @@ export default function SendFlow() {
       {/* Step dots — minimal, human */}
       <div className="flex items-center gap-3 mb-6">
         {['who', 'amount', 'review'].map((s, i) => {
-          const isDone = step === 'amount' && i === 0 ||
-            ['review', 'evaluating', 'signing', 'success'].includes(step) && i <= 1 ||
-            step === 'success' && i === 2
-          const isActive = step === s || (['evaluating', 'signing'].includes(step) && s === 'review')
+          const isDone =
+            (step === 'amount' && i === 0) ||
+            (['review', 'evaluating', 'signing', 'success'].includes(step) &&
+              i <= 1) ||
+            (step === 'success' && i === 2)
+          const isActive =
+            step === s ||
+            (['evaluating', 'signing'].includes(step) && s === 'review')
           return (
             <div key={s} className="flex items-center gap-3">
-              <div className={`w-2 h-2 rounded-full transition-all ${
-                isDone ? 'bg-[#00D084]' : isActive ? (p.dark ? 'bg-white' : 'bg-[#0F172A]') : (p.dark ? 'bg-white/20' : 'bg-black/20')
-              }`} />
-              <span className={`text-[11px] font-medium capitalize transition-colors ${
-                isDone || isActive ? p.textMain : p.textMuted
-              }`}>
+              <div
+                className={`w-2 h-2 rounded-full transition-all ${
+                  isDone
+                    ? 'bg-[#00D084]'
+                    : isActive
+                      ? p.dark
+                        ? 'bg-white'
+                        : 'bg-[#0F172A]'
+                      : p.dark
+                        ? 'bg-white/20'
+                        : 'bg-black/20'
+                }`}
+              />
+              <span
+                className={`text-[11px] font-medium capitalize transition-colors ${
+                  isDone || isActive ? p.textMain : p.textMuted
+                }`}
+              >
                 {s}
               </span>
-              {i < 2 && <div className={`w-8 h-px ${p.dark ? 'bg-white/10' : 'bg-black/10'}`} />}
+              {i < 2 && (
+                <div
+                  className={`w-8 h-px ${p.dark ? 'bg-white/10' : 'bg-black/10'}`}
+                />
+              )}
             </div>
           )
         })}
@@ -190,10 +255,18 @@ export default function SendFlow() {
       <AnimatePresence mode="wait">
         {/* STEP 1: WHO */}
         {step === 'who' && (
-          <motion.div key="who" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} className="space-y-4">
+          <motion.div
+            key="who"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            className="space-y-4"
+          >
             <div>
               <h2 className={`text-lg font-semibold ${p.textMain}`}>Send to</h2>
-              <p className={`text-xs ${p.textMuted} mt-0.5`}>Enter a PAY.ID or wallet address.</p>
+              <p className={`text-xs ${p.textMuted} mt-0.5`}>
+                Enter a PAY.ID or wallet address.
+              </p>
             </div>
             <div className={`${cardBase} p-5`} style={cardBg}>
               <div className={cardBorder} />
@@ -218,10 +291,18 @@ export default function SendFlow() {
 
         {/* STEP 2: AMOUNT */}
         {step === 'amount' && (
-          <motion.div key="amount" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} className="space-y-4">
+          <motion.div
+            key="amount"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            className="space-y-4"
+          >
             <div>
               <h2 className={`text-lg font-semibold ${p.textMain}`}>Amount</h2>
-              <p className={`text-xs ${p.textMuted} mt-0.5`}>How much do you want to send?</p>
+              <p className={`text-xs ${p.textMuted} mt-0.5`}>
+                How much do you want to send?
+              </p>
             </div>
 
             <div className={`${cardBase} p-5`} style={cardBg}>
@@ -243,7 +324,11 @@ export default function SendFlow() {
                     />
                     {amount && parseFloat(amount) > 0 && (
                       <div className={`mt-1 text-xs ${p.textMuted} font-mono`}>
-                        ≈ {format(convert(parseFloat(amount), displayCurrency), displayCurrency)}
+                        ≈{' '}
+                        {format(
+                          convert(parseFloat(amount), displayCurrency),
+                          displayCurrency,
+                        )}
                       </div>
                     )}
                   </div>
@@ -259,7 +344,8 @@ export default function SendFlow() {
 
                 <div className="flex items-center justify-between">
                   <div className={`text-[11px] ${p.textMuted} font-mono`}>
-                    Balance: {balance ? balanceValue.toFixed(4) : '--'} {asset}
+                    Balance: {balance ? formatNumber(balanceValue, 4) : '--'}{' '}
+                    {asset}
                   </div>
                   <button
                     onClick={toggle}
@@ -274,7 +360,7 @@ export default function SendFlow() {
                   <TransactionSimulation
                     amount={amount}
                     asset={asset}
-                    currentBalance={balanceValue.toFixed(4)}
+                    currentBalance={formatNumber(balanceValue, 4)}
                     onComplete={() => {}}
                   />
                 )}
@@ -293,10 +379,18 @@ export default function SendFlow() {
 
         {/* STEP 3: REVIEW */}
         {step === 'review' && (
-          <motion.div key="review" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} className="space-y-4">
+          <motion.div
+            key="review"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            className="space-y-4"
+          >
             <div>
               <h2 className={`text-lg font-semibold ${p.textMain}`}>Review</h2>
-              <p className={`text-xs ${p.textMuted} mt-0.5`}>Verify details before policy evaluation.</p>
+              <p className={`text-xs ${p.textMuted} mt-0.5`}>
+                Verify details before policy evaluation.
+              </p>
             </div>
 
             <div className={`${cardBase} p-5`} style={cardBg}>
@@ -306,11 +400,21 @@ export default function SendFlow() {
                   { label: 'Recipient', value: resolvedName || '' },
                   { label: 'Amount', value: `${amount} ${asset}` },
                   { label: 'Network', value: `${chainName} · ${chainId}` },
-                  { label: 'Est. Fee', value: `~0.0001 ${nativeSymbol} (estimate)` },
+                  {
+                    label: 'Est. Fee',
+                    value: `~0.0001 ${nativeSymbol} (estimate)`,
+                  },
                 ].map((row) => (
-                  <div key={row.label} className="flex justify-between items-center py-1">
-                    <span className={`text-[13px] ${p.textMuted}`}>{row.label}</span>
-                    <span className={`text-[13px] ${p.textMain} font-mono`}>{row.value}</span>
+                  <div
+                    key={row.label}
+                    className="flex justify-between items-center py-1"
+                  >
+                    <span className={`text-[13px] ${p.textMuted}`}>
+                      {row.label}
+                    </span>
+                    <span className={`text-[13px] ${p.textMain} font-mono`}>
+                      {row.value}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -320,15 +424,25 @@ export default function SendFlow() {
               <motion.div
                 initial={{ opacity: 0, x: [0, -8, 8, -8, 8, 0] }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ x: { duration: 0.4 }, opacity: { duration: 0.2 } }}
+                transition={{
+                  x: { duration: 0.4 },
+                  opacity: { duration: 0.2 },
+                }}
                 className={`${cardBase} p-4 flex items-center gap-3`}
                 style={{ background: 'rgba(239,68,68,0.06)' }}
               >
-                <div className={cardBorder} style={{ borderColor: 'rgba(239,68,68,0.2)' }} />
+                <div
+                  className={cardBorder}
+                  style={{ borderColor: 'rgba(239,68,68,0.2)' }}
+                />
                 <X className="w-4 h-4 text-[#EF4444] shrink-0 relative" />
                 <div className="relative">
-                  <div className="text-[13px] font-medium text-[#EF4444]">Policy Denied</div>
-                  <div className={`text-[11px] ${p.textMuted}`}>{denyReason}</div>
+                  <div className="text-[13px] font-medium text-[#EF4444]">
+                    Policy Denied
+                  </div>
+                  <div className={`text-[11px] ${p.textMuted}`}>
+                    {denyReason}
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -338,83 +452,62 @@ export default function SendFlow() {
               disabled={flowIsPending}
               className={`w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl ${p.dark ? 'bg-white/6 border border-white/8' : 'bg-black/4 border border-black/8'} ${p.textMain} text-sm font-medium ${p.cardHover} transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed`}
             >
-              {flowIsPending
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Evaluating…</>
-                : <><Shield className="w-4 h-4 text-[#00D084]" /> Run Policy Check</>}
+              {flowIsPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Evaluating…
+                </>
+              ) : (
+                <>
+                  <Shield className="w-4 h-4 text-[#00D084]" /> Run Policy Check
+                </>
+              )}
             </button>
           </motion.div>
         )}
 
         {/* EVALUATING — THE CINEMATIC SCREEN */}
         {step === 'evaluating' && (
-          <motion.div key="evaluating" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
-            <div>
-              <h2 className={`text-lg font-semibold ${p.textMain}`}>Policy Engine</h2>
-              <p className={`text-xs ${p.textMuted} mt-0.5`}>Off-chain evaluation + proof generation</p>
-            </div>
-
-            <div className={`${cardBase} p-5 relative overflow-hidden`} style={cardBg}>
-              <div className={cardBorder} />
-              {/* Scanning line */}
-              <motion.div
-                className="absolute left-0 right-0 h-px bg-[#00D084]/50 z-10"
-                initial={{ top: '0%' }}
-                animate={{ top: ['0%', '100%', '0%'] }}
-                transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
-                style={{ boxShadow: '0 0 12px rgba(0,208,132,0.4)' }}
-              />
-              <div className="relative space-y-2">
-                {pipeline.map((rule, i) => (
-                  <motion.div
-                    key={rule.id}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.08 }}
-                    className="flex items-center gap-3"
-                  >
-                    <div className="w-6 flex flex-col items-center shrink-0">
-                      {rule.status === 'done' ? (
-                        <div className="w-5 h-5 rounded-full bg-[#00D084]/15 flex items-center justify-center">
-                          <Check className="w-3 h-3 text-[#00D084]" />
-                        </div>
-                      ) : rule.status === 'running' ? (
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center ${p.dark ? 'bg-white/10' : 'bg-black/10'}`}>
-                          <Loader2 className={`w-3 h-3 animate-spin ${p.textMain}`} />
-                        </div>
-                      ) : (
-                        <div className={`w-5 h-5 rounded-full ${p.dark ? 'bg-white/4' : 'bg-black/4'}`} />
-                      )}
-                      {i < pipeline.length - 1 && (
-                        <div className={`w-px h-3 ${rule.status === 'done' ? 'bg-[#00D084]/30' : p.dark ? 'bg-white/4' : 'bg-black/4'}`} />
-                      )}
-                    </div>
-                    <div className={`flex-1 py-2 text-[13px] transition-colors ${
-                      rule.status === 'done' ? 'text-[#00D084]' : rule.status === 'running' ? p.textMain : p.textMuted
-                    }`}>
-                      {rule.name}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* Terminal log */}
-            <div className="rounded-xl p-3 font-mono text-[11px] relative overflow-hidden" style={{ background: p.terminalBg }}>
-              <div className={`${p.dark ? 'text-slate-700' : 'text-slate-300'} mb-1`}>// PAY.ID SDK — evaluateAndProve()</div>
-              {logIdx >= 0 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#64748B]">&gt; context.tx.amount = {amount} ({asset})</motion.div>}
-              {logIdx >= 1 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#64748B]">&gt; rule resolved from CombinedRuleStorage</motion.div>}
-              {logIdx >= 2 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#00D084]">&gt; wasm.evaluate() → ALLOW</motion.div>}
-              {logIdx >= 3 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#00D084]">&gt; DecisionProof generated</motion.div>}
-              {logIdx >= 4 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={p.textMain}>&gt; awaiting wallet EIP-712 signature...</motion.div>}
-              {logIdx >= 5 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={p.textMain}>&gt; tx submitted, confirming...</motion.div>}
-              {logIdx >= 6 && flowTxHash && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#00D084]">&gt; confirmed: {flowTxHash}</motion.div>}
-            </div>
+          <motion.div
+            key="evaluating"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <PolicyScanning
+              pipeline={pipeline}
+              ruleEvaluations={[
+                {
+                  id: 'min_amount',
+                  name: 'Minimum Amount Check',
+                  status: 'passed',
+                  message: 'Amount meets minimum requirement',
+                },
+                {
+                  id: 'daily_limit',
+                  name: 'Daily Spending Limit',
+                  status: 'passed',
+                  message: 'Within daily limit',
+                },
+                {
+                  id: 'kyc_level',
+                  name: 'KYC Verification',
+                  status: 'running',
+                },
+              ]}
+              riskScore={25}
+            />
           </motion.div>
         )}
 
         {/* SIGNING */}
         {step === 'signing' && (
-          <motion.div key="signing" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
+          <motion.div
+            key="signing"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="space-y-5"
+          >
             <div className="text-center py-4">
               <motion.div
                 initial={{ scale: 0.5, opacity: 0 }}
@@ -422,24 +515,44 @@ export default function SendFlow() {
                 transition={{ type: 'spring', stiffness: 400, damping: 15 }}
                 className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 ${flowStatus === 'error' ? 'bg-red-500/10' : 'bg-[#00D084]/10'}`}
               >
-                {flowStatus === 'error'
-                  ? <X className="w-7 h-7 text-red-400" />
-                  : <Loader2 className="w-7 h-7 text-[#00D084] animate-spin" />}
+                {flowStatus === 'error' ? (
+                  <X className="w-7 h-7 text-red-400" />
+                ) : (
+                  <Loader2 className="w-7 h-7 text-[#00D084] animate-spin" />
+                )}
               </motion.div>
-              <h2 className={`text-xl font-semibold ${flowStatus === 'error' ? 'text-red-400' : p.textMain}`}>
-                {flowStatus === 'error' ? 'Transaction Failed' : flowStatus === 'confirming' ? 'Confirming…' : 'Awaiting Signature'}
+              <h2
+                className={`text-xl font-semibold ${flowStatus === 'error' ? 'text-red-400' : p.textMain}`}
+              >
+                {flowStatus === 'error'
+                  ? 'Transaction Failed'
+                  : flowStatus === 'confirming'
+                    ? 'Confirming…'
+                    : 'Awaiting Signature'}
               </h2>
               <p className={`text-xs ${p.textMuted} mt-1`}>
-                {flowStatus === 'error' ? 'The transaction was rejected or reverted.' : flowStatus === 'confirming' ? 'Waiting for on-chain confirmation.' : 'Check your wallet — sign the EIP-712 Decision Proof.'}
+                {flowStatus === 'error'
+                  ? 'The transaction was rejected or reverted.'
+                  : flowStatus === 'confirming'
+                    ? 'Waiting for on-chain confirmation.'
+                    : 'Check your wallet — sign the EIP-712 Decision Proof.'}
               </p>
             </div>
 
             {flowStatus === 'error' && denyReason && (
               <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/20 space-y-2">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-red-400/60">Revert Reason</p>
-                <p className="text-xs text-red-400 wrap-break-word leading-relaxed">{denyReason}</p>
+                <p className="text-[10px] font-mono uppercase tracking-wider text-red-400/60">
+                  Revert Reason
+                </p>
+                <p className="text-xs text-red-400 wrap-break-word leading-relaxed">
+                  {denyReason}
+                </p>
                 <button
-                  onClick={() => { navigator.clipboard?.writeText(String(flowError ?? denyReason)); }}
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      String(flowError ?? denyReason),
+                    )
+                  }}
                   className="text-[10px] text-red-400/50 hover:text-red-400 underline cursor-pointer transition-colors"
                 >
                   Copy full error
@@ -450,7 +563,11 @@ export default function SendFlow() {
             <div className={`${cardBase} p-4`} style={cardBg}>
               <div className={cardBorder} />
               <div className="relative">
-                <div className={`text-[10px] ${p.textMuted} font-mono uppercase tracking-wider mb-1`}>Status</div>
+                <div
+                  className={`text-[10px] ${p.textMuted} font-mono uppercase tracking-wider mb-1`}
+                >
+                  Status
+                </div>
                 <div className={`text-sm font-medium ${p.textMain}`}>
                   {flowStatus === 'error'
                     ? 'Transaction failed. You can retry or go back to edit.'
@@ -463,12 +580,22 @@ export default function SendFlow() {
 
             {flowStatus === 'error' && (
               <div className="flex gap-3">
-                <button onClick={() => { reset(); setStep('review') }}
-                  className={`flex-1 py-3 rounded-xl text-sm font-semibold border ${p.cardBorder} ${p.textMuted}`}>
+                <button
+                  onClick={() => {
+                    reset()
+                    setStep('review')
+                  }}
+                  className={`flex-1 py-3 rounded-xl text-sm font-semibold border ${p.cardBorder} ${p.textMuted}`}
+                >
                   ← Edit Payment
                 </button>
-                <button onClick={() => { resetFlow(); handleRunPolicy() }}
-                  className="flex-1 py-3 rounded-xl text-sm font-semibold text-white bg-[#00D084]">
+                <button
+                  onClick={() => {
+                    resetFlow()
+                    handleRunPolicy()
+                  }}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold text-white bg-[#00D084]"
+                >
                   Retry
                 </button>
               </div>
@@ -478,7 +605,12 @@ export default function SendFlow() {
 
         {/* SUCCESS — CINEMATIC */}
         {step === 'success' && (
-          <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="space-y-5 text-center">
+          <motion.div
+            key="success"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="space-y-5 text-center"
+          >
             {/* Burst ring */}
             <motion.div
               initial={{ scale: 0.5, opacity: 0.8 }}
@@ -490,7 +622,12 @@ export default function SendFlow() {
               <motion.div
                 initial={{ scale: 0, rotate: -45 }}
                 animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.1 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 400,
+                  damping: 15,
+                  delay: 0.1,
+                }}
                 className="w-16 h-16 rounded-full bg-[#00D084]/15 border border-[#00D084]/30 flex items-center justify-center mx-auto mb-4"
               >
                 <Check className="w-8 h-8 text-[#00D084]" strokeWidth={3} />
@@ -523,10 +660,18 @@ export default function SendFlow() {
               <div className={cardBorder} />
               <div className="relative flex items-center justify-between">
                 <div>
-                  <div className={`text-[10px] ${p.textMuted} font-mono uppercase tracking-wider mb-1`}>Transaction Hash</div>
-                  <div className={`text-[13px] font-mono ${p.textMain}`}>{txHash}</div>
+                  <div
+                    className={`text-[10px] ${p.textMuted} font-mono uppercase tracking-wider mb-1`}
+                  >
+                    Transaction Hash
+                  </div>
+                  <div className={`text-[13px] font-mono ${p.textMain}`}>
+                    {txHash}
+                  </div>
                 </div>
-                <button className={`p-2 rounded-lg ${p.cardHover} transition-colors cursor-pointer`}>
+                <button
+                  className={`p-2 rounded-lg ${p.cardHover} transition-colors cursor-pointer`}
+                >
                   <Copy className="w-4 h-4 text-[#64748B]" />
                 </button>
               </div>

@@ -57,11 +57,20 @@ export function useV4Palette() {
     rootBg: dark ? 'bg-[#0B0F1A]' : 'bg-[#F1F5F9]',
     rootText: dark ? 'text-[#E2E8F0]' : 'text-[#0F172A]',
 
-    /* Cards */
-    cardBg: dark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.03)',
-    cardBgSolid: dark ? 'bg-white/2' : 'bg-black/3',
-    cardBorder: dark ? 'border-white/6' : 'border-black/8',
-    cardHover: dark ? 'hover:bg-white/4' : 'hover:bg-black/4',
+    /* Cards - Enhanced glassmorphism */
+    cardBg: dark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.7)',
+    cardBgSolid: dark ? 'bg-white/3' : 'bg-white/80',
+    cardBorder: dark ? 'border-white/10' : 'border-black/5',
+    cardHover: dark ? 'hover:bg-white/5' : 'hover:bg-white/90',
+    bgElevated: dark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.9)',
+
+    /* Glassmorphism utilities - Apple-like premium feel */
+    glass: {
+      bg: dark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.8)',
+      border: dark ? 'border-white/10' : 'border-black/5',
+      blur: 'backdrop-blur-20',
+      shadow: 'shadow-lg',
+    },
 
     /* Text */
     textMain: dark ? 'text-white' : 'text-[#0F172A]',
@@ -70,7 +79,7 @@ export function useV4Palette() {
 
     /* Input / terminal */
     inputBg: dark ? 'bg-[#0B0F1A]' : 'bg-[#FFFFFF]',
-    inputBorder: dark ? 'border-white/8' : 'border-black/8',
+    inputBorder: dark ? 'border-white/10' : 'border-black/10',
     terminalBg: dark ? '#080C14' : '#F8FAFC',
     terminalMuted: dark ? '#334155' : '#CBD5E1',
     terminalText: dark ? '#64748B' : '#475569',

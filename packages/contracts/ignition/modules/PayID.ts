@@ -5,14 +5,45 @@ export default buildModule("PayIDModule", (m) => {
   const admin = m.getAccount(0);
   const issuer = m.getAccount(1);
 
-  // Infrastructure
-  const mockOracle = m.contract("MockEthUsdOracle", [BigInt(2000 * 1e8)]);
-  const mockUSDC = m.contract("MockUSDC");
-  const mockIDRX = m.contract("MockIDRX");
-  const mockEAS = m.contract("MockEAS");
-  const mockAgentRegistry = m.contract("MockAgentRegistry");
+  // --- Parameters ---
+  // If useMockX is true and XAddress is empty, it will deploy a new Mock.
+  // If XAddress is provided, it will use that address.
 
-  // Core contracts
+  let oracleAddress: any = m.getParameter("oracleAddress", "");
+  if (oracleAddress.toString() === "") {
+    oracleAddress = m.getParameter("chainlinkEthUsd", "");
+  }
+
+  const useMockEAS = m.getParameter("useMockEAS", true);
+  const easAddress: any = m.getParameter("easAddress", "");
+
+  const useMockAgentRegistry = m.getParameter("useMockAgentRegistry", true);
+  const agentRegistryAddress: any = m.getParameter("agentRegistryAddress", "");
+
+  // --- Infrastructure ---
+
+  // Oracle (Chainlink ETH/USD)
+  // MockEthUsdOracle telah dihapus. Kita gunakan interface IAggregatorV3 untuk alamat yang sudah ada.
+  const oracle = m.contractAt("IAggregatorV3", oracleAddress);
+
+  // EAS (Ethereum Attestation Service)
+  let eas;
+  if (!useMockEAS && easAddress && easAddress.toString() !== "") {
+    eas = m.contractAt("MockEAS", easAddress);
+  } else {
+    eas = m.contract("MockEAS");
+  }
+
+  // Agent Registry (0G Agent ID)
+  let agentRegistry;
+  if (!useMockAgentRegistry && agentRegistryAddress && agentRegistryAddress.toString() !== "") {
+    agentRegistry = m.contractAt("MockAgentRegistry", agentRegistryAddress);
+  } else {
+    agentRegistry = m.contract("MockAgentRegistry");
+  }
+
+
+  // --- Core contracts ---
   const attestationVerifier = m.contract("AttestationVerifier");
   const payIdVerifier = m.contract("PayIDVerifier");
   const payWithPayID = m.contract("PayWithPayID");
@@ -26,18 +57,18 @@ export default buildModule("PayIDModule", (m) => {
   ]);
 
   const initRuleItem = m.call(ruleItemERC721, "initialize", [
-    admin, mockOracle,
+    admin, oracle,
   ], { id: "initRuleItemERC721", from: admin });
 
   const agentPayID = m.contract("AgentPayID", [
-    mockAgentRegistry,
+    agentRegistry,
     payIdVerifier,
   ]);
 
   // Initialize
 
   const initAttestation = m.call(attestationVerifier, "initialize", [
-    mockEAS, [], [issuer],
+    eas, [], [issuer],
   ], { id: "initAttestationVerifier", from: admin });
 
   // PayIDVerifier.initialize requires (initialOwner, _attestationVerifier)
@@ -89,17 +120,15 @@ export default buildModule("PayIDModule", (m) => {
   });
 
   return {
-    mockOracle,
-    mockUSDC,
-    mockIDRX,
-    mockEAS,
+    oracle,
+    eas,
     attestationVerifier,
     payIdVerifier,
     payWithPayID,
     ruleItemERC721,
     combinedRuleStorage,
     ruleAuthority,
-    mockAgentRegistry,
+    agentRegistry,
     agentPayID,
     vindexRegistry,
     recurringPayments,

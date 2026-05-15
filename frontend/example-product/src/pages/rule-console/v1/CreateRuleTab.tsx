@@ -18,8 +18,11 @@
 import { usePayIDContext, useSubscription } from 'payid-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { decodeEventLog, keccak256, parseEther, toBytes } from 'viem'
+import { CHAINLINK_ORACLE_ADDRESSES, CHAINLINK_ORACLE_ABI } from '@/constants/oracles'
 import {
   useAccount,
+  useChainId,
+  useChains,
   usePublicClient,
   useReadContract,
   useWriteContract,
@@ -30,6 +33,32 @@ import {
   Blob as ZGBlob,
 } from '@0gfoundation/0g-storage-ts-sdk/browser'
 import type { Hash } from 'viem'
+
+// Utility to format price nicely
+const formatPrice = (priceWei: bigint): string => {
+  const price = Number(priceWei) / 1e18
+  if (price < 0.0001) return price.toFixed(8)
+  if (price < 0.01) return price.toFixed(6)
+  if (price < 1) return price.toFixed(4)
+  return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Utility to format price with USD equivalent
+// Query Chainlink oracle for real-time ETH/USD price
+const formatPriceWithUSD = (priceWei: bigint, nativeSymbol: string, ethUsdPrice?: bigint): string => {
+  const formattedPrice = formatPrice(priceWei)
+  const price = Number(priceWei) / 1e18
+  
+  // If oracle price is available, calculate USD equivalent
+  if (ethUsdPrice && ethUsdPrice > 0n) {
+    const ethPrice = Number(ethUsdPrice) / 1e8 // Chainlink uses 8 decimals
+    const usdPrice = (price * ethPrice).toFixed(2)
+    return `$${usdPrice} (${formattedPrice} ${nativeSymbol})`
+  }
+  
+  // Fallback if oracle price not available
+  return `${formattedPrice} ${nativeSymbol}`
+}
 import type { ChangeEvent } from 'react'
 
 // ─── ABI (exact from RuleItemERC721.sol) ──────────────────────────────────────
@@ -487,6 +516,10 @@ const FIELD_HINTS = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function CreateRuleTab() {
+  const chainId = useChainId()
+  const chains = useChains()
+  const currentChain = chains.find(c => c.id === chainId)
+  const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
   const { contracts } = usePayIDContext()
   const { address } = useAccount()
   const publicClient = usePublicClient()
@@ -540,6 +573,14 @@ export function CreateRuleTab() {
     functionName: 'subscriptionPriceETH',
   })
   const subPrice = rawPrice
+
+  /* ── Query Chainlink Oracle for ETH/USD price ── */
+  const { data: oracleData } = useReadContract({
+    address: CHAINLINK_ORACLE_ADDRESSES[chainId] || CHAINLINK_ORACLE_ADDRESSES[31337],
+    abi: CHAINLINK_ORACLE_ABI,
+    functionName: 'latestRoundData',
+  })
+  const ethUsdPrice = oracleData?.[1] as bigint | undefined
 
   const { data: subData } = useSubscription(address)
   const sub = subData as
@@ -614,7 +655,7 @@ export function CreateRuleTab() {
         setStage('subscribing')
         const price = subPrice ?? parseEther('0.001')
         log(
-          `No active subscription → subscribing (${(Number(price) / 1e18).toFixed(6)} ETH)...`,
+          `No active subscription → subscribing (${formatPriceWithUSD(price, nativeSymbol, ethUsdPrice)})...`,
         )
         const h = await writeContractAsync({
           address: contracts.ruleItemERC721,
@@ -813,7 +854,7 @@ export function CreateRuleTab() {
         </span>
         {!sub?.isActive && subPrice !== undefined && subPrice > 0n && (
           <span className="sub-price">
-            +{(Number(subPrice) / 1e18).toFixed(6)} ETH
+            +{formatPriceWithUSD(subPrice, nativeSymbol, ethUsdPrice)}
           </span>
         )}
       </div>

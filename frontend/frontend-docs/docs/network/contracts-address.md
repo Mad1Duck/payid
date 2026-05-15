@@ -19,19 +19,16 @@ These are the addresses from a fresh local `npx hardhat node` + `hardhat ignitio
 <!-- sync:31337:start -->
 | Contract | Address |
 |---|---|
-| `RuleAuthority` | `0x7A9Ec1d04904907De0ED7b6839CcdD59c3716AC9` |
-| `RuleItemERC721` | `0x49fd2BE640DB2910c2fAb69bB8531Ab6E76127ff` |
-| `CombinedRuleStorage` | `0x172076E0166D1F9Cc711C77Adf8488051744980C` |
-| `PayIDVerifier` | `0xC9a43158891282A2B1475592D5719c001986Aaec` |
-| `PayWithPayID` | `0x1c85638e118b37167e9298c2268758e058DdfDA0` |
-| `AttestationVerifier` | `0xf4B146FbA71F41E0592668ffbF264F1D186b2Ca8` |
-| `AgentPayID` | `0xA4899D35897033b927acFCf422bc745916139776` |
-| `VindexRegistry` | `0x86A2EE8FAf9A840F7a2c64CA3d51209F9A02081D` |
-| `MockUSDC` (local only) | `0x46b142DD1E924FAb83eCc3c08e4D46E82f005e0E` |
-| `MockIDRX` (local only) | `0xfbC22278A96299D91d41C453234d97b4F5Eb9B2d` |
-| `MockEthUsdOracle` (local only) | `0x2B0d36FACD61B71CC05ab8F3D2355ec3631C0dd5` |
-| `MockEAS` (local only) | `0xD84379CEae14AA33C123Af12424A37803F885889` |
-| `MockAgentRegistry` (local only) | `0xBEc49fA140aCaA83533fB00A2BB19bDdd0290f25` |
+| `RuleAuthority` | `0xffa7CA1AEEEbBc30C874d32C7e22F052BbEa0429` |
+| `RuleItemERC721` | `0x3aAde2dCD2Df6a8cAc689EE797591b2913658659` |
+| `CombinedRuleStorage` | `0xc96304e3c037f81dA488ed9dEa1D8F2a48278a75` |
+| `PayIDVerifier` | `0x276C216D241856199A83bf27b2286659e5b877D3` |
+| `PayWithPayID` | `0x3347B4d90ebe72BeFb30444C9966B2B990aE9FcB` |
+| `AttestationVerifier` | `0xc0F115A19107322cFBf1cDBC7ea011C19EbDB4F8` |
+| `AgentPayID` | `0x1f10F3Ba7ACB61b2F50B9d6DdCf91a6f787C0E82` |
+| `VindexRegistry` | `0xE3011A37A904aB90C8881a99BD1F6E21401f1522` |
+| `MockEAS` (local only) | `0x07882Ae1ecB7429a84f1D53048d35c4bB2056877` |
+| `MockAgentRegistry` (local only) | `0xD0141E899a65C95a556fE2B27e5982A6DE7fDD7A` |
 <!-- sync:31337:end -->
 
 **Start local node:**
@@ -42,6 +39,29 @@ npx hardhat node
 npx hardhat ignition deploy ignition/modules/PayID.ts --network localhost
 ```
 
+---
+
+## Chain 16601 (Chain ID: 16601)
+
+<!-- sync:16601:start -->
+| Contract | Address |
+|---|---|
+| `RuleAuthority` | `0xF66CfDf074D2FFD6A4037be3A669Ed04380Aef2B` |
+| `RuleItemERC721` | `0xFC4EE541377F3b6641c23CBE82F6f04388290421` |
+| `CombinedRuleStorage` | `0x103A3b128991781EE2c8db0454cA99d67b257923` |
+| `PayIDVerifier` | `0x2538a10b7fFb1B78c890c870FC152b10be121f04` |
+| `PayWithPayID` | `0x24432a08869578aAf4d1eadA12e1e78f171b1a2b` |
+| `AttestationVerifier` | `0x3D63c50AD04DD5aE394CAB562b7691DD5de7CF6f` |
+| `AgentPayID` | `0x90b97E83e22AFa2e6A96b3549A0E495D5Bae61aF` |
+| `VindexRegistry` | `0xf5C3953Ae4639806fcbCC3196f71dd81B0da4348` |
+| `MockEAS` | `0x707531c9999AaeF9232C8FEfBA31FBa4cB78d84a` |
+| `MockAgentRegistry` | `0xB9d9e972100a1dD01cd441774b45b5821e136043` |
+<!-- sync:16601:end -->
+
+```bash
+cd packages/contracts
+bun run deploy:chain-16601
+```
 ---
 
 ## Other Networks

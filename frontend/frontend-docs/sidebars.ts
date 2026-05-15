@@ -4,6 +4,8 @@ const sidebars: SidebarsConfig = {
   tutorialSidebar: [
     'intro',
     'quickstart',
+    'simple-usage',
+    'advanced-usage',
 
     {
       type: 'category',

@@ -1,8 +1,0 @@
-export { AppLayout } from './AppLayout'
-export { Dashboard } from './Dashboard'
-export { SendFlow } from './SendFlow'
-export { ReceivePage } from './ReceivePage'
-export { HistoryPage } from './HistoryPage'
-export { ContactsPage } from './ContactsPage'
-export { SettingsPage } from './SettingsPage'
-export { Onboarding } from './Onboarding'

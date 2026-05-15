@@ -163,7 +163,7 @@ That's all you need for a fully working checkout. The rest of this page covers e
 | Hook | Returns | Description |
 |---|---|---|
 | `usePayIDFlow()` | `{ execute, status, isPending, isSuccess, decision, txHash, error, reset }` | Complete payment flow — rules + proof + submit |
-| `usePayETH()` | `{ pay, hash, isPending, isConfirming, isSuccess, error }` | Low-level ETH payment |
+| `usePayNative()` | `{ pay, hash, isPending, isConfirming, isSuccess, error }` | Low-level native token payment (ETH, MATIC, A0GI, etc.) |
 | `usePayERC20()` | `{ pay, hash, isPending, isConfirming, isSuccess, error }` | Low-level ERC20 payment |
 
 ### QR Hooks (Merchant side)
@@ -189,6 +189,7 @@ That's all you need for a fully working checkout. The rest of this page covers e
 | Hook | Data | Description |
 |---|---|---|
 | `useSubscription(address?)` | `SubscriptionInfo \| undefined` | Subscription status, slots, expiry |
+| `useSubscriptionPrice()` | `bigint \| undefined` | Current subscription price from oracle |
 | `useMyRules()` | `RuleDefinition[]` | Your Rule NFTs (connected wallet) |
 | `useRules(options?)` | `RuleDefinition[]` | All rules with optional filters |
 | `useRule(ruleId?)` | `RuleDefinition \| undefined` | Single rule by ID |
@@ -256,15 +257,15 @@ function CheckoutButton({ merchantAddress }: { merchantAddress: `0x${string}` })
 }
 ```
 
-### ETH Payment
+### Native Token Payment
 
-Pass `zeroAddress` as the asset for native ETH:
+Pass `zeroAddress` as the asset for the chain's native token (ETH on Ethereum, MATIC on Polygon, A0GI on 0G, etc.):
 
 ```tsx
 execute({
   receiver: merchantAddress,
-  asset:    zeroAddress,                 // address(0) = ETH
-  amount:   parseUnits('0.01', 18),      // 0.01 ETH
+  asset:    zeroAddress,                 // address(0) = native token
+  amount:   parseUnits('0.01', 18),      // 0.01 native token
   payId:    'pay.id/merchant',
 })
 ```
@@ -283,6 +284,59 @@ execute({
 | `success` | Payment confirmed on-chain ✅ |
 | `denied` | Rules rejected this payment ❌ |
 | `error` | Something went wrong — check `error` field |
+
+### Loading States
+
+`usePayIDFlow` includes `isPending` which is true during all active states (fetching-rule → evaluating → proving → approving → awaiting-wallet → confirming). Use this to disable buttons and show spinners:
+
+```tsx
+<button onClick={handlePay} disabled={isPending}>
+  {isPending ? (
+    <>
+      <Loader2 className="animate-spin w-4 h-4" />
+      Processing...
+    </>
+  ) : 'Pay 50 USDC'}
+</button>
+```
+
+For skeleton loaders on initial data load, use the `isLoading` state from wagmi hooks like `useBalance`:
+
+```tsx
+const { data: balance, isLoading: balanceLoading } = useBalance({ address })
+
+{balanceLoading ? <Skeleton className="h-10 w-40" /> : <div>{balance?.formatted}</div>}
+```
+
+### Multi-Chain Native Currency Support
+
+`payid-react` automatically detects the chain's native currency symbol. Use `useChains` and `useChainId` from wagmi to get the current chain's native token:
+
+```tsx
+import { useChains, useChainId } from 'wagmi'
+
+function TokenDisplay() {
+  const chainId = useChainId()
+  const chains = useChains()
+  const currentChain = chains.find(c => c.id === chainId)
+  const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
+  const nativeName = currentChain?.nativeCurrency.name ?? 'Ethereum'
+
+  return (
+    <div>
+      <span>{nativeName}</span>
+      <span>{nativeSymbol}</span>
+    </div>
+  )
+}
+```
+
+This works across all supported chains:
+- Ethereum → ETH
+- Polygon → MATIC
+- 0G Newton → A0GI
+- Lisk Sepolia → LISK
+- etc.
 
 ---
 
@@ -511,6 +565,38 @@ function SubscriptionStatus() {
   )
 }
 ```
+
+### `useSubscriptionPrice` — Get dynamic subscription price
+
+Fetches the current subscription price from the Chainlink oracle. Use this instead of hardcoding prices.
+
+```tsx
+import { useSubscriptionPrice, useSubscribe } from 'payid-react'
+import { parseEther } from 'viem'
+
+function SubscribeButton() {
+  const { data: subPrice } = useSubscriptionPrice()
+  const { subscribe, isPending } = useSubscribe()
+
+  // Use dynamic price with fallback
+  const price = subPrice ? (subPrice as bigint) : parseEther('0.001')
+
+  return (
+    <button onClick={() => subscribe(price)} disabled={isPending}>
+      {isPending ? 'Subscribing...' : `Subscribe (~${Number(price) / 1e18} ETH)`}
+    </button>
+  )
+}
+```
+
+**Pricing logic:**
+
+- The contract uses Chainlink ETH/USD oracle for dynamic pricing
+- Formula: `(subscriptionUsdCents * 1e24) / (ethUsdPrice * 100)`
+- Falls back to `0.0001 ether` if oracle is stale or unavailable
+- Price is calculated on-chain, ensuring consistency across all clients
+
+---
 
 ### `useMyRules` — Your Rule NFTs
 

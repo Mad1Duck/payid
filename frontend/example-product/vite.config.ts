@@ -49,5 +49,16 @@ export default defineConfig({
     },
   },
 
+  server: {
+    proxy: {
+      '/rpc': {
+        target: 'http://100.73.196.95:8550',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/rpc/, ''),
+      },
+    },
+    cors: true,
+  },
+
   assetsInclude: ['**/*.wasm'],
 });

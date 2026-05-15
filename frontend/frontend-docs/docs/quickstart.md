@@ -328,8 +328,8 @@ const tx = await payContract.getFunction('payERC20').send(
 )
 await tx.wait()
 
-// ETH payment — pass value:
-const tx = await payContract.getFunction('payETH').send(
+// Native token payment — pass value:
+const tx = await payContract.getFunction('payNative').send(
   proof!.payload,
   proof!.signature,
   [],
@@ -356,7 +356,7 @@ PAYER FLOW (every payment):
   3. evaluateAndProve(...)     → evaluate rules + generate signed proof
   4. approve(contract, amount) → ERC20 spending approval (if needed)
   5. payERC20(payload, sig,[]) → submit to blockchain
-  // or payETH(payload, sig,[]) for native ETH
+  // or payNative(payload, sig,[]) for native token (ETH, MATIC, A0GI, etc.)
 ```
 
 ---

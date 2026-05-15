@@ -1,0 +1,39 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-b7ea977804e1b3f61ff49b49b12bbbb928ab0230",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "userSourceNameMap": {
+    "contracts/test/MockAgentRegistry.sol": "project/contracts/test/MockAgentRegistry.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/test/MockAgentRegistry.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\n/**\n * @title MockAgentRegistry\n * @notice Mock 0G Agent ID Registry (ERC-7857) untuk testing\n * @dev HANYA UNTUK TESTING — jangan deploy ke mainnet.\n */\ncontract MockAgentRegistry {\n    mapping(uint256 => address) public ownerOf;\n\n    function setOwner(uint256 tokenId, address owner) external {\n        ownerOf[tokenId] = owner;\n    }\n}\n"
+      }
+    }
+  }
+}

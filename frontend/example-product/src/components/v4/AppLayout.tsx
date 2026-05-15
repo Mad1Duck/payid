@@ -27,6 +27,7 @@ import {
   useSwitchChain,
 } from 'wagmi'
 import { useV4Palette } from './theme'
+import DynamicIsland from './DynamicIsland'
 import type { ReactNode } from 'react'
 
 function shortAddr(addr: string) {
@@ -81,7 +82,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       {/* Animated gradient background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-200 h-[500px] opacity-30"
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-200 h-125 opacity-30"
           style={{
             background: p.dark
               ? 'radial-gradient(ellipse at top, #0D1F17 0%, transparent 60%)'
@@ -142,7 +143,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${p.cardBgSolid} ${p.cardBorder} hover:border-[#00D084]/30 cursor-pointer`}
                 >
                   <Globe
-                    className={`w-3.5 h-3.5 ${chainId === 16600 ? 'text-[#00D084]' : 'text-[#94A3B8]'}`}
+                    className={`w-3.5 h-3.5 ${chainId === 16601 ? 'text-[#00D084]' : 'text-[#94A3B8]'}`}
                   />
                   <span className={`text-xs font-bold ${p.textMain}`}>
                     {chains
@@ -175,8 +176,39 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                         {chains.map((chain) => (
                           <button
                             key={chain.id}
-                            onClick={() => {
-                              switchChain({ chainId: chain.id })
+                            onClick={async () => {
+                              try {
+                                await switchChain({ chainId: chain.id })
+                              } catch (err: any) {
+                                const msg = err?.message ?? ''
+                                const code = err?.code ?? ''
+                                const isUnrecognized =
+                                  code === 4902 ||
+                                  msg.includes('Unrecognized chain') ||
+                                  msg.includes('Chain ID') ||
+                                  msg.includes('chain id')
+                                if (isUnrecognized && (window as any).ethereum) {
+                                  try {
+                                    await (window as any).ethereum.request({
+                                      method: 'wallet_addEthereumChain',
+                                      params: [
+                                        {
+                                          chainId: `0x${chain.id.toString(16)}`,
+                                          chainName: chain.name,
+                                          nativeCurrency: chain.nativeCurrency,
+                                          rpcUrls: chain.rpcUrls.default.http,
+                                          blockExplorerUrls: chain.blockExplorers?.default?.url
+                                            ? [chain.blockExplorers.default.url]
+                                            : undefined,
+                                        },
+                                      ],
+                                    })
+                                    await switchChain({ chainId: chain.id })
+                                  } catch (addErr) {
+                                    /* user rejected add */
+                                  }
+                                }
+                              }
                               setShowNetworkMenu(false)
                             }}
                             className={`w-full flex items-center justify-between px-4 py-2.5 text-left text-sm font-medium transition-colors ${p.textMain} ${p.cardHover}`}
@@ -315,9 +347,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             )
           })}
 
-          <div className="mt-auto">
+          {/* <div className="mt-auto">
             <div
-              className="rounded-2xl p-4 relative overflow-hidden"
+              className="h-125 w-full rounded-3xl relative overflow-hidden"
               style={{ backgroundColor: p.cardBg }}
             >
               <div
@@ -361,34 +393,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 X (Twitter)
               </a>
             </div>
-          </div>
+          </div> */}
         </aside>
 
-        {/* Mobile nav */}
-        <nav
-          className={`md:hidden fixed bottom-0 left-0 right-0 z-50 border-t ${p.cardBorder} backdrop-blur-2xl ${p.dark ? 'bg-[#0B0F1A]/90' : 'bg-[#F1F5F9]/90'}`}
-        >
-          <div className="flex justify-around py-1.5">
-            {navItems.slice(0, 5).map((item) => {
-              const isActive = currentPath === item.to
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] font-medium transition-colors ${
-                    isActive ? p.textMain : p.textMuted
-                  }`}
-                >
-                  <item.icon
-                    className="w-5 h-5"
-                    strokeWidth={isActive ? 2 : 1.5}
-                  />
-                  <span>{item.label}</span>
-                </Link>
-              )
-            })}
-          </div>
-        </nav>
+        {/* Mobile nav - replaced with DynamicIsland */}
+        <DynamicIsland navItems={navItems} currentPath={currentPath} p={p} />
 
         {/* Main */}
         <main className="flex-1 p-5 md:p-8 pb-20 md:pb-8 min-h-[calc(100vh-56px)]">

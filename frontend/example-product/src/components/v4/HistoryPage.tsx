@@ -5,6 +5,7 @@ import { useAccount } from 'wagmi'
 import { useV4Palette } from './theme'
 import { SkeletonCard } from './Skeleton'
 import { useTxHistory, relativeTime } from '@/hooks/useTxHistory'
+import PremiumButton from './PremiumButton'
 
 /* Avatar with initials */
 function Avatar({ name, size = 32 }: { name: string; size?: number }) {
@@ -86,7 +87,9 @@ export default function HistoryPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
-          className="rounded-xl p-5 relative overflow-hidden"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="rounded-xl p-5 relative overflow-hidden cursor-pointer"
           style={{
             background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
           }}
@@ -106,7 +109,9 @@ export default function HistoryPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.05 }}
-          className="rounded-xl p-5 relative overflow-hidden"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="rounded-xl p-5 relative overflow-hidden cursor-pointer"
           style={{
             background: 'linear-gradient(135deg, #00D084 0%, #00B86E 100%)',
           }}
@@ -130,8 +135,10 @@ export default function HistoryPage() {
         transition={{ duration: 0.35, delay: 0.1 }}
         className="space-y-3"
       >
-        <div
-          className={`flex items-center gap-2 p-3 rounded-xl ${p.dark ? 'bg-white/3' : 'bg-black/3'}`}
+        <motion.div
+          whileFocus={{ scale: 1.01 }}
+          className={`flex items-center gap-2 p-3 rounded-xl backdrop-blur-20 ${p.dark ? 'bg-white/3' : 'bg-black/3'}`}
+          style={{ border: p.glass.border }}
         >
           <Search className="w-4 h-4 text-[#64748B]" />
           <input
@@ -141,7 +148,7 @@ export default function HistoryPage() {
             onChange={(e) => setSearch(e.target.value)}
             className={`flex-1 bg-transparent text-sm ${p.textMain} placeholder-[#64748B] focus:outline-none`}
           />
-        </div>
+        </motion.div>
 
         <div className="flex items-center gap-1">
           {[
@@ -149,9 +156,11 @@ export default function HistoryPage() {
             { key: 'received' as const, label: 'Incoming' },
             { key: 'sent' as const, label: 'Outgoing' },
           ].map((tab) => (
-            <button
+            <motion.button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
                 activeTab === tab.key
                   ? 'bg-[#00D084]/10 text-[#00D084]'
@@ -159,11 +168,16 @@ export default function HistoryPage() {
               }`}
             >
               {tab.label}
-            </button>
+            </motion.button>
           ))}
-          <button className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E2E8F0] text-xs font-medium text-[#64748B] hover:bg-black/5 transition-colors cursor-pointer">
-            <Download className="w-3 h-3" /> Export
-          </button>
+          <PremiumButton
+            variant="ghost"
+            size="sm"
+            icon={<Download className="w-3 h-3" />}
+            className="ml-auto"
+          >
+            Export
+          </PremiumButton>
         </div>
       </motion.div>
 
@@ -172,12 +186,9 @@ export default function HistoryPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.15 }}
-        className="rounded-2xl p-5 relative"
-        style={{ background: p.cardBg }}
+        className="rounded-2xl p-5 relative backdrop-blur-20"
+        style={{ background: p.glass.bg, border: p.glass.border }}
       >
-        <div
-          className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`}
-        />
         <div className="relative">
           <AnimatePresence mode="wait">
             <motion.div

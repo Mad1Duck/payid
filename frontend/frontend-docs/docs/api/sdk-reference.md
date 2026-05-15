@@ -122,7 +122,7 @@ async evaluateAndProve(params: {
   payId:     string;   // e.g. "pay.id/merchant"
   payer:     string;   // payer wallet address
   receiver:  string;   // receiver wallet address
-  asset:     string;   // token address (zero address = ETH)
+  asset:     string;   // token address (zero address = native token: ETH, MATIC, A0GI, etc.)
   amount:    bigint;   // amount in token's smallest unit
 
   // Signing

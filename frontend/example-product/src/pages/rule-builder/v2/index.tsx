@@ -40,6 +40,7 @@ function shortAddr(addr?: string): string {
 
 const CONTEXT_NAMESPACES = [
   'tx.amount',
+  'tx.amountUsd',
   'tx.token',
   'tx.sender',
   'tx.receiver',

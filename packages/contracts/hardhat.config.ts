@@ -52,8 +52,6 @@ export default defineConfig({
       },
     },
 
-    //  Testnets 
-
     liskSepolia: {
       type: "http",
       chainId: 4202,
@@ -89,15 +87,12 @@ export default defineConfig({
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
-    // Moonbase Alpha — Moonbeam testnet (Polkadot EVM)
     moonbaseAlpha: {
       type: "http",
       chainId: 1287,
       url: "https://rpc.api.moonbase.moonbeam.network",
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
-
-    // Mainnets 
 
     polygon: {
       type: "http",
@@ -113,7 +108,6 @@ export default defineConfig({
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
-    // Moonbeam Mainnet (Polkadot EVM)
     moonbeam: {
       type: "http",
       chainId: 1284,
@@ -121,15 +115,23 @@ export default defineConfig({
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
-    // 0G Newton Testnet
     zeroGTestnet: {
       type: "http",
-      chainId: 16600,
-      url: process.env.ZEROG_RPC_URL ?? "https://16600.rpc.thirdweb.com/",
+      chainId: 16601,
+      url: process.env.ZEROG_RPC_URL ?? "http://100.73.196.95:8550",
+      accounts: {
+        mnemonic: "test test test test test test test test test test test junk",
+        count: 5,
+      },
+    },
+
+    zeroGMainnet: {
+      type: "http",
+      chainId: 16661,
+      url: process.env.ZEROG_MAINNET_RPC_URL ?? "https://evmrpc.0g.ai",
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
-    // Moonriver (Kusama EVM — canary network)
     moonriver: {
       type: "http",
       chainId: 1285,

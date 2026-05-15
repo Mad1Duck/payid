@@ -15,7 +15,7 @@ import {
   Repeat,
 } from 'lucide-react'
 import { useV4Palette } from './theme'
-import { useAccount, useBalance } from 'wagmi'
+import { useAccount, useBalance, useChainId, useChains } from 'wagmi'
 import { formatUnits, isAddress } from 'viem'
 
 interface Recipient {
@@ -37,6 +37,10 @@ interface PayrollRun {
 
 export default function DAOPayroll() {
   const p = useV4Palette()
+  const chainId = useChainId()
+  const chains = useChains()
+  const currentChain = chains.find(c => c.id === chainId)
+  const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
   const { address } = useAccount()
   const { data: balance } = useBalance({ address })
 
@@ -123,13 +127,13 @@ export default function DAOPayroll() {
           <div>
             <p className={`text-xs ${p.textMuted} mb-1`}>Treasury Balance</p>
             <p className={`text-xl font-bold font-mono ${p.textMain}`}>
-              {balance ? formatUnits(balance.value, balance.decimals) : '12.50'} {balance?.symbol || 'ETH'}
+              {balance ? formatUnits(balance.value, balance.decimals) : '12.50'} {balance?.symbol || nativeSymbol}
             </p>
           </div>
           <div>
             <p className={`text-xs ${p.textMuted} mb-1`}>Total Payroll</p>
             <p className={`text-xl font-bold font-mono ${isSufficient ? 'text-[#00D084]' : 'text-[#EF4444]'}`}>
-              {totalPayroll} ETH
+              {totalPayroll} {nativeSymbol}
             </p>
           </div>
           <div>

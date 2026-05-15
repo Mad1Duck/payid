@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react'
-import { motion } from 'framer-motion'
-import { QrCode, Copy, Share2, Wallet, ChevronRight, Check, Download, Loader2, RefreshCw } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { QrCode, Copy, Share2, Wallet, ChevronRight, Check, Download, RefreshCw } from 'lucide-react'
 import { useAccount } from 'wagmi'
 import { usePayIDQR } from 'payid-react'
 import { useV4Palette } from './theme'
+import PremiumButton from './PremiumButton'
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + '...' + addr.slice(-4)
@@ -69,10 +70,9 @@ export default function ReceivePage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="rounded-2xl p-5 relative"
-        style={{ background: p.cardBg }}
+        className="rounded-2xl p-5 relative backdrop-blur-20"
+        style={{ background: p.glass.bg, border: p.glass.border }}
       >
-        <div className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`} />
         <div className="relative space-y-3">
           <div className="flex items-center gap-2 mb-2">
             <QrCode className="w-4 h-4 text-[#00D084]" />
@@ -100,18 +100,14 @@ export default function ReceivePage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button
+            <PremiumButton
               onClick={handleGenerate}
-              disabled={status === 'signing' || status === 'encoding' || !isConnected}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 disabled:opacity-50"
+              disabled={!address}
+              isLoading={status === 'signing' || status === 'encoding' || status === 'rendering'}
+              icon={<QrCode />}
             >
-              {status === 'signing' || status === 'encoding' ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <QrCode className="w-4 h-4" />
-              )}
-              {status === 'signing' ? 'Signing...' : status === 'encoding' ? 'Encoding...' : 'Generate QR'}
-            </button>
+              Generate QR
+            </PremiumButton>
             {payload && (
               <button
                 onClick={reset}
@@ -129,7 +125,7 @@ export default function ReceivePage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.05 }}
-        className="rounded-[24px] p-6 relative overflow-hidden"
+        className="rounded-3xl p-6 relative overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #00D084 0%, #00B86E 50%, #009E5C 100%)' }}
       >
         <div className="relative z-10 text-center">
@@ -170,42 +166,96 @@ export default function ReceivePage() {
         <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full bg-white/5" />
       </motion.div>
 
+      {/* QR Display */}
+      {payload && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+          className="rounded-3xl p-6 relative backdrop-blur-20"
+          style={{ background: p.glass.bg, border: p.glass.border }}
+        >
+          <div className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`} />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className={`text-sm font-semibold ${p.textMain}`}>Your PayID</h3>
+                <p className={`text-xs ${p.textMuted} mt-0.5`}>Share this link to receive payments</p>
+              </div>
+            </div>
+
+            <div className={`flex items-center gap-3 p-3 rounded-xl ${p.dark ? 'bg-white/3' : 'bg-black/3'}`}>
+              <div className="w-8 h-8 rounded-full bg-[#00D084]/15 flex items-center justify-center">
+                <span className="text-[#00D084] font-bold text-xs">P</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className={`text-sm font-mono font-medium ${p.textMain} truncate`}>{payId}</div>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleCopy(payId)}
+                  className={`p-2 rounded-lg ${p.cardHover} transition-colors cursor-pointer`}
+                >
+                  {copied ? <Check className="w-4 h-4 text-[#00D084]" /> : <Copy className="w-4 h-4 text-[#64748B]" />}
+                </button>
+                <button className={`p-2 rounded-lg ${p.cardHover} transition-colors cursor-pointer`}>
+                  <Share2 className="w-4 h-4 text-[#64748B]" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* PayID Card */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.05 }}
-        className="rounded-2xl p-5 relative"
-        style={{ background: p.cardBg }}
+        className="rounded-2xl p-5 relative backdrop-blur-20"
+        style={{ background: p.glass.bg, border: p.glass.border }}
       >
-        <div className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`} />
         <div className="relative">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className={`text-sm font-semibold ${p.textMain}`}>Your PayID</h3>
-              <p className={`text-xs ${p.textMuted} mt-0.5`}>Share this link to receive payments</p>
+              <h3 className={`text-sm font-semibold ${p.textMain}`}>Wallet Address</h3>
+              <p className={`text-xs ${p.textMuted} mt-0.5`}>Advanced users only</p>
             </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowAddress(!showAddress)}
+              className="text-[#64748B] hover:text-[#00D084] transition-colors cursor-pointer"
+            >
+              {showAddress ? <ChevronRight className="w-4 h-4 rotate-90" /> : <ChevronRight className="w-4 h-4" />}
+            </motion.button>
           </div>
 
-          <div className={`flex items-center gap-3 p-3 rounded-xl ${p.dark ? 'bg-white/3' : 'bg-black/3'}`}>
-            <div className="w-8 h-8 rounded-full bg-[#00D084]/15 flex items-center justify-center">
-              <span className="text-[#00D084] font-bold text-xs">P</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className={`text-sm font-mono font-medium ${p.textMain} truncate`}>{payId}</div>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => handleCopy(payId)}
-                className={`p-2 rounded-lg ${p.cardHover} transition-colors cursor-pointer`}
+          <AnimatePresence>
+            {showAddress && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className={`flex items-center gap-3 p-3 rounded-xl ${p.dark ? 'bg-white/3' : 'bg-black/3'}`}
               >
-                {copied ? <Check className="w-4 h-4 text-[#00D084]" /> : <Copy className="w-4 h-4 text-[#64748B]" />}
-              </button>
-              <button className={`p-2 rounded-lg ${p.cardHover} transition-colors cursor-pointer`}>
-                <Share2 className="w-4 h-4 text-[#64748B]" />
-              </button>
-            </div>
-          </div>
+                <div className="w-8 h-8 rounded-full bg-[#0EA5E9]/15 flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-[#0EA5E9]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-xs font-mono ${p.textMain} truncate`}>{walletAddress || '—'}</div>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => handleCopy(walletAddress)}
+                  className={`p-2 rounded-lg ${p.cardHover} transition-colors cursor-pointer`}
+                >
+                  {copied ? <Check className="w-4 h-4 text-[#00D084]" /> : <Copy className="w-4 h-4 text-[#64748B]" />}
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
 

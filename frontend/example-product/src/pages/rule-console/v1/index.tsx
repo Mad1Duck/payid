@@ -8,6 +8,7 @@ import { keccak256, parseEther, toBytes } from 'viem'
 import {
   useAccount,
   useChainId,
+  useChains,
   useConnect,
   useDisconnect,
   useReadContract,
@@ -25,7 +26,8 @@ import {
 } from 'payid-react'
 import { CREATE_RULE_CSS, CreateRuleTab } from './CreateRuleTab'
 import { RuleNFTCard } from './RuleNFTCard'
-import type { Address, Hash, WriteContractParameters } from 'viem'
+import { CHAINLINK_ORACLE_ADDRESSES, CHAINLINK_ORACLE_ABI } from '@/constants/oracles'
+import type { Address, Hash } from 'viem'
 import type { ChangeEvent, MouseEvent as ReactMouseEvent } from 'react'
 import type {
   CombinedRule,
@@ -35,6 +37,8 @@ import type {
   RuleRef,
 } from 'payid-react'
 import type { Connector } from 'wagmi'
+
+type WriteArgs = Parameters<ReturnType<typeof useWriteContract>['writeContractAsync']>[0]
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap');
@@ -247,7 +251,7 @@ const TOKENS_BY_CHAIN: Record<number, ReadonlyArray<Token>> = {
   // Hardhat local
   31337: [
     {
-      symbol: 'ETH',
+      symbol: 'DEV',
       address: '0x0000000000000000000000000000000000000000',
       decimals: 18,
       logo: 'Ξ',
@@ -262,7 +266,7 @@ const TOKENS_BY_CHAIN: Record<number, ReadonlyArray<Token>> = {
   // Lisk Sepolia
   4202: [
     {
-      symbol: 'ETH',
+      symbol: 'LISK',
       address: '0x0000000000000000000000000000000000000000',
       decimals: 18,
       logo: 'Ξ',
@@ -278,7 +282,7 @@ const TOKENS_BY_CHAIN: Record<number, ReadonlyArray<Token>> = {
 
 const DEFAULT_TOKENS: ReadonlyArray<Token> = [
   {
-    symbol: 'ETH',
+    symbol: 'NATIVE',
     address: '0x0000000000000000000000000000000000000000',
     decimals: 18,
     logo: 'Ξ',
@@ -327,14 +331,38 @@ const shortAddr = (addr?: string): string =>
   addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—'
 const shortHash = (h?: string): string =>
   h ? `${h.slice(0, 10)}...${h.slice(-6)}` : '—'
+
 const formatExpiry = (ts?: bigint): string =>
   !ts || ts === 0n
     ? 'No expiry'
     : new Date(Number(ts) * 1000).toLocaleDateString()
 
+const formatPrice = (priceWei: bigint): string => {
+  const price = Number(priceWei) / 1e18
+  if (price < 0.0001) return price.toFixed(8)
+  if (price < 0.01) return price.toFixed(6)
+  if (price < 1) return price.toFixed(4)
+  return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const formatPriceWithUSD = (priceWei: bigint, nativeSymbol: string, ethUsdPrice?: bigint): string => {
+  const formattedPrice = formatPrice(priceWei)
+  const price = Number(priceWei) / 1e18
+  
+  // If oracle price is available, calculate USD equivalent
+  if (ethUsdPrice && ethUsdPrice > 0n) {
+    const ethPrice = Number(ethUsdPrice) / 1e8 // Chainlink uses 8 decimals
+    const usdPrice = (price * ethPrice).toFixed(2)
+    return `$${usdPrice} (${formattedPrice} ${nativeSymbol})`
+  }
+  
+  // Fallback if oracle price not available
+  return `${formattedPrice} ${nativeSymbol}`
+}
+
 // useTx
 interface TxState {
-  send: (args: WriteContractParameters) => Promise<void>
+  send: (args: WriteArgs) => Promise<void>
   hash: Hash | null
   status: TxStatus
   error: string | null
@@ -357,7 +385,7 @@ function useTx(): TxState {
   }, [confirmed, status])
 
   const send = useCallback(
-    async (args: WriteContractParameters) => {
+    async (args: WriteArgs) => {
       setStatus('pending')
       setError(null)
       setHash(null)
@@ -962,6 +990,10 @@ function CombineTab({ myAddress }: { myAddress: Address | undefined }) {
 
 // SubscriptionTab
 function SubscriptionTab({ myAddress }: { myAddress: Address | undefined }) {
+  const chainId = useChainId()
+  const chains = useChains()
+  const currentChain = chains.find(c => c.id === chainId)
+  const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
   const { contracts } = usePayIDContext()
   const { data: sub, refetch } = useSubscription(myAddress)
   const tx = useTx()
@@ -972,6 +1004,14 @@ function SubscriptionTab({ myAddress }: { myAddress: Address | undefined }) {
     functionName: 'subscriptionPriceETH',
   })
   const subPrice = rawSubPrice
+
+  /* ── Query Chainlink Oracle for ETH/USD price ── */
+  const { data: oracleData } = useReadContract({
+    address: CHAINLINK_ORACLE_ADDRESSES[chainId] || CHAINLINK_ORACLE_ADDRESSES[31337],
+    abi: CHAINLINK_ORACLE_ABI,
+    functionName: 'latestRoundData',
+  })
+  const ethUsdPrice = oracleData?.[1] as bigint | undefined
 
   useEffect(() => {
     if (tx.status === 'success') void refetch()
@@ -1099,7 +1139,7 @@ function SubscriptionTab({ myAddress }: { myAddress: Address | undefined }) {
               <div>● Duration: 30 days per subscription</div>
               <div>
                 ● Price: ~
-                {subPrice ? (Number(subPrice) / 1e18).toFixed(6) : '0.001'} ETH
+                {subPrice ? formatPriceWithUSD(subPrice, nativeSymbol, ethUsdPrice) : '0.001'}
               </div>
               <div>● Renewable before or after expiry</div>
             </div>
@@ -1124,17 +1164,17 @@ function SubscriptionTab({ myAddress }: { myAddress: Address | undefined }) {
           <button
             className="btn btn-amber btn-full"
             style={{ fontSize: 12 }}
-            onClick={() =>
+            onClick={() => {
+              const value = subPrice ?? parseEther('0.001')
               void tx.send({
                 address: contracts.ruleItemERC721,
                 abi: RULE_NFT_ABI,
                 functionName: 'subscribe',
                 args: [],
-                value: subPrice ?? parseEther('0.001'),
-                chain: undefined,
-                account: null,
+                // @ts-expect-error - wagmi incorrectly infers value as undefined for payable functions with empty args
+                value: value,
               })
-            }
+            }}
             disabled={tx.isPending || !myAddress}
           >
             {tx.isPending ? (

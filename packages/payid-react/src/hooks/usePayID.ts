@@ -20,6 +20,15 @@ interface TxHookResult {
 
 import type { DecisionPayload as Decision } from 'payid';
 
+export function useSubscriptionPrice() {
+  const { contracts } = usePayIDContext();
+  return useReadContract({
+    address: contracts.ruleItemERC721,
+    abi: RuleItemERC721ABI.abi,
+    functionName: 'subscriptionPriceETH',
+  });
+}
+
 export function useVerifyDecision(
   decision: Decision | undefined,
   signature: `0x${string}` | undefined,
