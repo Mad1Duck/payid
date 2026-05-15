@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, Search } from 'lucide-react'
+import { useAccount } from 'wagmi'
 import { useV4Palette } from './theme'
+import { useTxHistory, relativeTime } from '@/hooks/useTxHistory'
 
 /* Avatar with initials */
 function Avatar({ name, size = 32 }: { name: string; size?: number }) {
@@ -25,27 +27,21 @@ function Avatar({ name, size = 32 }: { name: string; size?: number }) {
 
 export default function HistoryPage() {
   const p = useV4Palette()
+  const { isConnected } = useAccount()
   const [activeTab, setActiveTab] = useState<'all' | 'sent' | 'received'>('all')
   const [search, setSearch] = useState('')
-
-  const txs = [
-    { id: '0x7a3f...e91b', type: 'sent' as const, to: 'alice.pay.id', from: 'alice.pay.id', amount: '5.00', asset: 'USDC', time: '2m ago', token: 'PDT' },
-    { id: '0x9b2a...c45d', type: 'received' as const, to: 'bob.pay.id', from: 'bob.pay.id', amount: '12.50', asset: 'USDC', time: '15m ago', token: 'PDT' },
-    { id: '0x3f11...a781', type: 'sent' as const, to: 'merchant.pay.id', from: 'merchant.pay.id', amount: '50.00', asset: 'ETH', time: '1h ago', token: 'ETH' },
-    { id: '0x2c8e...b903', type: 'received' as const, to: 'charlie.pay.id', from: 'charlie.pay.id', amount: '120.00', asset: 'USDC', time: '3h ago', token: 'PDT' },
-    { id: '0x5d71...f22a', type: 'sent' as const, to: 'dave.pay.id', from: 'dave.pay.id', amount: '8.25', asset: 'ETH', time: '5h ago', token: 'ETH' },
-    { id: '0x1a4c...d67e', type: 'received' as const, to: 'eve.pay.id', from: 'eve.pay.id', amount: '30.00', asset: 'USDC', time: '1d ago', token: 'PDT' },
-  ]
+  const { txs } = useTxHistory()
 
   const filteredTxs = useMemo(() => {
     let filtered = activeTab === 'all' ? txs : txs.filter(tx => tx.type === activeTab)
     if (search) {
       filtered = filtered.filter(tx =>
-        (tx.to || tx.from).toLowerCase().includes(search.toLowerCase())
+        (tx.to || tx.from).toLowerCase().includes(search.toLowerCase()) ||
+        tx.id.toLowerCase().includes(search.toLowerCase())
       )
     }
     return filtered
-  }, [activeTab, search])
+  }, [activeTab, search, txs])
 
   const totalSent = txs.filter(t => t.type === 'sent').reduce((a, t) => a + parseFloat(t.amount), 0)
   const totalReceived = txs.filter(t => t.type === 'received').reduce((a, t) => a + parseFloat(t.amount), 0)
@@ -169,15 +165,21 @@ export default function HistoryPage() {
                   </div>
                   <div className="text-right shrink-0">
                     <div className={`text-sm font-mono font-semibold ${tx.type === 'sent' ? 'text-[#EF4444]' : 'text-[#00D084]'}`}>
-                      {tx.type === 'sent' ? '−' : '+'}{tx.amount} {tx.token}
+                      {tx.type === 'sent' ? '−' : '+'}{tx.amount} {tx.asset}
                     </div>
-                    <div className={`text-xs ${p.textMuted}`}>{tx.time}</div>
+                    <div className={`text-xs ${p.textMuted}`}>{relativeTime(tx.timestamp)}</div>
                   </div>
                 </div>
               ))}
               {filteredTxs.length === 0 && (
                 <div className="text-center py-8">
-                  <div className={`text-sm ${p.textMuted}`}>No transactions found</div>
+                  <div className={`text-sm ${p.textMuted}`}>
+                    {!isConnected
+                      ? 'Connect your wallet to see transaction history.'
+                      : search
+                      ? 'No transactions match your search.'
+                      : 'No transactions yet. Send your first payment!'}
+                  </div>
                 </div>
               )}
             </motion.div>

@@ -11,7 +11,6 @@ import {
   Layers,
   Zap,
   Hexagon,
-  ArrowRight,
   RotateCcw,
   Fingerprint,
   FileCheck,
@@ -296,10 +295,9 @@ export default function ProofVisualizer() {
       <div className="space-y-3">
         <h3 className={`text-sm font-semibold ${p.textMain}`}>Pipeline Steps</h3>
         <div className="grid grid-cols-7 gap-2">
-          {STAGES.map((s, i) => {
+          {STAGES.map((s) => {
             const isDone = history.includes(s.key)
             const isActive = stage === s.key
-            const isFuture = !isDone && !isActive
             return (
               <motion.div
                 key={s.key}

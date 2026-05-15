@@ -11,12 +11,12 @@ import {
   Loader2,
   FileSpreadsheet,
   Shield,
-  ChevronRight,
   Clock,
   Repeat,
 } from 'lucide-react'
 import { useV4Palette } from './theme'
 import { useAccount, useBalance } from 'wagmi'
+import { formatUnits, isAddress } from 'viem'
 
 interface Recipient {
   id: string
@@ -40,11 +40,7 @@ export default function DAOPayroll() {
   const { address } = useAccount()
   const { data: balance } = useBalance({ address })
 
-  const [recipients, setRecipients] = useState<Recipient[]>([
-    { id: '1', address: '0xAb5...2F9a', amount: '0.5', role: 'Core Dev', schedule: 'monthly' },
-    { id: '2', address: '0xCd3...8E1b', amount: '0.3', role: 'Designer', schedule: 'monthly' },
-    { id: '3', address: '0xEf7...4C2d', amount: '0.2', role: 'Community', schedule: 'weekly' },
-  ])
+  const [recipients, setRecipients] = useState<Recipient[]>([])
 
   const [newAddress, setNewAddress] = useState('')
   const [newAmount, setNewAmount] = useState('')
@@ -52,8 +48,6 @@ export default function DAOPayroll() {
   const [newSchedule, setNewSchedule] = useState<'one-time' | 'weekly' | 'monthly'>('monthly')
   const [showAddForm, setShowAddForm] = useState(false)
 
-  const [isSimulating, setIsSimulating] = useState(false)
-  const [isSending, setIsSending] = useState(false)
   const [simulationResult, setSimulationResult] = useState<{
     decision: 'ALLOW' | 'REJECT'
     total: string
@@ -61,13 +55,10 @@ export default function DAOPayroll() {
     policyCheck: string[]
   } | null>(null)
 
-  const [runs, setRuns] = useState<PayrollRun[]>([
-    { id: 'run-1', date: '2026-04-01', totalAmount: '1.2', recipientCount: 4, status: 'completed', txHash: '0x3a...b7e2' },
-    { id: 'run-2', date: '2026-03-01', totalAmount: '1.0', recipientCount: 3, status: 'completed', txHash: '0x8f...c1d4' },
-  ])
+  const [runs] = useState<PayrollRun[]>([])
 
   const totalPayroll = recipients.reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0).toFixed(4)
-  const treasuryBalance = parseFloat(balance?.formatted || '12.5')
+  const treasuryBalance = parseFloat(balance ? formatUnits(balance.value, balance.decimals) : '12.5')
   const isSufficient = treasuryBalance >= parseFloat(totalPayroll)
 
   const addRecipient = () => {
@@ -87,39 +78,22 @@ export default function DAOPayroll() {
   }
 
   const simulate = () => {
-    setIsSimulating(true)
-    setSimulationResult(null)
-    setTimeout(() => {
-      setIsSimulating(false)
-      setSimulationResult({
-        decision: isSufficient ? 'ALLOW' : 'REJECT',
-        total: totalPayroll,
-        gasEstimate: '0.0042',
-        policyCheck: [
-          'Treasury balance sufficient',
-          'All addresses valid checksum',
-          'Batch limit: 50 recipients OK',
-          'Policy: DAO Payroll template active',
-        ],
-      })
-    }, 1500)
-  }
-
-  const executePayroll = () => {
-    setIsSending(true)
-    setTimeout(() => {
-      setIsSending(false)
-      const newRun: PayrollRun = {
-        id: `run-${Date.now()}`,
-        date: new Date().toISOString().slice(0, 10),
-        totalAmount: totalPayroll,
-        recipientCount: recipients.length,
-        status: 'completed',
-        txHash: '0x' + Math.random().toString(16).slice(2, 10) + '...' + Math.random().toString(16).slice(2, 6),
-      }
-      setRuns((prev) => [newRun, ...prev])
-      setSimulationResult(null)
-    }, 2500)
+    const invalid = recipients.filter(r => !isAddress(r.address))
+    const decision: 'ALLOW' | 'REJECT' = isSufficient && invalid.length === 0 ? 'ALLOW' : 'REJECT'
+    setSimulationResult({
+      decision,
+      total: totalPayroll,
+      gasEstimate: 'N/A',
+      policyCheck: [
+        isSufficient
+          ? 'Treasury balance sufficient'
+          : `Insufficient balance (need ${totalPayroll} ETH, have ${treasuryBalance.toFixed(4)})`,
+        invalid.length === 0
+          ? 'All recipient addresses valid (checksum OK)'
+          : `${invalid.length} invalid address(es) — use full 0x... format`,
+        `${recipients.length} of 50 recipient limit`,
+      ],
+    })
   }
 
   return (
@@ -149,7 +123,7 @@ export default function DAOPayroll() {
           <div>
             <p className={`text-xs ${p.textMuted} mb-1`}>Treasury Balance</p>
             <p className={`text-xl font-bold font-mono ${p.textMain}`}>
-              {balance?.formatted || '12.50'} {balance?.symbol || 'ETH'}
+              {balance ? formatUnits(balance.value, balance.decimals) : '12.50'} {balance?.symbol || 'ETH'}
             </p>
           </div>
           <div>
@@ -281,22 +255,7 @@ export default function DAOPayroll() {
 
       {/* Simulation */}
       <AnimatePresence mode="wait">
-        {isSimulating ? (
-          <motion.div
-            key="sim"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className={`rounded-2xl p-5 border ${p.cardBorder} flex items-center gap-3`}
-            style={{ backgroundColor: p.cardBg }}
-          >
-            <Loader2 className="w-5 h-5 text-[#00D084] animate-spin" />
-            <div>
-              <p className={`text-sm ${p.textMain}`}>Simulating payroll policy...</p>
-              <p className={`text-xs ${p.textMuted}`}>Checking treasury, rule engine, and gas estimate</p>
-            </div>
-          </motion.div>
-        ) : simulationResult ? (
+        {simulationResult ? (
           <motion.div
             key="result"
             initial={{ opacity: 0, y: 4 }}
@@ -338,20 +297,13 @@ export default function DAOPayroll() {
             {simulationResult.decision === 'ALLOW' && (
               <div className="p-5 border-t border-dashed border-[#E5E7EB]/30">
                 <button
-                  onClick={executePayroll}
-                  disabled={isSending}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 transition-colors cursor-pointer disabled:opacity-60"
+                  disabled
+                  title="Batch payroll contract not yet deployed on this chain"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#64748B]/10 text-[#64748B] text-sm font-semibold border border-dashed border-[#64748B]/20 cursor-not-allowed opacity-70"
                 >
-                  {isSending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Processing Batch...
-                    </>
-                  ) : (
-                    <>
-                      <Wallet className="w-4 h-4" /> Execute Payroll <ChevronRight className="w-4 h-4" />
-                    </>
-                  )}
+                  <Wallet className="w-4 h-4" /> Execute Payroll (Contract Not Deployed)
                 </button>
+                <p className={`text-[11px] text-center mt-2 ${p.textMuted}`}>Batch contract required. Use SendFlow for individual payments.</p>
               </div>
             )}
           </motion.div>
@@ -359,7 +311,7 @@ export default function DAOPayroll() {
       </AnimatePresence>
 
       {/* Action Bar */}
-      {!simulationResult && !isSimulating && (
+      {!simulationResult && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}

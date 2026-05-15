@@ -1,22 +1,24 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowRight,
   Check,
   X,
-  Zap,
   Shield,
-  FileCheck,
   Loader2,
   Copy,
   RotateCcw,
   Wallet,
 } from 'lucide-react'
-import { useAccount, useBalance } from 'wagmi'
-import { formatUnits } from 'viem'
+import { useAccount, useBalance, useChainId } from 'wagmi'
+import { formatUnits, parseEther, isAddress } from 'viem'
+import type { Address } from 'viem'
 import { useV4Palette } from './theme'
 import { useMultiCurrency } from '../../hooks/useMultiCurrency'
 import TransactionSimulation from './TransactionSimulation'
+import { useTxHistory } from '@/hooks/useTxHistory'
+import { usePayIDFlow } from 'payid-react'
+import type { PayIDFlowStatus } from 'payid-react'
 
 type RuleStatus = 'pending' | 'running' | 'done'
 
@@ -24,48 +26,67 @@ type Step = 'who' | 'amount' | 'review' | 'evaluating' | 'signing' | 'success'
 
 const cardBase = 'rounded-2xl relative overflow-hidden'
 
+const FLOW_STEPS = [
+  { id: 'ctx',      name: 'Build Context' },
+  { id: 'resolve',  name: 'Fetch Rules (IPFS)' },
+  { id: 'evaluate', name: 'WASM Evaluate' },
+  { id: 'decision', name: 'Decision Proof' },
+  { id: 'sign',     name: 'EIP-712 Sign' },
+  { id: 'submit',   name: 'Submit Tx' },
+]
+
+function getPipeline(s: PayIDFlowStatus): { id: string; name: string; status: RuleStatus }[] {
+  let doneUpTo = -1, runningAt = -1
+  if (s === 'fetching-rule')        { runningAt = 0 }
+  else if (s === 'evaluating')      { doneUpTo = 0; runningAt = 1 }
+  else if (s === 'proving')         { doneUpTo = 1; runningAt = 2 }
+  else if (s === 'approving')       { doneUpTo = 2; runningAt = 3 }
+  else if (s === 'awaiting-wallet') { doneUpTo = 3; runningAt = 4 }
+  else if (s === 'confirming')      { doneUpTo = 4; runningAt = 5 }
+  else if (s === 'success')         { doneUpTo = 5 }
+  return FLOW_STEPS.map((step, i) => ({
+    ...step,
+    status: (i <= doneUpTo ? 'done' : i === runningAt ? 'running' : 'pending') as RuleStatus,
+  }))
+}
+
 export default function SendFlow() {
   const { address, isConnected } = useAccount()
   const { data: balance } = useBalance({ address })
+  const chainId = useChainId()
   const p = useV4Palette()
+
+  const CHAIN_NAMES: Record<number, string> = {
+    31337: 'Hardhat', 16600: '0G Newton', 11155111: 'Sepolia',
+    84532: 'Base Sepolia', 4202: 'Lisk Sepolia', 10143: 'Monad', 1287: 'Moonbase', 80002: 'Amoy',
+  }
+  const chainName = CHAIN_NAMES[chainId] ?? `Chain #${chainId}`
   const cardBorder = `absolute inset-0 rounded-2xl border pointer-events-none ${p.cardBorder}`
   const cardBg = { background: p.cardBg }
 
   const { displayCurrency, convert, format, toggle } = useMultiCurrency()
+  const { addTx } = useTxHistory()
   const [step, setStep] = useState<Step>('who')
   const [payId, setPayId] = useState('')
   const [resolvedName, setResolvedName] = useState<string | null>(null)
   const [amount, setAmount] = useState('')
   const [asset, setAsset] = useState('ETH')
   const [txHash, setTxHash] = useState('')
-  const [evalProgress, setEvalProgress] = useState(0)
   const [denyReason, setDenyReason] = useState('')
-  const [simResult, setSimResult] = useState<any>(null)
-  const [showSimulation, setShowSimulation] = useState(false)
+
+  const {
+    status: flowStatus,
+    txHash: flowTxHash,
+    denyReason: flowDenyReason,
+    error: flowError,
+    execute,
+    reset: resetFlow,
+  } = usePayIDFlow()
 
   const balanceValue = balance ? parseFloat(formatUnits(balance.value, balance.decimals)) : 0
-
-  const demoRules: { id: string; name: string; status: RuleStatus }[] = [
-    { id: 'ctx', name: 'Build Context', status: 'pending' },
-    { id: 'resolve', name: 'Resolve Rules', status: 'pending' },
-    { id: 'eval1', name: 'Business Hours', status: 'pending' },
-    { id: 'eval2', name: 'Daily Limit', status: 'pending' },
-    { id: 'eval3', name: 'KYC Check', status: 'pending' },
-    { id: 'prove', name: 'EIP-712 Proof', status: 'pending' },
-  ]
-
-  const [pipeline, setPipeline] = useState(demoRules)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const isEvaluatingRef = useRef(false)
-
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
-    }
-  }, [])
+  const pipeline = getPipeline(flowStatus)
+  const LOG_LEVELS: PayIDFlowStatus[] = ['fetching-rule', 'evaluating', 'proving', 'approving', 'awaiting-wallet', 'confirming', 'success']
+  const logIdx = LOG_LEVELS.indexOf(flowStatus)
 
   const resolvePayId = useCallback(() => {
     if (!payId.trim()) return
@@ -73,70 +94,49 @@ export default function SendFlow() {
     setStep('amount')
   }, [payId])
 
-  const startEvaluation = useCallback(() => {
-    if (isEvaluatingRef.current) return
-    isEvaluatingRef.current = true
-
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
+  const handleRunPolicy = useCallback(() => {
+    const receiver = payId.trim()
+    if (!isAddress(receiver)) {
+      setDenyReason('Enter a valid wallet address (0x...) as receiver to run policy evaluation.')
+      return
     }
-
+    setDenyReason('')
     setStep('evaluating')
-    setEvalProgress(0)
-    setPipeline(demoRules.map(r => ({ ...r, status: 'pending' as RuleStatus })))
+    execute({
+      receiver: receiver as Address,
+      asset: '0x0000000000000000000000000000000000000000' as Address,
+      amount: parseEther(amount || '0'),
+      payId: address ? `${address}@pay.id` : 'anon@pay.id',
+    })
+  }, [payId, amount, address, execute])
 
-    const steps = demoRules.length
-    let current = 0
-
-    intervalRef.current = setInterval(() => {
-      current += 1
-      setEvalProgress(current)
-      setPipeline(prev =>
-        prev.map((rule, i) => ({
-          ...rule,
-          status: i < current ? 'done' : i === current ? 'running' : 'pending',
-        }))
-      )
-
-      if (current >= steps) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current)
-          intervalRef.current = null
-        }
-        isEvaluatingRef.current = false
-        setTimeout(() => {
-          if (parseFloat(amount) > 1000) {
-            setDenyReason('Daily limit exceeded ($500 max)')
-            setStep('review')
-          } else {
-            setStep('signing')
-          }
-        }, 600)
-      }
-    }, 500)
-  }, [amount])
-
-  const submitTx = useCallback(() => {
-    setStep('success')
-    setTxHash('0x7a3f...e91b')
-  }, [])
+  useEffect(() => {
+    if (flowStatus === 'success' && flowTxHash) {
+      setTxHash(flowTxHash)
+      setStep('success')
+      addTx({ id: flowTxHash, type: 'sent', to: resolvedName ?? payId, from: address ?? '', amount, asset, timestamp: Date.now() })
+    }
+    if (flowStatus === 'denied') {
+      setDenyReason(flowDenyReason ?? 'Policy denied this transaction')
+      setStep('review')
+    }
+    if (flowStatus === 'error') {
+      setDenyReason(String(flowError ?? 'Transaction failed'))
+      setStep('review')
+    }
+    if (flowStatus === 'awaiting-wallet') setStep('signing')
+  }, [flowStatus, flowTxHash])
 
   const reset = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-    isEvaluatingRef.current = false
+    resetFlow()
     setStep('who')
     setPayId('')
     setResolvedName(null)
     setAmount('')
     setAsset('ETH')
     setTxHash('')
-    setEvalProgress(0)
     setDenyReason('')
-    setPipeline(demoRules.map(r => ({ ...r, status: 'pending' as RuleStatus })))
-  }, [])
+  }, [resetFlow])
 
   if (!isConnected) {
     return (
@@ -265,7 +265,7 @@ export default function SendFlow() {
                     amount={amount}
                     asset={asset}
                     currentBalance={balanceValue.toFixed(4)}
-                    onComplete={(result) => setSimResult(result)}
+                    onComplete={() => {}}
                   />
                 )}
 
@@ -295,8 +295,8 @@ export default function SendFlow() {
                 {[
                   { label: 'Recipient', value: resolvedName || '' },
                   { label: 'Amount', value: `${amount} ${asset}` },
-                  { label: 'Network', value: 'Hardhat · 31337' },
-                  { label: 'Est. Fee', value: '~0.0001 ETH' },
+                  { label: 'Network', value: `${chainName} · ${chainId}` },
+                  { label: 'Est. Fee', value: '~0.0001 ETH (estimate)' },
                 ].map((row) => (
                   <div key={row.label} className="flex justify-between items-center py-1">
                     <span className={`text-[13px] ${p.textMuted}`}>{row.label}</span>
@@ -324,7 +324,7 @@ export default function SendFlow() {
             )}
 
             <button
-              onClick={startEvaluation}
+              onClick={handleRunPolicy}
               className={`w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl ${p.dark ? 'bg-white/6 border border-white/8' : 'bg-black/4 border border-black/8'} ${p.textMain} text-sm font-medium ${p.cardHover} transition-colors cursor-pointer`}
             >
               <Shield className="w-4 h-4 text-[#00D084]" /> Run Policy Check
@@ -388,12 +388,13 @@ export default function SendFlow() {
             {/* Terminal log */}
             <div className="rounded-xl p-3 font-mono text-[11px] relative overflow-hidden" style={{ background: p.terminalBg }}>
               <div className={`${p.dark ? 'text-slate-700' : 'text-slate-300'} mb-1`}>// PAY.ID SDK — evaluateAndProve()</div>
-              {evalProgress >= 1 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#64748B]">&gt; context.tx.amount = {amount}</motion.div>}
-              {evalProgress >= 2 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#64748B]">&gt; resolved from IPFS:QmXyZ...</motion.div>}
-              {evalProgress >= 3 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#00D084]">&gt; [PASS] Business Hours</motion.div>}
-              {evalProgress >= 4 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#00D084]">&gt; [PASS] Daily Limit</motion.div>}
-              {evalProgress >= 5 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#00D084]">&gt; [PASS] KYC Level 2</motion.div>}
-              {evalProgress >= 6 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={p.textMain}>&gt; signed EIP-712 DecisionProof</motion.div>}
+              {logIdx >= 0 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#64748B]">&gt; context.tx.amount = {amount} ({asset})</motion.div>}
+              {logIdx >= 1 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#64748B]">&gt; rule resolved from CombinedRuleStorage</motion.div>}
+              {logIdx >= 2 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#00D084]">&gt; wasm.evaluate() → ALLOW</motion.div>}
+              {logIdx >= 3 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#00D084]">&gt; DecisionProof generated</motion.div>}
+              {logIdx >= 4 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={p.textMain}>&gt; awaiting wallet EIP-712 signature...</motion.div>}
+              {logIdx >= 5 && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={p.textMain}>&gt; tx submitted, confirming...</motion.div>}
+              {logIdx >= 6 && flowTxHash && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#00D084]">&gt; confirmed: {flowTxHash}</motion.div>}
             </div>
           </motion.div>
         )}
@@ -408,28 +409,21 @@ export default function SendFlow() {
                 transition={{ type: 'spring', stiffness: 400, damping: 15 }}
                 className="w-14 h-14 rounded-full bg-[#00D084]/10 flex items-center justify-center mx-auto mb-3"
               >
-                <FileCheck className="w-7 h-7 text-[#00D084]" />
+                <Loader2 className="w-7 h-7 text-[#00D084] animate-spin" />
               </motion.div>
-              <h2 className={`text-xl font-semibold ${p.textMain}`}>Proof Generated</h2>
-              <p className={`text-xs ${p.textMuted} mt-1`}>EIP-712 Decision Proof is ready.</p>
+              <h2 className={`text-xl font-semibold ${p.textMain}`}>Awaiting Signature</h2>
+              <p className={`text-xs ${p.textMuted} mt-1`}>Check your wallet — sign the EIP-712 Decision Proof.</p>
             </div>
 
             <div className={`${cardBase} p-4`} style={cardBg}>
               <div className={cardBorder} />
               <div className="relative">
-                <div className={`text-[10px] ${p.textMuted} font-mono uppercase tracking-wider mb-1`}>DecisionProof</div>
-                <div className="text-[11px] font-mono text-[#64748B] break-all">
-                  0x1901...f3a2...decision(ALLOW)...sig(0x7a3b...)
+                <div className={`text-[10px] ${p.textMuted} font-mono uppercase tracking-wider mb-1`}>Status</div>
+                <div className={`text-sm font-medium ${p.textMain}`}>
+                  {flowStatus === 'confirming' ? 'Transaction confirming on-chain...' : 'Please sign the EIP-712 typed data in your wallet extension.'}
                 </div>
               </div>
             </div>
-
-            <button
-              onClick={submitTx}
-              className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 transition-colors cursor-pointer"
-            >
-              <Zap className="w-4 h-4" /> Execute Payment
-            </button>
           </motion.div>
         )}
 

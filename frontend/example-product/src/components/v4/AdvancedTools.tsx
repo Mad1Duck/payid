@@ -86,8 +86,8 @@ function BatchPay({ p }: { p: ReturnType<typeof useV4Palette> }) {
         <span className="font-mono font-semibold">{total.toFixed(4)} {asset}</span>
       </div>
 
-      <button className="w-full py-2.5 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 transition-colors cursor-pointer">
-        Execute Batch
+      <button disabled title="Batch payment contract not yet deployed" className="w-full py-2.5 rounded-xl bg-[#64748B]/10 text-[#64748B] text-sm font-semibold border border-dashed border-[#64748B]/20 cursor-not-allowed opacity-70">
+        Execute Batch (Contract Not Deployed)
       </button>
     </div>
   )
@@ -159,8 +159,8 @@ function Recurring({ p }: { p: ReturnType<typeof useV4Palette> }) {
         </div>
       </div>
 
-      <button className="w-full py-2.5 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 transition-colors cursor-pointer">
-        Create Subscription
+      <button disabled title="Recurring payment contract not yet deployed" className="w-full py-2.5 rounded-xl bg-[#64748B]/10 text-[#64748B] text-sm font-semibold border border-dashed border-[#64748B]/20 cursor-not-allowed opacity-70">
+        Create Subscription (Contract Not Deployed)
       </button>
     </div>
   )
@@ -239,8 +239,8 @@ function Escrow({ p }: { p: ReturnType<typeof useV4Palette> }) {
         <span className="font-mono font-semibold">{total.toFixed(4)} {asset}</span>
       </div>
 
-      <button className="w-full py-2.5 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 transition-colors cursor-pointer">
-        Create Escrow
+      <button disabled title="Escrow contract not yet deployed" className="w-full py-2.5 rounded-xl bg-[#64748B]/10 text-[#64748B] text-sm font-semibold border border-dashed border-[#64748B]/20 cursor-not-allowed opacity-70">
+        Create Escrow (Contract Not Deployed)
       </button>
     </div>
   )
@@ -328,8 +328,8 @@ function Vesting({ p }: { p: ReturnType<typeof useV4Palette> }) {
         </div>
       </div>
 
-      <button className="w-full py-2.5 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 transition-colors cursor-pointer">
-        Create Schedule
+      <button disabled title="Vesting contract not yet deployed" className="w-full py-2.5 rounded-xl bg-[#64748B]/10 text-[#64748B] text-sm font-semibold border border-dashed border-[#64748B]/20 cursor-not-allowed opacity-70">
+        Create Schedule (Contract Not Deployed)
       </button>
     </div>
   )

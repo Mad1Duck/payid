@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { Plus, Trash2, Terminal, Hash, Check, Upload, Sparkles } from 'lucide-react'
+import { Plus, Trash2, Terminal, Hash } from 'lucide-react'
 import { useAccount } from 'wagmi'
 import { useQueryClient } from '@tanstack/react-query'
-import { useMyRules, useActiveCombinedRule, useSubscription, useCreateRule, useActivateRule } from 'payid-react'
+import { useMyRules, useActiveCombinedRule, useCreateRule } from 'payid-react'
 import { keccak256, stringToBytes } from 'viem'
 
 // Rule Engine Constants
@@ -24,20 +24,6 @@ const CONTEXT_NAMESPACES = [
   'risk.category',
   'state.spentToday',
   'state.dailyLimit',
-]
-
-const TRANSFORMS = [
-  { label: '— none —', value: '' },
-  { label: 'div:N (divide)', value: 'div' },
-  { label: 'mod:N (modulo)', value: 'mod' },
-  { label: 'abs (absolute)', value: 'abs' },
-  { label: 'hour (of day)', value: 'hour' },
-  { label: 'day (of week)', value: 'day' },
-  { label: 'date (of month)', value: 'date' },
-  { label: 'month (of year)', value: 'month' },
-  { label: 'len (length)', value: 'len' },
-  { label: 'lower (lowercase)', value: 'lower' },
-  { label: 'upper (uppercase)', value: 'upper' },
 ]
 
 const OPERATORS = [
@@ -83,10 +69,6 @@ interface RuleDraft {
   logic: 'AND' | 'OR'
   conditions: Condition[]
   message: string
-}
-
-function shortAddr(addr?: string): string {
-  return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—'
 }
 
 function buildFieldExpr(field: string, transform: string, transformArg: string): string {
@@ -182,16 +164,14 @@ function makeDraft(): RuleDraft {
 export function RuleBuilderPage() {
   const { address, isConnected } = useAccount()
   const queryClient = useQueryClient()
-  const { data: myRules = [], isLoading, refetch } = useMyRules()
+  const { data: myRules = [], refetch } = useMyRules()
   const { data: activeCombined } = useActiveCombinedRule(address)
-  const { data: sub } = useSubscription(address)
   const { createRule, isPending: isCreating, isSuccess: createSuccess, error: createError } = useCreateRule()
 
   const [draft, setDraft] = useState<RuleDraft>(makeDraft)
   const [showJson, setShowJson] = useState(true)
 
   const activeCount = myRules.filter((r) => r.active).length
-  const isSubActive = sub?.isActive ?? false
 
   const ruleJson = useMemo(() => {
     const root = draftToJson(draft)

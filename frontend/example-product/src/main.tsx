@@ -63,6 +63,7 @@ import { VerifyPage } from './components/v2/VerifyPage'
 import { CartridgeComposer } from './components/v2/CartridgeComposer'
 import { SessionPolicyPanel, type SessionPolicy } from './components/v2/SessionPolicyPanel'
 import { addresses } from './constants/contracts'
+import { Toaster } from './components/v2/ui/sonner'
 import './globals.css'
 import reportWebVitals from './reportWebVitals.ts'
 
@@ -179,7 +180,7 @@ const v3RulesConsoleRoute = createRoute({
   component: () => {
     const { address } = useAccount()
     const { data: myRules = [] } = useMyRules()
-    const { data: activeCombined } = useActiveCombinedRule(address)
+    useActiveCombinedRule(address)
 
     const cartridges = myRules.map((rule: any) => ({
       id: rule.id,
@@ -466,6 +467,7 @@ if (rootElement && !rootElement.innerHTML) {
             }}
           >
             <RouterProvider router={router} />
+            <Toaster position="bottom-right" richColors />
           </PayIDProvider>
         </TanStackQueryProvider.Provider>
       </WagmiProvider>

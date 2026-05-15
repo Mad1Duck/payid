@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Globe, Bell, Shield, Wallet, ChevronRight, Sun, Moon, LogOut, Crown, Zap, Loader2 } from 'lucide-react'
 import { useAccount } from 'wagmi'

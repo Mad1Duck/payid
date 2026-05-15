@@ -1,18 +1,14 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from '@tanstack/react-router'
 import {
   ArrowUpRight,
-  TrendingUp,
-  TrendingDown,
-  ArrowRight,
   Copy,
   Check,
   QrCode,
   Download,
   Send,
   Clock,
-  Wallet,
   ChevronRight,
   Database,
   Save,
@@ -23,46 +19,10 @@ import { useAccount, useBalance } from 'wagmi'
 import { formatUnits } from 'viem'
 import { useV4Palette } from './theme'
 import { useReputation, useOfflineCache } from 'payid-react'
+import { useTxHistory, relativeTime } from '@/hooks/useTxHistory'
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + '...' + addr.slice(-4)
-}
-
-/* CountUp hook */
-function useCountUp(target: number, duration = 1200) {
-  const [val, setVal] = useState(0)
-  const rafRef = useRef<number>()
-  useEffect(() => {
-    const start = performance.now()
-    const tick = (now: number) => {
-      const progress = Math.min((now - start) / duration, 1)
-      const eased = 1 - Math.pow(1 - progress, 4)
-      setVal(target * eased)
-      if (progress < 1) rafRef.current = requestAnimationFrame(tick)
-    }
-    rafRef.current = requestAnimationFrame(tick)
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [target, duration])
-  return val
-}
-
-/* Sparkline */
-function Sparkline({ data, color }: { data: number[]; color: string }) {
-  const { path, area } = useMemo(() => {
-    const w = 200, h = 48, max = Math.max(...data), min = Math.min(...data)
-    const range = max - min || 1, step = w / (data.length - 1)
-    let d = `M 0 ${h - ((data[0] - min) / range) * h}`
-    data.slice(1).forEach((v, i) => { d += ` L ${(i + 1) * step} ${h - ((v - min) / range) * h}` })
-    return { path: d, area: d + ` L ${w} ${h} L 0 ${h} Z` }
-  }, [data])
-
-  return (
-    <svg viewBox="0 0 200 48" className="w-full h-12" preserveAspectRatio="none">
-      <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.2"/><stop offset="100%" stopColor={color} stopOpacity="0"/></linearGradient></defs>
-      <path d={area} fill="url(#sg)" />
-      <motion.path d={path} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.2, ease: 'easeInOut' }} />
-    </svg>
-  )
 }
 
 /* Avatar with initials */
@@ -89,17 +49,11 @@ export default function Dashboard() {
   const { address, isConnected } = useAccount()
   const { data: balance } = useBalance({ address })
   const balanceValue = isConnected && balance ? parseFloat(formatUnits(balance.value, balance.decimals)) : 0
-  const displayBalance = useCountUp(balanceValue, 1500)
   const p = useV4Palette()
   const [copied, setCopied] = useState(false)
   const { stats: cacheStats, isReady: cacheReady } = useOfflineCache()
   const [activeTab, setActiveTab] = useState<'all' | 'incoming' | 'outgoing'>('all')
   const { score, isBlacklisted, isTrusted, isLoading: repLoading } = useReputation({})
-
-  const sparkData = useMemo(() => {
-    const base = balanceValue || 10
-    return Array.from({ length: 14 }, (_, i) => base + Math.sin(i * 0.8) * (base * 0.15) + (Math.random() - 0.5) * (base * 0.05))
-  }, [balanceValue])
 
   const payId = isConnected && address ? `${shortAddr(address)}@pay.id` : 'connect@pay.id'
 
@@ -109,25 +63,19 @@ export default function Dashboard() {
     setTimeout(() => setCopied(false), 2000)
   }, [payId])
 
-  const allTx = [
-    { id: '0x7a3f...e91b', type: 'sent' as const, to: 'alice.pay.id', from: '', amount: '5.00', asset: 'USDC', time: '2m ago', token: 'PDT' },
-    { id: '0x9b2a...c45d', type: 'received' as const, to: '', from: 'bob.pay.id', amount: '12.50', asset: 'USDC', time: '15m ago', token: 'PDT' },
-    { id: '0x3f11...a781', type: 'sent' as const, to: 'merchant.pay.id', from: '', amount: '50.00', asset: 'ETH', time: '1h ago', token: 'ETH' },
-    { id: '0x2c8e...b903', type: 'received' as const, to: '', from: 'charlie.pay.id', amount: '120.00', asset: 'USDC', time: '3h ago', token: 'PDT' },
-    { id: '0x5d71...f22a', type: 'sent' as const, to: 'dave.pay.id', from: '', amount: '8.25', asset: 'ETH', time: '5h ago', token: 'ETH' },
-  ]
+  const { txs } = useTxHistory()
 
-  const filteredTx = activeTab === 'all'
-    ? allTx
-    : allTx.filter(tx =>
-        (activeTab === 'incoming' && tx.type === 'received') ||
-        (activeTab === 'outgoing' && tx.type === 'sent')
-      )
+  const filteredTx = useMemo(() =>
+    activeTab === 'all'
+      ? txs
+      : txs.filter(tx =>
+          (activeTab === 'incoming' && tx.type === 'received') ||
+          (activeTab === 'outgoing' && tx.type === 'sent')
+        )
+  , [txs, activeTab])
 
   const tokens = [
     { symbol: 'ETH', name: 'Ethereum', balance: balanceValue.toFixed(4), usd: (balanceValue * 3500).toFixed(2), icon: '⟠' },
-    { symbol: 'USDC', name: 'USD Coin', balance: '1,250.00', usd: '1,250.00', icon: '$' },
-    { symbol: 'PDT', name: 'PAY.ID Token', balance: '100', usd: '0', icon: 'P' },
   ]
 
   return (
@@ -390,6 +338,11 @@ export default function Dashboard() {
               transition={{ duration: 0.2 }}
               className="space-y-2"
             >
+              {filteredTx.length === 0 && (
+                <div className={`text-center py-8 text-sm ${p.textMuted}`}>
+                  {isConnected ? 'No transactions yet. Send your first payment!' : 'Connect wallet to see transactions.'}
+                </div>
+              )}
               {filteredTx.map((tx) => (
                 <div
                   key={tx.id}
@@ -405,14 +358,13 @@ export default function Dashboard() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full ${tx.type === 'sent' ? 'bg-[#EF4444]/10 text-[#EF4444]' : 'bg-[#00D084]/10 text-[#00D084]'}`}>
                         {tx.type}
                       </span>
-                      <span className={`text-[10px] ${p.textMuted}`}>Here&apos;s a test token.</span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
                     <div className={`text-sm font-mono font-semibold ${tx.type === 'sent' ? 'text-[#EF4444]' : 'text-[#00D084]'}`}>
-                      {tx.type === 'sent' ? '−' : '+'}{tx.amount} {tx.token}
+                      {tx.type === 'sent' ? '−' : '+'}{tx.amount} {tx.asset}
                     </div>
-                    <div className={`text-xs ${p.textMuted}`}>{tx.time}</div>
+                    <div className={`text-xs ${p.textMuted}`}>{relativeTime(tx.timestamp)}</div>
                   </div>
                 </div>
               ))}

@@ -13,23 +13,41 @@ export default function ReceivePage() {
   const p = useV4Palette()
   const { address, isConnected } = useAccount()
   const payId = isConnected && address ? `${shortAddr(address)}@pay.id` : 'connect@pay.id'
-  const walletAddress = address || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F'
+  const walletAddress = address ?? ''
   const [copied, setCopied] = useState(false)
   const [showAddress, setShowAddress] = useState(false)
 
   /* ─── QR Generation ─── */
-  const { status, payload, generate, reset } = usePayIDQR()
+  const { status, payload, qrDataUrl, error: qrError, generate, reset } = usePayIDQR()
   const [maxAmount, setMaxAmount] = useState('')
   const [expiryMin, setExpiryMin] = useState('60')
 
   const handleGenerate = () => {
     if (!address) return
+    const expiresAt = Math.floor(Date.now() / 1000) + (Number(expiryMin) || 60) * 60
+    const parsedMax = maxAmount && parseFloat(maxAmount) > 0
+      ? BigInt(Math.floor(parseFloat(maxAmount) * 1e18))
+      : BigInt('1000000000000000000000000') // unlimited fallback
     generate({
-      payId: payId,
+      payId,
       allowedAsset: '0x0000000000000000000000000000000000000000',
-      maxAmount: maxAmount ? BigInt(Math.floor(parseFloat(maxAmount) * 1e18)) : 0n,
-      expiresInMinutes: Number(expiryMin) || 60,
+      maxAmount: parsedMax,
+      expiresAt,
     })
+  }
+
+  const handleSaveQR = () => {
+    if (qrDataUrl) {
+      const a = document.createElement('a')
+      a.href = qrDataUrl
+      a.download = 'payid-qr.png'
+      a.click()
+    } else if (payload) {
+      window.open(
+        `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(payload)}&format=png`,
+        '_blank'
+      )
+    }
   }
 
   const handleCopy = useCallback((text: string) => {
@@ -118,17 +136,23 @@ export default function ReceivePage() {
           <div className="flex items-center justify-center mb-4">
             <span className="text-white/80 text-sm font-medium">Your PayID QR</span>
           </div>
-          <div className="w-48 h-48 mx-auto mb-4 rounded-2xl bg-white p-4 flex items-center justify-center">
+          <div className="w-48 h-48 mx-auto mb-4 rounded-2xl bg-white p-3 flex items-center justify-center overflow-hidden">
             {payload ? (
-              <div className="text-[#0F172A] text-[10px] font-mono break-all leading-tight text-left w-full h-full overflow-hidden">
-                {payload}
-              </div>
+              qrDataUrl ? (
+                <img src={qrDataUrl} alt="PayID QR" className="w-full h-full object-contain rounded-xl" />
+              ) : (
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(payload)}&format=png&ecc=M`}
+                  alt="PayID QR"
+                  className="w-full h-full object-contain rounded-xl"
+                />
+              )
             ) : (
               <QrCode className="w-32 h-32 text-[#0F172A]" />
             )}
           </div>
           <div className="text-white text-lg font-mono font-medium">{payId}</div>
-          <div className="text-white/60 text-xs font-mono mt-1">{shortAddr(walletAddress)}</div>
+          <div className="text-white/60 text-xs font-mono mt-1">{walletAddress ? shortAddr(walletAddress) : '—'}</div>
           {payload && (
             <button
               onClick={() => handleCopy(payload)}
@@ -137,6 +161,9 @@ export default function ReceivePage() {
               {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
               {copied ? 'Copied' : 'Copy Payload'}
             </button>
+          )}
+          {qrError && (
+            <p className="mt-2 text-white/70 text-xs">{qrError}</p>
           )}
         </div>
         <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/5" />
@@ -229,16 +256,21 @@ export default function ReceivePage() {
       </motion.div>
 
       {/* Download QR */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.15 }}
-        className="text-center"
-      >
-        <button className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-[#00D084] hover:bg-[#00D084]/10 transition-colors cursor-pointer">
-          <Download className="w-4 h-4" /> Save QR Code
-        </button>
-      </motion.div>
+      {(payload || qrDataUrl) && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.15 }}
+          className="text-center"
+        >
+          <button
+            onClick={handleSaveQR}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-[#00D084] hover:bg-[#00D084]/10 transition-colors cursor-pointer"
+          >
+            <Download className="w-4 h-4" /> Save QR Code
+          </button>
+        </motion.div>
+      )}
     </div>
   )
 }

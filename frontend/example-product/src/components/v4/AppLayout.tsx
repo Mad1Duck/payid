@@ -1,6 +1,6 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
   Send,
@@ -15,8 +15,10 @@ import {
   Wrench,
   Users,
   Lock,
+  ChevronDown,
+  Loader2,
 } from 'lucide-react'
-import { useAccount, useDisconnect } from 'wagmi'
+import { useAccount, useDisconnect, useConnect } from 'wagmi'
 import { useV4Palette } from './theme'
 
 function shortAddr(addr: string) {
@@ -26,6 +28,8 @@ function shortAddr(addr: string) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { address, isConnected } = useAccount()
   const { disconnect } = useDisconnect()
+  const { connectors, connect, isPending: connectPending } = useConnect()
+  const [showConnectMenu, setShowConnectMenu] = useState(false)
   const location = useLocation()
   const currentPath = location.pathname
   const p = useV4Palette()
@@ -98,10 +102,46 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </button>
             </div>
           ) : (
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D084]/10 text-[#00D084] text-xs font-medium hover:bg-[#00D084]/15 transition-colors cursor-pointer">
-              <Wallet className="w-3.5 h-3.5" />
-              Connect
-            </button>
+            <div className="relative">
+              <button
+                disabled={connectPending}
+                onClick={() => connectors.length === 1
+                  ? connect({ connector: connectors[0] })
+                  : setShowConnectMenu(v => !v)
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D084]/10 text-[#00D084] text-xs font-medium hover:bg-[#00D084]/15 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {connectPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wallet className="w-3.5 h-3.5" />}
+                {connectPending ? 'Connecting…' : 'Connect'}
+                {connectors.length > 1 && !connectPending && <ChevronDown className="w-3 h-3" />}
+              </button>
+              <AnimatePresence>
+                {showConnectMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowConnectMenu(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                      transition={{ duration: 0.12 }}
+                      className={`absolute top-full right-0 mt-2 w-48 rounded-xl border z-50 overflow-hidden shadow-xl ${p.dark ? 'bg-[#131825] border-white/10' : 'bg-white border-black/10'}`}
+                    >
+                      <div className={`px-3 py-2 text-[10px] font-medium uppercase tracking-wider ${p.textMuted} border-b ${p.cardBorder}`}>Select Wallet</div>
+                      {connectors.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => { connect({ connector: c }); setShowConnectMenu(false) }}
+                          className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium transition-colors ${p.textMain} ${p.cardHover}`}
+                        >
+                          <Wallet className={`w-3.5 h-3.5 ${p.textMuted}`} />
+                          {c.name}
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           )}
         </div>
       </header>
