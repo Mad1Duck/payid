@@ -1,6 +1,20 @@
-import { useReadContract, useAccount } from 'wagmi';
+import {
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useAccount,
+} from 'wagmi';
+import type { Hash } from 'viem';
 import { useMemo } from 'react';
 import { usePayIDContext } from '../PayIDProvider';
+
+interface TxHookResult {
+  hash: Hash | undefined;
+  isPending: boolean;
+  isConfirming: boolean;
+  isSuccess: boolean;
+  error: Error | null;
+}
 
 /*
  * VRAN — Vindex Reputation & Anti-Scam Network Hooks
@@ -9,7 +23,7 @@ import { usePayIDContext } from '../PayIDProvider';
  * Install the ABI artifact after deploying VindexRegistry.sol.
  */
 
-// Minimal ABI for VindexRegistry (reputation + blacklist views)
+// Minimal ABI for VindexRegistry (reputation + blacklist views + write functions)
 const VindexRegistryABI = [
   {
     type: 'function',
@@ -72,6 +86,23 @@ const VindexRegistryABI = [
     inputs: [],
     outputs: [{ name: '', type: 'uint8' }],
     stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'submitReport',
+    inputs: [
+      { name: 'target', type: 'address' },
+      { name: 'evidenceHash', type: 'string' },
+    ],
+    outputs: [],
+    stateMutability: 'payable',
+  },
+  {
+    type: 'function',
+    name: 'confirmReport',
+    inputs: [{ name: 'reportId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
   },
 ] as const;
 
@@ -191,5 +222,72 @@ export function useVranConfig({ registryAddress }: Pick<UseReputationParams, 're
   return {
     minStake: minStake ?? 0n,
     consensusThreshold: threshold ?? 3,
+  };
+}
+
+/**
+ * @notice Submit a staked report against a target address.
+ * Reads vindexRegistry from PayIDContext if registryAddress is not provided.
+ */
+export function useSubmitReport({ registryAddress }: Pick<UseReputationParams, 'registryAddress'>): TxHookResult & { submitReport: (target: `0x${string}`, evidenceHash: string, stake: bigint) => void; } {
+  const { contracts } = usePayIDContext();
+  const resolvedRegistry = registryAddress ?? contracts.vindexRegistry;
+
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const enabled = !!resolvedRegistry && resolvedRegistry !== '0x0000000000000000000000000000000000000000';
+
+  const submitReport = (target: `0x${string}`, evidenceHash: string, stake: bigint) => {
+    if (!enabled) throw new Error('[VRAN] VindexRegistry address not configured');
+    writeContract({
+      address: resolvedRegistry,
+      abi: VindexRegistryABI,
+      functionName: 'submitReport',
+      args: [target, evidenceHash],
+      value: stake,
+    });
+  };
+
+  return {
+    submitReport,
+    hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
+  };
+}
+
+/**
+ * @notice Confirm an existing report (requires high reputation).
+ * Reads vindexRegistry from PayIDContext if registryAddress is not provided.
+ */
+export function useConfirmReport({ registryAddress }: Pick<UseReputationParams, 'registryAddress'>): TxHookResult & { confirmReport: (reportId: bigint) => void; } {
+  const { contracts } = usePayIDContext();
+  const resolvedRegistry = registryAddress ?? contracts.vindexRegistry;
+
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const enabled = !!resolvedRegistry && resolvedRegistry !== '0x0000000000000000000000000000000000000000';
+
+  const confirmReport = (reportId: bigint) => {
+    if (!enabled) throw new Error('[VRAN] VindexRegistry address not configured');
+    writeContract({
+      address: resolvedRegistry,
+      abi: VindexRegistryABI,
+      functionName: 'confirmReport',
+      args: [reportId],
+    });
+  };
+
+  return {
+    confirmReport,
+    hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
   };
 }
