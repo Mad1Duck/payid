@@ -49,12 +49,12 @@ export function useNonceUsed(
 }
 
 /**
- * Hook untuk bayar dengan ETH via PAY.ID.
+ * Hook to pay with the chain's native token via PAY.ID.
  * @example
- * const { pay, isPending, isSuccess } = usePayETH()
+ * const { pay, isPending, isSuccess } = usePayNative()
  * await pay({ decision, signature, attestationUIDs: [] })
  */
-export function usePayETH(): TxHookResult & {
+export function usePayNative(): TxHookResult & {
   pay: (params: { decision: Decision; signature: `0x${string}`; attestationUIDs?: `0x${string}`[]; }) => void;
 } {
   const { contracts } = usePayIDContext();
@@ -69,7 +69,7 @@ export function usePayETH(): TxHookResult & {
     writeContract({
       address: contracts.payWithPayID,
       abi: PayWithPayIDABI.abi,
-      functionName: 'payETH',
+      functionName: 'payNative',
       args: [params.decision, params.signature, params.attestationUIDs ?? []],
       value: params.decision.amount,
     });

@@ -86,16 +86,16 @@ contract PayWithPayID {
     /* ===================== PAYMENT ===================== */
 
     /**
-     * @notice Pay with ETH
+     * @notice Pay with native token (ETH, MATIC, A0GI, etc.)
      * @param attestationUIDs  EAS UIDs — pass [] kalau requiresAttestation = false
      */
-    function payETH(
+    function payNative(
         PayIDVerifier.Decision  calldata d,
         bytes                   calldata sig,
         bytes32[]               calldata attestationUIDs
     ) external payable onlyInitialized {
         // Validate asset and amount before consuming the nonce in requireAllowed
-        require(d.asset == address(0), "ASSET_NOT_ETH");
+        require(d.asset == address(0), "ASSET_NOT_NATIVE");
         require(msg.value == d.amount,  "AMOUNT_MISMATCH");
 
         if (d.requiresAttestation) {

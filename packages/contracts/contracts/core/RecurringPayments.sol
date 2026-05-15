@@ -104,7 +104,7 @@ contract RecurringPayments {
 
         if (s.asset == address(0)) {
             // ETH — requires pre-deposit or payer sends value via charge()
-            payWithPayID.payETH{value: decision.amount}(decision, sig, attestationUIDs);
+            payWithPayID.payNative{value: decision.amount}(decision, sig, attestationUIDs);
         } else {
             // ERC20 — PayWithPayID handles transferFrom(payer, receiver)
             payWithPayID.payERC20(decision, sig, attestationUIDs);

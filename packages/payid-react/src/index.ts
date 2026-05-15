@@ -34,7 +34,8 @@ export {
 export {
   useVerifyDecision,
   useNonceUsed,
-  usePayETH,
+  usePayNative,
+  usePayNative as usePayETH, // @deprecated use usePayNative
   usePayERC20,
   useSubscribe,
   useCreateRule,

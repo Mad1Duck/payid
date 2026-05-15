@@ -4,7 +4,7 @@ import type { DecisionProof } from "../../decision-proof/types";
 import type { UserOperation } from "../../erc4337/types";
 import { evaluate } from "../../evaluate";
 import { generateDecisionProof } from "../../decision-proof/generate";
-import { buildPayETHCallData, buildPayERC20CallData } from "../../erc4337/build";
+import { buildPayNativeCallData, buildPayERC20CallData } from "../../erc4337/build";
 import { buildUserOperation } from "../../erc4337/userop";
 import type { RuleSource, ResolverOptions } from "../../resolver/types";
 import { resolveRule } from "../../resolver/resolver";
@@ -122,7 +122,7 @@ export class PayIDServer {
   }): UserOperation {
     const isETH = params.paymentType === "eth";
     const callData = isETH
-      ? buildPayETHCallData(params.targetContract, params.proof, params.attestationUIDs ?? [])
+      ? buildPayNativeCallData(params.targetContract, params.proof, params.attestationUIDs ?? [])
       : buildPayERC20CallData(params.targetContract, params.proof, params.attestationUIDs ?? []);
     return buildUserOperation({
       sender: params.smartAccount,

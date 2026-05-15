@@ -40,7 +40,7 @@ contract PayWithPayIDBatch {
      * @param sigs      Array of signatures matching decisions.
      * @param attestationUIDs Array of attestation UIDs per payment.
      */
-    function batchPayETH(
+    function batchPayNative(
         PayIDVerifier.Decision[] calldata decisions,
         bytes[] calldata sigs,
         bytes32[][] calldata attestationUIDs
@@ -58,7 +58,7 @@ contract PayWithPayIDBatch {
         for (uint256 i; i < n; ++i) {
             (bool ok, ) = address(payWithPayID).call{value: decisions[i].amount}(
                 abi.encodeWithSelector(
-                    payWithPayID.payETH.selector,
+                    payWithPayID.payNative.selector,
                     decisions[i],
                     sigs[i],
                     attestationUIDs[i]

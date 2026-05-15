@@ -550,7 +550,7 @@ export function usePayIDFlow(): PayIDFlowResult {
           ? {
             address: contracts.payWithPayID,
             abi: PayWithPayIDABI,
-            functionName: 'payETH',
+            functionName: 'payNative',
             args: [d, sig, params.attestationUIDs ?? []],
             value: params.amount,
             account: payer as `0x${string}`,
@@ -571,7 +571,7 @@ export function usePayIDFlow(): PayIDFlowResult {
           ? {
             address: contracts.payWithPayID,
             abi: PayWithPayIDABI,
-            functionName: 'payETH',
+            functionName: 'payNative',
             args: [d, sig, params.attestationUIDs ?? []],
             value: params.amount,
           }

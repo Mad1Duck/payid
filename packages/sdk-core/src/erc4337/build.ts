@@ -22,23 +22,21 @@ const DECISION_TUPLE =
   "bytes32 attestationUIDsHash";
 
 const PAY_WITH_PAYID_ABI = [
-  `function payETH((${DECISION_TUPLE}) d, bytes sig, bytes32[] attestationUIDs) payable`,
+  `function payNative((${DECISION_TUPLE}) d, bytes sig, bytes32[] attestationUIDs) payable`,
   `function payERC20((${DECISION_TUPLE}) d, bytes sig, bytes32[] attestationUIDs)`,
 ];
 
 /**
- * Encode calldata untuk payETH
- * FIX: ABI lama pakai (d, sig, payloadHashes[], Attestation[]) — sudah tidak match
- *      ABI baru pakai (d, sig, bytes32[] attestationUIDs)
+ * Encode calldata untuk payNative (native token: ETH, MATIC, A0GI, etc.)
  */
-export function buildPayETHCallData(
+export function buildPayNativeCallData(
   contractAddress: string,
   proof: DecisionProof,
   attestationUIDs: string[] = []   // EAS UIDs, default [] jika tidak perlu attestation
 ): string {
   const iface = new ethers.Interface(PAY_WITH_PAYID_ABI);
 
-  return iface.encodeFunctionData("payETH", [
+  return iface.encodeFunctionData("payNative", [
     proof.payload,
     proof.signature,
     attestationUIDs

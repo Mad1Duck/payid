@@ -15,7 +15,7 @@ import {
   FileText,
   History,
 } from 'lucide-react'
-import { useAccount, useBalance } from 'wagmi'
+import { useAccount, useBalance, useChainId, useChains } from 'wagmi'
 import { formatUnits } from 'viem'
 import { useV4Palette } from './theme'
 import { Skeleton, SkeletonCard } from './Skeleton'
@@ -62,6 +62,11 @@ function Avatar({ name, size = 32 }: { name: string; size?: number }) {
 export default function Dashboard() {
   const { address, isConnected } = useAccount()
   const { data: balance, isLoading: balanceLoading } = useBalance({ address })
+  const chainId = useChainId()
+  const chains = useChains()
+  const currentChain = chains.find(c => c.id === chainId)
+  const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
+  const nativeName = currentChain?.nativeCurrency.name ?? 'Ethereum'
   const balanceValue =
     isConnected && balance
       ? parseFloat(formatUnits(balance.value, balance.decimals))
@@ -109,8 +114,8 @@ export default function Dashboard() {
 
   const tokens = [
     {
-      symbol: 'ETH',
-      name: 'Ethereum',
+      symbol: nativeSymbol,
+      name: nativeName,
       balance: balanceValue.toFixed(4),
       usd: (balanceValue * 3500).toFixed(2),
       icon: '⟠',
@@ -136,9 +141,7 @@ export default function Dashboard() {
       >
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-white/80 text-sm font-medium">
-              Your Stealth Balance
-            </span>
+            <span className="text-white/80 text-sm font-medium">Total Balance</span>
             <button className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors cursor-pointer">
               <QrCode className="w-4 h-4 text-white" />
             </button>
@@ -222,7 +225,7 @@ export default function Dashboard() {
 
           <div className="mt-3 text-center">
             <span className="text-white/70 text-xs">
-              Payments received privately through PAY.ID
+              Payments verified through PAY.ID policy
             </span>
           </div>
         </div>

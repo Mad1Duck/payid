@@ -10,7 +10,7 @@ import {
   RotateCcw,
   Wallet,
 } from 'lucide-react'
-import { useAccount, useBalance, useChainId } from 'wagmi'
+import { useAccount, useBalance, useChainId, useChains } from 'wagmi'
 import { formatUnits, parseEther, isAddress } from 'viem'
 import type { Address } from 'viem'
 import { useV4Palette } from './theme'
@@ -54,6 +54,9 @@ export default function SendFlow() {
   const { address, isConnected } = useAccount()
   const { data: balance } = useBalance({ address })
   const chainId = useChainId()
+  const chains = useChains()
+  const currentChain = chains.find(c => c.id === chainId)
+  const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
   const p = useV4Palette()
 
   const CHAIN_NAMES: Record<number, string> = {
@@ -70,7 +73,7 @@ export default function SendFlow() {
   const [payId, setPayId] = useState('')
   const [resolvedName, setResolvedName] = useState<string | null>(null)
   const [amount, setAmount] = useState('')
-  const [asset, setAsset] = useState('ETH')
+  const [asset, setAsset] = useState(nativeSymbol)
   const [txHash, setTxHash] = useState('')
   const [denyReason, setDenyReason] = useState('')
 
@@ -132,13 +135,15 @@ export default function SendFlow() {
     if (flowStatus === 'awaiting-wallet' || flowStatus === 'confirming') setStep('signing')
   }, [flowStatus, flowTxHash])
 
+  useEffect(() => { setAsset(nativeSymbol) }, [nativeSymbol])
+
   const reset = useCallback(() => {
     resetFlow()
     setStep('who')
     setPayId('')
     setResolvedName(null)
     setAmount('')
-    setAsset('ETH')
+    setAsset(nativeSymbol)
     setTxHash('')
     setDenyReason('')
   }, [resetFlow])
@@ -247,7 +252,7 @@ export default function SendFlow() {
                     onChange={(e) => setAsset(e.target.value)}
                     className={`px-4 py-3 rounded-xl ${p.inputBg} border ${p.inputBorder} ${p.textMain} font-mono text-sm focus:outline-none focus:border-[#00D084]/40`}
                   >
-                    <option>ETH</option>
+                    <option>{nativeSymbol}</option>
                     <option>USDC</option>
                   </select>
                 </div>
@@ -301,7 +306,7 @@ export default function SendFlow() {
                   { label: 'Recipient', value: resolvedName || '' },
                   { label: 'Amount', value: `${amount} ${asset}` },
                   { label: 'Network', value: `${chainName} · ${chainId}` },
-                  { label: 'Est. Fee', value: '~0.0001 ETH (estimate)' },
+                  { label: 'Est. Fee', value: `~0.0001 ${nativeSymbol} (estimate)` },
                 ].map((row) => (
                   <div key={row.label} className="flex justify-between items-center py-1">
                     <span className={`text-[13px] ${p.textMuted}`}>{row.label}</span>

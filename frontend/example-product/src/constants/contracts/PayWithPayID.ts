@@ -348,7 +348,7 @@ export const payWithPayIDAbi = [
         "type": "bytes32[]"
       }
     ],
-    "name": "payETH",
+    "name": "payNative",
     "outputs": [],
     "stateMutability": "payable",
     "type": "function"
