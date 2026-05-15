@@ -1,6 +1,6 @@
-import { Zap, Ban, Check, Key, BarChart3, Link2 } from 'lucide-react'
+import { Zap, Ban, Check, Key, BarChart3, Link2, Puzzle } from 'lucide-react'
 
-export type CartridgeType = 'velocity' | 'blocklist' | 'allowlist' | 'kyc' | 'volume' | 'chain'
+export type CartridgeType = 'velocity' | 'blocklist' | 'allowlist' | 'kyc' | 'volume' | 'chain' | 'custom'
 
 export interface CartridgeData {
   id: string
@@ -28,6 +28,7 @@ const CARTRIDGE_ICONS: Record<CartridgeType, typeof Zap> = {
   kyc: Key,
   volume: BarChart3,
   chain: Link2,
+  custom: Puzzle,
 }
 
 const CARTRIDGE_COLORS: Record<CartridgeType, string> = {
@@ -37,6 +38,7 @@ const CARTRIDGE_COLORS: Record<CartridgeType, string> = {
   kyc: '#F59E0B', // yellow
   volume: '#8A52FF', // purple
   chain: '#6B7280', // gray
+  custom: '#14B8A6', // teal
 }
 
 const CARTRIDGE_BORDER_COLORS: Record<CartridgeType, string> = {
@@ -46,6 +48,7 @@ const CARTRIDGE_BORDER_COLORS: Record<CartridgeType, string> = {
   kyc: 'rgba(245, 158, 11, 0.3)',
   volume: 'rgba(138, 82, 255, 0.3)',
   chain: 'rgba(107, 114, 128, 0.3)',
+  custom: 'rgba(20, 184, 166, 0.3)',
 }
 
 export function Cartridge({ cartridge, status = 'idle', onDragStart, onClick, className = '' }: CartridgeProps) {

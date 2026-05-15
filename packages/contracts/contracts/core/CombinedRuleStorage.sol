@@ -1,35 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-interface IRuleLicense {
-    function ownerOf(uint256 tokenId) external view returns (address);
-    function ruleExpiry(uint256 tokenId) external view returns (uint256);
-    function ruleTokenId(uint256 ruleId) external view returns (uint256);
-    function tokenRule(uint256 tokenId) external view returns (uint256);
-    function getRule(uint256 ruleId)
-        external
-        view
-        returns (
-            bytes32,
-            string memory,
-            address,
-            uint256,
-            uint16,
-            bool,
-            bool
-        );
-}
+import "../interfaces/IRuleLicense.sol";
+import "../interfaces/IRuleAuthority.sol";
 
 contract CombinedRuleStorage {
-    struct RuleRef {
-        address ruleNFT;
-        uint256 tokenId;
-    }
-
     struct CombinedRule {
         address owner;
         bytes32 ruleSetHash;
-        RuleRef[] rules;
+        IRuleAuthority.RuleRef[] rules;
         uint64 version;
         bool active;
     }
@@ -153,7 +132,7 @@ contract CombinedRuleStorage {
         view
         returns (
             address owner,
-            RuleRef[] memory ruleRefs,
+            IRuleAuthority.RuleRef[] memory ruleRefs,
             uint64 version
         )
     {
@@ -199,7 +178,7 @@ contract CombinedRuleStorage {
     }
 
     function _unlock(bytes32 hash) internal {
-        RuleRef[] storage refs = rules[hash].rules;
+        IRuleAuthority.RuleRef[] storage refs = rules[hash].rules;
 
         for (uint256 i = 0; i < refs.length; i++) {
             usedRuleNFT[refs[i].ruleNFT][refs[i].tokenId] = false;
@@ -249,7 +228,7 @@ contract CombinedRuleStorage {
             usedRuleNFT[ruleNFTs[i]][tokenIds[i]] = true;
             _validateRuleNFT(ruleNFTs[i], tokenIds[i], msg.sender);
 
-            r.rules.push(RuleRef({ ruleNFT: ruleNFTs[i], tokenId: tokenIds[i] }));
+            r.rules.push(IRuleAuthority.RuleRef({ ruleNFT: ruleNFTs[i], tokenId: tokenIds[i] }));
         }
 
         r.owner = msg.sender;

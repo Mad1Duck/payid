@@ -208,19 +208,6 @@ export const ruleAuthorityAbi = [
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "REGISTRAR_ROLE",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "bytes32",

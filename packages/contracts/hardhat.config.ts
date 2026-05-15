@@ -42,7 +42,17 @@ export default defineConfig({
       }
     },
 
-    // ─── Testnets ─────────────────────────────────────────────────────────────
+    devnode: {
+      type: "http",
+      chainId: 31337,
+      url: "http://100.73.196.95:8545",
+      accounts: {
+        mnemonic: "test test test test test test test test test test test junk",
+        count: 5,
+      },
+    },
+
+    //  Testnets 
 
     liskSepolia: {
       type: "http",
@@ -87,7 +97,7 @@ export default defineConfig({
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
-    // ─── Mainnets ─────────────────────────────────────────────────────────────
+    // Mainnets 
 
     polygon: {
       type: "http",

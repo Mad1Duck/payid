@@ -5,37 +5,18 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import "../interfaces/IAggregatorV3.sol";
+import "../interfaces/IRuleLicense.sol";
+import "../access/Roles.sol";
 
-interface AggregatorV3Interface {
-    function latestRoundData()
-        external
-        view
-        returns (uint80, int256, uint256, uint256, uint80);
-    function decimals() external view returns (uint8);
-}
-
-interface IRuleLicense {
-    function ruleExpiry(uint256 tokenId) external view returns (uint256);
-    function ownerOf(uint256 tokenId) external view returns (address);
-    function ruleTokenId(uint256 ruleId) external view returns (uint256);
-    function getRule(uint256 ruleId)
-        external
-        view
-        returns (
-            bytes32,
-            string memory,
-            address,
-            uint256,
-            uint16,
-            bool,
-            bool
-        );
-}
-
+/**
+ * @title RuleItemERC721
+ * @notice NFT rule licensing with subscription model.
+ * @dev Deterministic-deployment friendly:
+ *      - Constructor only takes ERC721 name + symbol (identical across chains)
+ *      - Roles + oracle set via initialize() post-deploy per chain.
+ */
 contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
-
-    bytes32 public constant ADMIN_ROLE  = keccak256("ADMIN_ROLE");
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     /* ===================== CONFIG ===================== */
     uint8   public constant MAX_SLOT = 3;
@@ -44,11 +25,13 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     // Harga langganan default: $0.35 (35 USD cents). Bisa diubah via setSubscriptionUsdCents().
     uint256 public subscriptionUsdCents = 35;
 
-    AggregatorV3Interface public ethUsdFeed;
+    IAggregatorV3 public ethUsdFeed;
 
     uint256 public nextRuleId;
     uint256 public nextTokenId;
     address public immutable deployer;
+
+    bool    private _initialized;
 
     struct RuleDefinition {
         bytes32 ruleHash;
@@ -73,6 +56,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     mapping(uint256 => bool) private _pendingBurn;
 
     /* ===================== EVENTS ===================== */
+    event Initialized(address indexed admin, address indexed oracle);
     event RuleCreated(
         uint256 indexed ruleId,
         uint256 indexed rootRuleId,
@@ -86,19 +70,41 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
     event SubscriptionUsdCentsUpdated(uint256 newCents);
     event OracleUpdated(address indexed oldFeed, address indexed newFeed);
 
+    /* ===================== ERRORS ===================== */
+    error AlreadyInitialized();
+    error ZeroAddress();
+
     /* ===================== CONSTRUCTOR ===================== */
+    /**
+     * @notice Minimal constructor for CREATE2 deterministic deploy.
+     * @dev Only name + symbol (identical across chains). Call initialize() after deploy.
+     */
     constructor(
         string memory name,
-        string memory symbol,
-        address admin,
-        address oracle
+        string memory symbol
     ) ERC721(name, symbol) {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(ADMIN_ROLE, admin);
-        _grantRole(PAUSER_ROLE, admin);
+        deployer = msg.sender;
+    }
 
-        ethUsdFeed = AggregatorV3Interface(oracle);
-        deployer   = msg.sender;
+    /* ===================== INITIALIZE ===================== */
+    /**
+     * @notice Grant roles + bind oracle. Call once after deploy.
+     * @param admin  Address receiving DEFAULT_ADMIN_ROLE, ADMIN, PAUSER.
+     * @param oracle IAggregatorV3 ETH/USD price feed (mock or Chainlink).
+     */
+    function initialize(address admin, address oracle) external {
+        if (_initialized) revert AlreadyInitialized();
+        if (admin == address(0) || oracle == address(0)) revert ZeroAddress();
+
+        _initialized = true;
+
+        _grantRole(Roles.DEFAULT_ADMIN, admin);
+        _grantRole(Roles.ADMIN, admin);
+        _grantRole(Roles.PAUSER, admin);
+
+        ethUsdFeed = IAggregatorV3(oracle);
+
+        emit Initialized(admin, oracle);
     }
 
     /* ===================================================== */
@@ -111,7 +117,7 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
      */
     function setSubscriptionUsdCents(uint256 newCents)
         external
-        onlyRole(ADMIN_ROLE)
+        onlyRole(Roles.ADMIN)
     {
         require(newCents > 0, "INVALID_PRICE");
         subscriptionUsdCents = newCents;
@@ -135,11 +141,11 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
      *                  Base Sep   0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1
      *                  Mainnet    0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
      */
-    function setOracle(address newFeed) external onlyRole(ADMIN_ROLE) {
+    function setOracle(address newFeed) external onlyRole(Roles.ADMIN) {
         require(newFeed != address(0), "ZERO_ADDRESS");
 
         // Sanity-check: pastikan feed bisa dipanggil dan harga dalam batas wajar
-        try AggregatorV3Interface(newFeed).latestRoundData() returns (
+        try IAggregatorV3(newFeed).latestRoundData() returns (
             uint80,
             int256 answer,
             uint256,
@@ -155,8 +161,20 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         }
 
         address old = address(ethUsdFeed);
-        ethUsdFeed  = AggregatorV3Interface(newFeed);
+        ethUsdFeed  = IAggregatorV3(newFeed);
         emit OracleUpdated(old, newFeed);
+    }
+
+    function pause() external onlyRole(Roles.PAUSER) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(Roles.PAUSER) {
+        _unpause();
+    }
+
+    function isInitialized() external view returns (bool) {
+        return _initialized;
     }
 
     /* ===================================================== */
@@ -218,6 +236,44 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         return 0.0001 ether;
     }
 
+    /* ===================== TREASURY ===================== */
+
+    uint256 public treasuryBalance;
+
+    event TreasuryWithdrawn(address indexed to, uint256 amount);
+
+    /**
+     * @notice Withdraw accumulated subscription fees (ADMIN only).
+     * @param to     Recipient address.
+     * @param amount Amount in wei to withdraw.
+     */
+    function withdrawTreasury(address to, uint256 amount) external onlyRole(Roles.ADMIN) {
+        require(to != address(0), "ZERO_ADDRESS");
+        require(amount > 0, "ZERO_AMOUNT");
+        require(amount <= treasuryBalance, "INSUFFICIENT_BALANCE");
+
+        treasuryBalance -= amount;
+        (bool ok, ) = to.call{value: amount}("");
+        require(ok, "WITHDRAW_FAILED");
+
+        emit TreasuryWithdrawn(to, amount);
+    }
+
+    /**
+     * @notice Withdraw all accumulated subscription fees (ADMIN only).
+     */
+    function withdrawAllTreasury(address to) external onlyRole(Roles.ADMIN) {
+        require(to != address(0), "ZERO_ADDRESS");
+        uint256 amount = treasuryBalance;
+        require(amount > 0, "NO_BALANCE");
+
+        treasuryBalance = 0;
+        (bool ok, ) = to.call{value: amount}("");
+        require(ok, "WITHDRAW_FAILED");
+
+        emit TreasuryWithdrawn(to, amount);
+    }
+
     function subscribe() external payable whenNotPaused {
         uint256 price = subscriptionPriceETH();
         require(msg.value >= price, "INSUFFICIENT_PAYMENT");
@@ -228,8 +284,8 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
                 ? block.timestamp + SUB_DURATION
                 : expiry + SUB_DURATION;
 
-        (bool ok, ) = deployer.call{value: price}("");
-        require(ok, "DEPLOYER_TRANSFER_FAILED");
+        // Accumulate ke treasury (bukan langsung transfer ke deployer)
+        treasuryBalance += price;
 
         if (msg.value > price) {
             payable(msg.sender).transfer(msg.value - price);

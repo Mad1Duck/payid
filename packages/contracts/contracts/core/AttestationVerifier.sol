@@ -17,25 +17,11 @@ pragma solidity ^0.8.20;
  *   Sepolia (testnet): 0xC2679fBD37d54388Ce493F1DB75320D236e1815e
  */
 
-interface IEAS {
-    struct Attestation {
-        bytes32 uid;
-        bytes32 schema;
-        uint64  time;
-        uint64  expirationTime;
-        uint64  revocationTime;
-        bytes32 refUID;
-        address attester;
-        address recipient;
-        bool    revocable;
-        bytes   data;
-    }
+import "../interfaces/IEAS.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "../access/Roles.sol";
 
-    function getAttestation(bytes32 uid) external view returns (Attestation memory);
-    function isAttestationValid(bytes32 uid) external view returns (bool);
-}
-
-contract AttestationVerifier {
+contract AttestationVerifier is AccessControl {
 
     /* ===================== ERRORS ===================== */
     error UntrustedAttester();
@@ -59,22 +45,14 @@ contract AttestationVerifier {
     mapping(address => bool) public trustedAttesters;
     mapping(bytes32 => bool) public usedAttestations;
 
-    address public owner;
-
     bool private _initialized;
 
     /* ===================== EVENTS ===================== */
     event Initialized(address indexed easAddress);
     event SchemaUpdated(bytes32 indexed schemaUID, bool trusted);
     event AttesterUpdated(address indexed attester, bool trusted);
-    event OwnershipTransferred(address indexed prev, address indexed next);
 
     /* ===================== MODIFIER ===================== */
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert NotOwner();
-        _;
-    }
-
     modifier onlyInitialized() {
         if (!_initialized) revert NotInitialized();
         _;
@@ -96,7 +74,8 @@ contract AttestationVerifier {
 
         _initialized = true;
         eas   = IEAS(easAddress);
-        owner = msg.sender;
+
+        _grantRole(Roles.DEFAULT_ADMIN, msg.sender);
 
         for (uint256 i = 0; i < initialSchemas.length; ) {
             trustedSchemas[initialSchemas[i]] = true;
@@ -117,7 +96,7 @@ contract AttestationVerifier {
 
     function setTrustedSchema(bytes32 schemaUID, bool trusted)
         external
-        onlyOwner
+        onlyRole(Roles.DEFAULT_ADMIN)
         onlyInitialized
     {
         trustedSchemas[schemaUID] = trusted;
@@ -126,18 +105,12 @@ contract AttestationVerifier {
 
     function setTrustedAttester(address attester, bool trusted)
         external
-        onlyOwner
+        onlyRole(Roles.DEFAULT_ADMIN)
         onlyInitialized
     {
         if (attester == address(0)) revert ZeroAddress();
         trustedAttesters[attester] = trusted;
         emit AttesterUpdated(attester, trusted);
-    }
-
-    function transferOwnership(address newOwner) external onlyOwner {
-        if (newOwner == address(0)) revert ZeroAddress();
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
     }
 
     /* ===================== INTERNAL VERIFY ===================== */

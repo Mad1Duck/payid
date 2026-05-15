@@ -2,26 +2,9 @@
 pragma solidity ^0.8.20;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-
-interface IRuleAuthority {
-    struct RuleRef {
-        address ruleNFT;
-        uint256 tokenId;
-    }
-
-    function getRuleByHash(bytes32 ruleSetHash)
-        external
-        view
-        returns (
-            address owner,
-            RuleRef[] memory ruleRefs,
-            uint64  version
-        );
-}
-
-interface IRuleLicense {
-    function ownerOf(uint256 tokenId) external view returns (address);
-}
+import "../interfaces/IRuleAuthority.sol";
+import "../interfaces/IRuleLicense.sol";
+import "../access/Roles.sol";
 
 /**
  * @title RuleAuthority
@@ -43,8 +26,6 @@ interface IRuleLicense {
  *   3. PayIDVerifier calls getRuleByHash() during requireAllowed()
  */
 contract RuleAuthority is IRuleAuthority, AccessControl {
-
-    bytes32 public constant REGISTRAR_ROLE = keccak256("REGISTRAR_ROLE");
 
     /* ===================== STORAGE ===================== */
 
@@ -87,8 +68,8 @@ contract RuleAuthority is IRuleAuthority, AccessControl {
 
         _initialized = true;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(REGISTRAR_ROLE, admin);
+        _grantRole(Roles.DEFAULT_ADMIN, admin);
+        _grantRole(Roles.REGISTRAR, admin);
 
         emit Initialized(admin);
     }
@@ -192,7 +173,7 @@ contract RuleAuthority is IRuleAuthority, AccessControl {
         RuleSet storage rs = _ruleSets[ruleSetHash];
         require(rs.owner != address(0), "RULE_SET_NOT_FOUND");
         require(
-            rs.owner == msg.sender || hasRole(REGISTRAR_ROLE, msg.sender),
+            rs.owner == msg.sender || hasRole(Roles.REGISTRAR, msg.sender),
             "NOT_AUTHORIZED"
         );
         require(rs.active, "ALREADY_INACTIVE");

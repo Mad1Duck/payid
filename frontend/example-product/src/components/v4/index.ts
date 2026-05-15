@@ -13,4 +13,5 @@ export { default as PolicyMarketplace } from './PolicyMarketplace';
 export { default as TransactionSimulation } from './TransactionSimulation';
 export { default as AdvancedTools } from './AdvancedTools';
 export { default as DAOPayroll } from './DAOPayroll';
+export { default as AdminPage } from './AdminPage';
 export { ThemeProvider, useV4Theme } from './theme';

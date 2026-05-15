@@ -12,15 +12,15 @@ contract MockUSDC is ERC20, Ownable {
     constructor() ERC20("USDC", "USDC") Ownable(msg.sender) {
         _mint(msg.sender, 1_000_000 * 10**6);
     }
-    
+
     function decimals() public pure override returns (uint8) {
         return 6;
     }
-    
+
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
     }
-    
+
     function burn(uint256 amount) external {
         _burn(msg.sender, amount);
     }

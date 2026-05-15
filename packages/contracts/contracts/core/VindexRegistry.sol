@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../access/Roles.sol";
 
 /**
  * @title VindexRegistry
@@ -24,8 +25,7 @@ contract VindexRegistry is AccessControl, ReentrancyGuard {
     /*//////////////////////////////////////////////////////////////
                                  ROLES
     //////////////////////////////////////////////////////////////*/
-    bytes32 public constant ENGINE_ROLE = keccak256("ENGINE_ROLE");
-    bytes32 public constant SENTINEL_ROLE = keccak256("SENTINEL_ROLE");
+    /* Roles imported from ../access/Roles.sol */
 
     /*//////////////////////////////////////////////////////////////
                                  STATE
@@ -100,8 +100,8 @@ contract VindexRegistry is AccessControl, ReentrancyGuard {
         require(!_initialized, "VRAN: already initialized");
         _initialized = true;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(ENGINE_ROLE, admin);
+        _grantRole(Roles.DEFAULT_ADMIN, admin);
+        _grantRole(Roles.ENGINE, admin);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -193,7 +193,7 @@ contract VindexRegistry is AccessControl, ReentrancyGuard {
      * @notice Admin / Engine can resolve a report manually (e.g., after off-chain AI review)
      */
     function resolveReport(uint256 reportId, bool valid) external whenInitialized {
-        require(hasRole(ENGINE_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "VRAN: unauthorized");
+        require(hasRole(Roles.ENGINE, msg.sender) || hasRole(Roles.DEFAULT_ADMIN, msg.sender), "VRAN: unauthorized");
         _resolveReport(reportId, valid);
     }
 
@@ -202,7 +202,7 @@ contract VindexRegistry is AccessControl, ReentrancyGuard {
      * Called when a report is proven malicious/false.
      */
     function slashReporter(uint256 reportId) external nonReentrant whenInitialized {
-        require(hasRole(ENGINE_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "VRAN: unauthorized");
+        require(hasRole(Roles.ENGINE, msg.sender) || hasRole(Roles.DEFAULT_ADMIN, msg.sender), "VRAN: unauthorized");
         Report storage r = reports[reportId];
         require(!r.resolved || !r.valid, "VRAN: cannot slash valid report");
 
@@ -225,7 +225,7 @@ contract VindexRegistry is AccessControl, ReentrancyGuard {
      * @notice Engine can adjust reputation (e.g., after analysis)
      */
     function adjustReputation(address account, uint16 newScore, string calldata reason) external whenInitialized {
-        require(hasRole(ENGINE_ROLE, msg.sender), "VRAN: not engine");
+        require(hasRole(Roles.ENGINE, msg.sender), "VRAN: not engine");
         require(newScore <= 1000, "VRAN: max 1000");
         uint16 old = reputationOf[account];
         reputationOf[account] = newScore;
@@ -236,7 +236,7 @@ contract VindexRegistry is AccessControl, ReentrancyGuard {
      * @notice Batch adjust reputation for multiple accounts.
      */
     function batchAdjustReputation(address[] calldata accounts, uint16[] calldata scores, string calldata reason) external whenInitialized {
-        require(hasRole(ENGINE_ROLE, msg.sender), "VRAN: not engine");
+        require(hasRole(Roles.ENGINE, msg.sender), "VRAN: not engine");
         require(accounts.length == scores.length, "VRAN: length mismatch");
         for (uint256 i = 0; i < accounts.length; i++) {
             require(scores[i] <= 1000, "VRAN: max 1000");
@@ -254,7 +254,7 @@ contract VindexRegistry is AccessControl, ReentrancyGuard {
      * @notice Blacklist an account immediately (admin or engine)
      */
     function blacklist(address account, uint256 reportId, string calldata evidenceHash) external whenInitialized {
-        require(hasRole(ENGINE_ROLE, msg.sender) || hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "VRAN: unauthorized");
+        require(hasRole(Roles.ENGINE, msg.sender) || hasRole(Roles.DEFAULT_ADMIN, msg.sender), "VRAN: unauthorized");
         isBlacklisted[account] = true;
         emit Blacklisted(account, reportId, evidenceHash);
     }
@@ -263,7 +263,7 @@ contract VindexRegistry is AccessControl, ReentrancyGuard {
      * @notice Remove an address from the blacklist
      */
     function unblacklist(address account, string calldata reason) external whenInitialized {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "VRAN: not admin");
+        require(hasRole(Roles.DEFAULT_ADMIN, msg.sender), "VRAN: not admin");
         isBlacklisted[account] = false;
         emit Unblacklisted(account, reason);
     }
@@ -273,14 +273,14 @@ contract VindexRegistry is AccessControl, ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     function setMinStake(uint256 newStake) external whenInitialized {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "VRAN: not admin");
+        require(hasRole(Roles.DEFAULT_ADMIN, msg.sender), "VRAN: not admin");
         uint256 old = minStake;
         minStake = newStake;
         emit MinStakeUpdated(old, newStake);
     }
 
     function setConsensusThreshold(uint8 newThreshold) external whenInitialized {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "VRAN: not admin");
+        require(hasRole(Roles.DEFAULT_ADMIN, msg.sender), "VRAN: not admin");
         uint8 old = consensusThreshold;
         consensusThreshold = newThreshold;
         emit ConsensusThresholdUpdated(old, newThreshold);

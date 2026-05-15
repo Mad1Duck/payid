@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { QrCode, Copy, Share2, Wallet, ChevronRight, Check, Download } from 'lucide-react'
+import { QrCode, Copy, Share2, Wallet, ChevronRight, Check, Download, Loader2, RefreshCw } from 'lucide-react'
 import { useAccount } from 'wagmi'
+import { usePayIDQR } from 'payid-react'
 import { useV4Palette } from './theme'
 
 function shortAddr(addr: string) {
@@ -16,6 +17,21 @@ export default function ReceivePage() {
   const [copied, setCopied] = useState(false)
   const [showAddress, setShowAddress] = useState(false)
 
+  /* ─── QR Generation ─── */
+  const { status, payload, generate, reset } = usePayIDQR()
+  const [maxAmount, setMaxAmount] = useState('')
+  const [expiryMin, setExpiryMin] = useState('60')
+
+  const handleGenerate = () => {
+    if (!address) return
+    generate({
+      payId: payId,
+      allowedAsset: '0x0000000000000000000000000000000000000000',
+      maxAmount: maxAmount ? BigInt(Math.floor(parseFloat(maxAmount) * 1e18)) : 0n,
+      expiresInMinutes: Number(expiryMin) || 60,
+    })
+  }
+
   const handleCopy = useCallback((text: string) => {
     navigator.clipboard.writeText(text)
     setCopied(true)
@@ -27,14 +43,74 @@ export default function ReceivePage() {
       {/* Page Title */}
       <div className="text-center md:text-left">
         <h1 className={`text-2xl font-bold ${p.textMain}`}>Receive</h1>
-        <p className={`text-sm ${p.textMuted} mt-1`}>Share your PayID or scan QR to get paid.</p>
+        <p className={`text-sm ${p.textMuted} mt-1`}>Generate a payment QR code for your customers.</p>
       </div>
 
-      {/* QR Code Card — PIVY Style */}
+      {/* QR Config */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
+        className="rounded-2xl p-5 relative"
+        style={{ background: p.cardBg }}
+      >
+        <div className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`} />
+        <div className="relative space-y-3">
+          <div className="flex items-center gap-2 mb-2">
+            <QrCode className="w-4 h-4 text-[#00D084]" />
+            <span className={`text-sm font-semibold ${p.textMain}`}>QR Configuration</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={`text-[11px] ${p.textMuted} block mb-1`}>Max Amount (ETH)</label>
+              <input
+                type="number"
+                value={maxAmount}
+                onChange={(e) => setMaxAmount(e.target.value)}
+                placeholder="Unlimited"
+                className={`w-full px-3 py-2 rounded-xl text-sm border ${p.inputBorder} ${p.inputBg} ${p.textMain} focus:outline-none focus:ring-2 focus:ring-[#00D084]/30`}
+              />
+            </div>
+            <div>
+              <label className={`text-[11px] ${p.textMuted} block mb-1`}>Expiry (minutes)</label>
+              <input
+                type="number"
+                value={expiryMin}
+                onChange={(e) => setExpiryMin(e.target.value)}
+                className={`w-full px-3 py-2 rounded-xl text-sm border ${p.inputBorder} ${p.inputBg} ${p.textMain} focus:outline-none focus:ring-2 focus:ring-[#00D084]/30`}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleGenerate}
+              disabled={status === 'signing' || status === 'encoding' || !isConnected}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 disabled:opacity-50"
+            >
+              {status === 'signing' || status === 'encoding' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <QrCode className="w-4 h-4" />
+              )}
+              {status === 'signing' ? 'Signing...' : status === 'encoding' ? 'Encoding...' : 'Generate QR'}
+            </button>
+            {payload && (
+              <button
+                onClick={reset}
+                className="px-3 py-2.5 rounded-xl border border-[#64748B]/20 text-[#64748B] hover:bg-[#64748B]/5"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* QR Code Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.05 }}
         className="rounded-[24px] p-6 relative overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #00D084 0%, #00B86E 50%, #009E5C 100%)' }}
       >
@@ -43,12 +119,26 @@ export default function ReceivePage() {
             <span className="text-white/80 text-sm font-medium">Your PayID QR</span>
           </div>
           <div className="w-48 h-48 mx-auto mb-4 rounded-2xl bg-white p-4 flex items-center justify-center">
-            <QrCode className="w-32 h-32 text-[#0F172A]" />
+            {payload ? (
+              <div className="text-[#0F172A] text-[10px] font-mono break-all leading-tight text-left w-full h-full overflow-hidden">
+                {payload}
+              </div>
+            ) : (
+              <QrCode className="w-32 h-32 text-[#0F172A]" />
+            )}
           </div>
           <div className="text-white text-lg font-mono font-medium">{payId}</div>
           <div className="text-white/60 text-xs font-mono mt-1">{shortAddr(walletAddress)}</div>
+          {payload && (
+            <button
+              onClick={() => handleCopy(payload)}
+              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 text-white text-xs hover:bg-white/25 transition-colors"
+            >
+              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              {copied ? 'Copied' : 'Copy Payload'}
+            </button>
+          )}
         </div>
-        {/* Decorative circles */}
         <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/5" />
         <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full bg-white/5" />
       </motion.div>

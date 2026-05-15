@@ -14,3 +14,6 @@ export { payIDVerifierAbi } from './PayIDVerifier';
 export { payWithPayIDAbi } from './PayWithPayID';
 export { ruleAuthorityAbi } from './RuleAuthority';
 export { ruleItemERC721Abi } from './RuleItemERC721';
+export { agentPayIDAbi } from './AgentPayID';
+export { mockAgentRegistryAbi } from './MockAgentRegistry';
+export { vindexRegistryAbi } from './VindexRegistry';

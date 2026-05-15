@@ -311,7 +311,7 @@ export const combinedRuleStorageAbi = [
             "type": "uint256"
           }
         ],
-        "internalType": "struct CombinedRuleStorage.RuleRef[]",
+        "internalType": "struct IRuleAuthority.RuleRef[]",
         "name": "ruleRefs",
         "type": "tuple[]"
       },

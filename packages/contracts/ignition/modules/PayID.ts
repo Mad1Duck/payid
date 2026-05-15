@@ -23,9 +23,11 @@ export default buildModule("PayIDModule", (m) => {
   const ruleItemERC721 = m.contract("RuleItemERC721", [
     "PayID Rule Item",
     "PRULE",
-    admin,
-    mockOracle,
   ]);
+
+  const initRuleItem = m.call(ruleItemERC721, "initialize", [
+    admin, mockOracle,
+  ], { id: "initRuleItemERC721", from: admin });
 
   const agentPayID = m.contract("AgentPayID", [
     mockAgentRegistry,
@@ -67,6 +69,25 @@ export default buildModule("PayIDModule", (m) => {
     after: [initVerifier, initAuthority],
   });
 
+  // Advanced payment tools
+  const recurringPayments = m.contract("RecurringPayments");
+  const payWithPayIDBatch = m.contract("PayWithPayIDBatch");
+  const escrowMilestone = m.contract("EscrowMilestone");
+  const timeLockVesting = m.contract("TimeLockVesting");
+
+  // Initialize contracts that depend on PayWithPayID
+  m.call(recurringPayments, "initialize", [payWithPayID], {
+    id: "initRecurringPayments",
+    from: admin,
+    after: [initPayWith],
+  });
+
+  m.call(payWithPayIDBatch, "initialize", [payWithPayID], {
+    id: "initPayWithPayIDBatch",
+    from: admin,
+    after: [initPayWith],
+  });
+
   return {
     mockOracle,
     mockUSDC,
@@ -81,5 +102,9 @@ export default buildModule("PayIDModule", (m) => {
     mockAgentRegistry,
     agentPayID,
     vindexRegistry,
+    recurringPayments,
+    payWithPayIDBatch,
+    escrowMilestone,
+    timeLockVesting,
   };
 });

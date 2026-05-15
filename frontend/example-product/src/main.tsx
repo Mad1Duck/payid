@@ -22,6 +22,7 @@ import RuleBuilder from './routes/rule-builder/index.tsx'
 import Subscription from './routes/subscription/index.tsx'
 import Verify from './routes/verify/index.tsx'
 import OldRoute from './routes/old/index.tsx'
+import AdminRoute from './routes/admin/index.tsx'
 import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider.tsx'
 
 // V3 redesigned UI
@@ -49,6 +50,7 @@ import {
   PolicyMarketplace as V4PolicyMarketplace,
   AdvancedTools as V4AdvancedTools,
   DAOPayroll as V4DAOPayroll,
+  AdminPage as V4AdminPage,
   LandingPageV4,
   ThemeProvider as V4ThemeProvider,
 } from './components/v4'
@@ -83,7 +85,7 @@ const wagmiConfig = createConfig({
   chains: [hardhat, zeroGTestnet],
   connectors: [injected(), metaMask()],
   transports: {
-    [hardhat.id]: http('http://127.0.0.1:8545'),
+    [hardhat.id]: http('http://100.73.196.95:8545'),
     [zeroGTestnet.id]: http(),
   },
 })
@@ -242,7 +244,7 @@ const v3SubscriptionRoute = createRoute({
       maxVolume: sub?.isActive ? '$10,000' : '$1,000',
       currentTx: 0,
       currentVolume: '$0',
-      expiresAt: sub?.expiry ? sub.expiry * 1000 : Date.now(),
+      expiresAt: sub?.expiry ? Number(sub.expiry.toString()) * 1000 : Date.now(),
       enabled: sub?.isActive ?? false,
     }
 
@@ -349,6 +351,12 @@ const v4SettingsRoute = createRoute({
   component: V4SettingsPage,
 })
 
+const v4AdminRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'admin',
+  component: V4AdminPage,
+})
+
 // V2 routes (old routes with /v2 prefix)
 const v2Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -356,8 +364,11 @@ const v2Route = createRoute({
   component: () => <Outlet />,
 })
 
+const adminRoute = AdminRoute(rootRoute as any)
+
 const routeTree = rootRoute.addChildren([
   rootIndexRoute,
+  adminRoute,
   v3Route.addChildren([
     v3LandingRoute,
     v3OnboardingRoute,
@@ -390,6 +401,7 @@ const routeTree = rootRoute.addChildren([
       v4AdvancedToolsRoute,
       v4DAOPayrollRoute,
       v4SettingsRoute,
+      v4AdminRoute,
     ]),
   ]),
   v2Route.addChildren([
@@ -438,8 +450,9 @@ if (rootElement && !rootElement.innerHTML) {
                 ruleItemERC721:      addresses[31337].RuleItemERC721,
                 payIDVerifier:       addresses[31337].PayIDVerifier,
                 payWithPayID:        addresses[31337].PayWithPayID,
-                combinedRuleStorage: addresses[31337].CombinedRuleStorage || '0x0000000000000000000000000000000000000000',
-                vindexRegistry:      addresses[31337].VindexRegistry || '0x0000000000000000000000000000000000000000',
+                combinedRuleStorage: addresses[31337].CombinedRuleStorage ,
+                vindexRegistry:      addresses[31337].VindexRegistry ,
+                attestationVerifier: addresses[31337].AttestationVerifier ,
               },
               [zeroGTestnet.id]: {
                 ruleAuthority:       '0x0000000000000000000000000000000000000000',
@@ -448,6 +461,7 @@ if (rootElement && !rootElement.innerHTML) {
                 payWithPayID:        '0x0000000000000000000000000000000000000000',
                 combinedRuleStorage: '0x0000000000000000000000000000000000000000',
                 vindexRegistry:      '0x0000000000000000000000000000000000000000',
+                attestationVerifier: '0x0000000000000000000000000000000000000000',
               },
             }}
           >

@@ -1,9 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Globe, Bell, Shield, Wallet, ChevronRight, Sun, Moon, LogOut } from 'lucide-react'
+import { Globe, Bell, Shield, Wallet, ChevronRight, Sun, Moon, LogOut, Crown, Zap, Loader2 } from 'lucide-react'
 import { useAccount } from 'wagmi'
 import { useV4Palette, useV4Theme } from './theme'
 import { usePushNotifications } from '../../hooks/usePushNotifications'
+import { useSubscription, useSubscribe } from 'payid-react'
+import { parseEther } from 'viem'
 
 function shortAddr(addr: string) {
   return addr.slice(0, 6) + '...' + addr.slice(-4)
@@ -33,11 +35,18 @@ export default function SettingsPage() {
   const { toggle } = useV4Theme()
   const { address, isConnected } = useAccount()
   const payId = isConnected && address ? `${shortAddr(address)}@pay.id` : 'connect@pay.id'
-  const { state, subscribe, unsubscribe, sendLocalNotification } = usePushNotifications()
+  const { state, subscribe: subNotify, unsubscribe } = usePushNotifications()
+
+  /* ─── Subscription ─── */
+  const { data: sub } = useSubscription(address)
+  const { subscribe, isPending: subPending } = useSubscribe()
+  const daysLeft = sub?.expiry
+    ? Math.max(0, Math.floor((Number(sub.expiry) - Date.now() / 1000) / 86400))
+    : 0
 
   const settings = [
     { icon: Globe, label: 'Currency', value: 'USD', color: '#0EA5E9' },
-    { icon: Bell, label: 'Notifications', value: state.subscribed ? 'On' : state.permission === 'denied' ? 'Blocked' : 'Off', color: '#F59E0B', onClick: state.subscribed ? unsubscribe : subscribe },
+    { icon: Bell, label: 'Notifications', value: state.subscribed ? 'On' : state.permission === 'denied' ? 'Blocked' : 'Off', color: '#F59E0B', onClick: state.subscribed ? unsubscribe : subNotify },
     { icon: Shield, label: 'Security', value: 'Biometric', color: '#00D084' },
     { icon: Wallet, label: 'Network', value: 'Hardhat · 31337', color: '#8B5CF6' },
   ]
@@ -69,6 +78,49 @@ export default function SettingsPage() {
         <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/5" />
         <div className="absolute -bottom-8 -right-4 w-24 h-24 rounded-full bg-white/5" />
       </motion.div>
+
+      {/* Subscription Card */}
+      {isConnected && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+          className="rounded-2xl p-5 relative overflow-hidden"
+          style={{
+            background: sub?.isActive
+              ? 'linear-gradient(135deg, rgba(0,208,132,0.08) 0%, rgba(0,184,110,0.04) 100%)'
+              : p.cardBg,
+          }}
+        >
+          <div className={`absolute inset-0 rounded-2xl border ${p.cardBorder}`} />
+          <div className="relative flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${sub?.isActive ? 'bg-[#00D084]/10' : 'bg-[#F59E0B]/10'}`}>
+              {sub?.isActive ? <Crown className="w-6 h-6 text-[#00D084]" /> : <Zap className="w-6 h-6 text-[#F59E0B]" />}
+            </div>
+            <div className="flex-1">
+              <div className={`text-sm font-semibold ${p.textMain}`}>
+                {sub?.isActive ? 'Pro Subscription' : 'Free Tier'}
+              </div>
+              <div className={`text-xs ${p.textMuted}`}>
+                {sub?.isActive
+                  ? `${daysLeft} days remaining · ${sub.logicalRuleCount} / ${sub.maxSlots} slots`
+                  : '1 rule slot · upgrade for 3 slots'}
+              </div>
+            </div>
+            {!sub?.isActive ? (
+              <button
+                onClick={() => subscribe(parseEther('0.001'))}
+                disabled={subPending}
+                className="px-4 py-2 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 disabled:opacity-50 shrink-0"
+              >
+                {subPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Upgrade'}
+              </button>
+            ) : (
+              <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#00D084]/10 text-[#00D084]">Active</span>
+            )}
+          </div>
+        </motion.div>
+      )}
 
       {/* Theme Toggle */}
       <motion.div

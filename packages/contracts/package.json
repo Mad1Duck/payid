@@ -7,6 +7,7 @@
     "hardhat:run": "bun hardhat node",
     "hardhat:clean": "bun hardhat clean",
     "deploy:local": "bun hardhat ignition deploy ignition/modules/PayID.ts --network localhost --reset",
+    "deploy:devnode": "bun hardhat ignition deploy ignition/modules/PayID.ts --network devnode --deployment-id payid-devnode",
     "deploy:lisk-sepolia": "bun hardhat ignition deploy ignition/modules/PayID.ts --network liskSepolia    --parameters ignition/parameters/liskSepolia.json    --deployment-id lisk-sepolia-v1",
     "deploy:monad": "bun hardhat ignition deploy ignition/modules/PayID.ts --network monadTestnet   --parameters ignition/parameters/monadTestnet.json    --deployment-id monad-testnet-v1",
     "deploy:polygon-amoy": "bun hardhat ignition deploy ignition/modules/PayID.ts --network polygonAmoy    --parameters ignition/parameters/polygonAmoy.json     --deployment-id polygon-amoy-v1",
@@ -20,6 +21,7 @@
     "deploy:all-testnet": "bun run deploy:lisk-sepolia && bun run deploy:monad && bun run deploy:polygon-amoy && bun run deploy:sepolia && bun run deploy:base-sepolia && bun run deploy:moonbase",
     "sync": "bun run scripts/sync-deployments.ts",
     "sync:local": "bun run scripts/sync-deployments.ts 31337",
+    "sync:devnode": "bun run scripts/sync-deployments.ts 31337",
     "sync:abi": "bun run scripts/sync-deployments.ts --abi-only",
     "keeper": "bun run scripts/keeper.ts",
     "keeper:local": "bun run scripts/keeper.ts --chainId 31337"

@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   Wrench,
   Users,
+  Lock,
 } from 'lucide-react'
 import { useAccount, useDisconnect } from 'wagmi'
 import { useV4Palette } from './theme'
@@ -39,6 +40,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     { to: '/v4/app/marketplace', icon: ShoppingBag, label: 'Market' },
     { to: '/v4/app/tools', icon: Wrench, label: 'Tools' },
     { to: '/v4/app/payroll', icon: Users, label: 'Payroll' },
+    { to: '/v4/app/admin', icon: Lock, label: 'Admin' },
     { to: '/v4/app/settings', icon: Settings, label: 'Settings' },
   ]
 

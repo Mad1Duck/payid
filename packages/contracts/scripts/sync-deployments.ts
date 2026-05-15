@@ -103,17 +103,59 @@ const CHAIN_META: Record<number, ChainMeta> = {
 };
 
 // ── Step 1: Discover deployed chains ─────────────────────────────────────────
-function getDeployedChains(): number[] {
-  if (!fs.existsSync(IGNITION_DEPLOYMENTS)) return [];
-  return fs.readdirSync(IGNITION_DEPLOYMENTS)
-    .filter(d => /^chain-\d+$/.test(d))
-    .map(d => parseInt(d.replace("chain-", ""), 10))
-    .sort();
+interface DeploymentInfo {
+  deploymentId: string;
+  chainId: number;
 }
 
-// ── Step 2: Read addresses for a chain ───────────────────────────────────────
-function readAddresses(chainId: number): Partial<Record<ContractName, string>> | null {
-  const file = path.join(IGNITION_DEPLOYMENTS, `chain-${chainId}`, "deployed_addresses.json");
+function readChainIdFromJournal(deploymentId: string): number | null {
+  const journalPath = path.join(IGNITION_DEPLOYMENTS, deploymentId, "journal.jsonl");
+  if (!fs.existsSync(journalPath)) return null;
+
+  const content = fs.readFileSync(journalPath, "utf8");
+  const lines = content.split("\n").filter(Boolean);
+
+  for (const line of lines) {
+    try {
+      const entry = JSON.parse(line) as { chainId?: number; type?: string; };
+      if (typeof entry.chainId === "number" && entry.type === "DEPLOYMENT_INITIALIZE") {
+        return entry.chainId;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+function getDeployedChains(): DeploymentInfo[] {
+  if (!fs.existsSync(IGNITION_DEPLOYMENTS)) return [];
+
+  const result: DeploymentInfo[] = [];
+
+  for (const entry of fs.readdirSync(IGNITION_DEPLOYMENTS, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+
+    const deploymentId = entry.name;
+
+    if (/^chain-\d+$/.test(deploymentId)) {
+      const chainId = parseInt(deploymentId.replace("chain-", ""), 10);
+      result.push({ deploymentId, chainId });
+    } else {
+      const chainId = readChainIdFromJournal(deploymentId);
+      if (chainId !== null) {
+        result.push({ deploymentId, chainId });
+      }
+    }
+  }
+
+  return result.sort((a, b) => a.chainId - b.chainId);
+}
+
+// ── Step 2: Read addresses for a deployment ──────────────────────────────────
+function readAddresses(deploymentId: string): Partial<Record<ContractName, string>> | null {
+  const file = path.join(IGNITION_DEPLOYMENTS, deploymentId, "deployed_addresses.json");
   if (!fs.existsSync(file)) return null;
 
   const raw = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, string>;
@@ -407,38 +449,53 @@ if (abiCount === 0) {
 }
 
 // Determine chains
-let chainIds: number[] = [];
+let deployments: DeploymentInfo[] = [];
 if (!abiOnly) {
   if (chainArg === "all") {
-    chainIds = getDeployedChains();
-    if (chainIds.length === 0) {
+    deployments = getDeployedChains();
+    if (deployments.length === 0) {
       console.log(`\n⚠️   No ignition deployments found. Continuing in ABI-only mode.`);
     } else {
-      console.log(`\n🔍  Discovered chains: ${chainIds.join(", ")}`);
+      const uniqueChains = [...new Set(deployments.map(d => d.chainId))];
+      console.log(`\n🔍  Discovered ${deployments.length} deployment(s) for chain(s): ${uniqueChains.join(", ")}`);
     }
   } else {
-    chainIds = [parseInt(chainArg, 10)];
+    const chainId = parseInt(chainArg, 10);
+    deployments = getDeployedChains().filter(d => d.chainId === chainId);
   }
 }
 
-// Read addresses
-const allChainAddresses: Record<number, Partial<Record<ContractName, string>>> = {};
+// Read addresses — pick the fullest deployment per chain
+const chainDeploymentMap: Record<number, { deploymentId: string; count: number; addrs: Partial<Record<ContractName, string>>; }> = {};
 
-for (const chainId of chainIds) {
-  const addrs = readAddresses(chainId);
+for (const { deploymentId, chainId } of deployments) {
+  const addrs = readAddresses(deploymentId);
   if (!addrs) {
-    console.warn(`    ⚠️   No deployment found for chain ${chainId} — skipping`);
+    console.warn(`    ⚠️   No addresses found for deployment "${deploymentId}" — skipping`);
     continue;
   }
+
+  const count = Object.keys(addrs).length;
+  const existing = chainDeploymentMap[chainId];
+
+  if (!existing || count > existing.count) {
+    chainDeploymentMap[chainId] = { deploymentId, count, addrs };
+  }
+}
+
+const allChainAddresses: Record<number, Partial<Record<ContractName, string>>> = {};
+
+for (const [chainIdStr, data] of Object.entries(chainDeploymentMap)) {
+  const chainId = Number(chainIdStr);
   const meta = CHAIN_META[chainId];
-  console.log(`\n📋  Chain ${chainId} (${meta?.label ?? "unknown"}):`);
+  console.log(`\n📋  Chain ${chainId} (${meta?.label ?? "unknown"}) — using deployment "${data.deploymentId}" (${data.count} contracts):`);
   for (const name of CONTRACT_NAMES) {
-    if (addrs[name]) {
+    if (data.addrs[name]) {
       const isMock = MOCK_CONTRACTS.has(name);
-      console.log(`    ${(isMock ? "  " : "") + name.padEnd(28)} ${addrs[name]}`);
+      console.log(`    ${(isMock ? "  " : "") + name.padEnd(28)} ${data.addrs[name]}`);
     }
   }
-  allChainAddresses[chainId] = addrs;
+  allChainAddresses[chainId] = data.addrs;
 }
 
 // Write outputs

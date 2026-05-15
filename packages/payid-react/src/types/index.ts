@@ -8,6 +8,8 @@ export interface PayIDContracts {
   payWithPayID: Address;
   /** VindexRegistry address for VRAN reputation checks */
   vindexRegistry?: Address;
+  /** AttestationVerifier address for EAS attestation checks */
+  attestationVerifier?: Address;
 }
 
 export interface RuleRef {

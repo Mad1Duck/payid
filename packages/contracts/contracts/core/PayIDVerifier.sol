@@ -3,27 +3,10 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-
-interface IRuleLicense {
-    function ruleExpiry(uint256 tokenId) external view returns (uint256);
-    function ownerOf(uint256 tokenId) external view returns (address);
-}
-
-interface IRuleAuthority {
-    struct RuleRef {
-        address ruleNFT;
-        uint256 tokenId;
-    }
-
-    function getRuleByHash(bytes32 ruleSetHash)
-        external
-        view
-        returns (
-            address    owner,
-            RuleRef[]  memory ruleRefs,
-            uint64     version
-        );
-}
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "../interfaces/IRuleLicense.sol";
+import "../interfaces/IRuleAuthority.sol";
+import "../access/Roles.sol";
 
 /**
  * @title PayIDVerifier
@@ -48,7 +31,7 @@ interface IRuleAuthority {
  *     - Channel B: server wallet di-whitelist, sign proof server-side
  *     - Legacy:    payer sign sendiri (selalu valid, tanpa whitelist)
  */
-contract PayIDVerifier is EIP712 {
+contract PayIDVerifier is EIP712, AccessControl {
     using ECDSA for bytes32;
 
     /* ===================== CONSTANTS ===================== */
@@ -66,27 +49,17 @@ contract PayIDVerifier is EIP712 {
     mapping(address => mapping(bytes32 => bool)) public usedNonce;
     mapping(address => bool) public trustedAuthorities;
 
-    address public owner;
     address public attestationVerifier;
     bool    private _initialized;
 
     /* ===================== ERRORS ===================== */
     error AlreadyInitialized();
     error NotInitialized();
-    error NotOwner();
     error ZeroAddress();
 
     /* ===================== EVENTS ===================== */
     event Initialized(address indexed owner);
     event AuthorityUpdated(address indexed authority, bool trusted);
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    /* ===================== MODIFIERS ===================== */
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "NOT_OWNER");
-        _;
-    }
 
     /* ===================== CONSTRUCTOR ===================== */
 
@@ -100,8 +73,9 @@ contract PayIDVerifier is EIP712 {
         if (_attestationVerifier == address(0)) revert ZeroAddress();
 
         _initialized = true;
-        owner = initialOwner;
         attestationVerifier = _attestationVerifier;
+
+        _grantRole(Roles.DEFAULT_ADMIN, initialOwner);
 
         emit Initialized(initialOwner);
     }
@@ -110,7 +84,7 @@ contract PayIDVerifier is EIP712 {
 
     function setTrustedAuthority(address authority, bool trusted)
         external
-        onlyOwner
+        onlyRole(Roles.DEFAULT_ADMIN)
     {
         require(authority != address(0), "ZERO_ADDRESS");
         trustedAuthorities[authority] = trusted;
@@ -120,7 +94,7 @@ contract PayIDVerifier is EIP712 {
     function setTrustedAuthorities(
         address[] calldata authorities,
         bool[]    calldata trusted
-    ) external onlyOwner {
+    ) external onlyRole(Roles.DEFAULT_ADMIN) {
         require(authorities.length == trusted.length, "LENGTH_MISMATCH");
         for (uint256 i = 0; i < authorities.length; ) {
             require(authorities[i] != address(0), "ZERO_ADDRESS");
@@ -130,11 +104,6 @@ contract PayIDVerifier is EIP712 {
         }
     }
 
-    function transferOwnership(address newOwner) external onlyOwner {
-        require(newOwner != address(0), "ZERO_ADDRESS");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
 
     /* ===================== STRUCT ===================== */
 

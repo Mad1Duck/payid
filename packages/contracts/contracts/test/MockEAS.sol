@@ -46,14 +46,6 @@ contract MockEAS {
         bytes32 indexed schema
     );
 
-    /**
-     * @notice Buat attestation baru (untuk testing)
-     * @param recipient   Address yang di-attest (payer)
-     * @param schema      Schema UID yang digunakan
-     * @param attester    Address yang memberi attestation
-     * @param expiry      Unix timestamp expiry (0 = tidak expire)
-     * @param data        Arbitrary attestation data
-     */
     function attest(
         address recipient,
         bytes32 schema,
@@ -81,9 +73,6 @@ contract MockEAS {
         emit Attested(recipient, attester, uid, schema);
     }
 
-    /**
-     * @notice Revoke attestation (untuk testing)
-     */
     function revoke(bytes32 uid) external {
         Attestation storage att = _attestations[uid];
         require(att.uid != bytes32(0), "NOT_FOUND");
