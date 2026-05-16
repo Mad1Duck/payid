@@ -28,6 +28,12 @@ export interface ZGUploadResult {
 const DEFAULT_RPC_URL = 'https://evmrpc-testnet.0g.ai';
 const DEFAULT_INDEXER_URL = 'https://indexer-storage-testnet-turbo.0g.ai';
 
+/** Storage gateway URLs to try for browser download (CORS-safe only) */
+const DOWNLOAD_ENDPOINTS = [
+  'https://indexer-storage-testnet-turbo.0g.ai',
+  // indexer-testnet.0g.ai is excluded — blocks CORS from browser
+];
+
 /**
  * Upload data to 0G Storage from the browser using a connected wallet.
  *
@@ -106,26 +112,43 @@ export async function uploadToZGStorage(
  * Download data from 0G Storage by root hash.
  *
  * ⚠️ Browser limitation: `indexer.download()` uses Node.js `fs` internally
- * and does NOT work in browser. This function falls back to fetching via
- * the 0G indexer HTTP API instead.
+ * and does NOT work in browser. This function tries multiple CORS-friendly
+ * endpoints and falls back gracefully.
  *
  * @param rootHash   - Merkle root hash of the blob
  * @param options    - Optional indexer URL
  * @returns Promise<string> with the raw content
+ * @throws Error with `isCors = true` if blocked by CORS (so UI can show manual link)
  */
 export async function downloadFromZGStorage(
   rootHash: string,
   options: Pick<ZGStorageUploadOptions, 'indexerUrl'> = {}
 ): Promise<string> {
-  const indexerUrl = options.indexerUrl || DEFAULT_INDEXER_URL;
+  const endpoints = options.indexerUrl
+    ? [options.indexerUrl, ...DOWNLOAD_ENDPOINTS.filter(u => u !== options.indexerUrl)]
+    : DOWNLOAD_ENDPOINTS;
 
-  // Browser-safe: fetch via indexer REST API
-  const url = `${indexerUrl}/blob/${rootHash}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`0G Storage download failed: ${res.status} ${res.statusText}`);
+  let lastError: Error | null = null;
+
+  for (const base of endpoints) {
+    const url = `${base}/blob/${rootHash}`;
+    try {
+      const res = await fetch(url, { method: 'GET' });
+      if (res.ok) {
+        return await res.text();
+      }
+      lastError = new Error(`HTTP ${res.status} from ${base}`);
+    } catch (e: any) {
+      // TypeError + 'Failed to fetch' usually means CORS/network
+      const isCors = e.message?.includes('Failed to fetch') || e.name === 'TypeError';
+      lastError = isCors
+        ? new Error(`CORS blocked by ${base}. Try opening the URL manually or use a proxy.`) as any
+        : new Error(`${e.message} (${base})`);
+      if (isCors) (lastError as any).isCors = true;
+    }
   }
-  return await res.text();
+
+  throw lastError ?? new Error('All 0G Storage download endpoints failed');
 }
 
 /**

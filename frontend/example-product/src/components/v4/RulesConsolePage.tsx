@@ -29,6 +29,7 @@ import {
   usePreferredAgent,
   useAIAgent,
 } from 'payid-react'
+import { resolveStorageURI } from '@/lib/storage'
 import { toast } from 'sonner'
 import { Link } from '@tanstack/react-router'
 import {
@@ -399,20 +400,13 @@ export default function RulesConsolePage() {
       > = {}
       for (const r of myRules) {
         if (!r.uri) continue
-        const url = r.uri.replace(
-          'ipfs://',
-          'https://gateway.pinata.cloud/ipfs/',
-        )
         try {
-          const res = await fetch(url)
-          const meta = await res.json()
+          const raw = await resolveStorageURI(r.uri)
+          const meta = JSON.parse(raw)
           console.log(`[RulesConsole] meta for rule_${r.ruleId}:`, meta)
           if (meta.image) {
             const img = meta.image.startsWith('ipfs://')
-              ? meta.image.replace(
-                  'ipfs://',
-                  'https://gateway.pinata.cloud/ipfs/',
-                )
+              ? await resolveStorageURI(meta.image)
               : meta.image
             imgs[`rule_${r.ruleId.toString()}`] = img
           }

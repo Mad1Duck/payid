@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Globe,
@@ -11,6 +11,8 @@ import {
   LogOut,
   Crown,
   Zap,
+  Database,
+  Cloud,
 } from 'lucide-react'
 import { useAccount } from 'wagmi'
 import { useV4Palette, useV4Theme } from './theme'
@@ -63,6 +65,16 @@ export default function SettingsPage() {
     isConnected && address ? `${shortAddr(address)}@pay.id` : 'connect@pay.id'
   const { state, subscribe: subNotify, unsubscribe } = usePushNotifications()
 
+  /* ─── Storage Preference (Persistent) ─── */
+  const [storageProvider, setStorageProvider] = useState<'0g' | 'ipfs'>(() => {
+    const saved = localStorage.getItem('payid-storage-preference')
+    return (saved === '0g' || saved === 'ipfs') ? saved : '0g'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('payid-storage-preference', storageProvider)
+  }, [storageProvider])
+
   /* ─── Subscription ─── */
   const { data: sub } = useSubscription(address)
   const { subscribe, isPending: subPending } = useSubscribe()
@@ -91,6 +103,23 @@ export default function SettingsPage() {
       label: 'Network',
       value: 'Hardhat · 31337',
       color: '#8B5CF6',
+    },
+  ]
+
+  const storageOptions = [
+    {
+      value: '0g' as const,
+      label: '0G Storage',
+      icon: Database,
+      description: 'Persistent on-chain storage via 0G network',
+      color: '#8B5CF6',
+    },
+    {
+      value: 'ipfs' as const,
+      icon: Cloud,
+      label: 'IPFS',
+      description: 'Decentralized file storage via IPFS',
+      color: '#0EA5E9',
     },
   ]
 
@@ -228,6 +257,58 @@ export default function SettingsPage() {
               className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform`}
             />
           </motion.button>
+        </div>
+      </motion.div>
+
+      {/* Storage Preference */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.1 }}
+        className="rounded-2xl p-5 relative backdrop-blur-20"
+        style={{ background: p.glass.bg, border: p.glass.border }}
+      >
+        <div className={`text-sm font-medium ${p.textMain} mb-3`}>
+          Storage Preference
+        </div>
+        <div className="space-y-2">
+          {storageOptions.map((option) => {
+            const Icon = option.icon
+            const isSelected = storageProvider === option.value
+            return (
+              <motion.button
+                key={option.value}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                onClick={() => setStorageProvider(option.value)}
+                className={`relative flex items-center gap-3 p-3 rounded-xl w-full text-left transition-colors ${
+                  isSelected
+                    ? 'bg-[#00D084]/10 border border-[#00D084]/30'
+                    : p.cardHover
+                }`}
+              >
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: `${option.color}15` }}
+                >
+                  <Icon className="w-5 h-5" style={{ color: option.color }} />
+                </div>
+                <div className="flex-1">
+                  <div className={`text-sm font-medium ${p.textMain}`}>
+                    {option.label}
+                  </div>
+                  <div className={`text-xs ${p.textMuted}`}>
+                    {option.description}
+                  </div>
+                </div>
+                {isSelected && (
+                  <div className="w-5 h-5 rounded-full bg-[#00D084] flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-white" />
+                  </div>
+                )}
+              </motion.button>
+            )
+          })}
         </div>
       </motion.div>
 

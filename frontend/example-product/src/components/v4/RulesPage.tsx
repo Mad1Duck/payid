@@ -28,6 +28,7 @@ import {
   useSubscriptionPrice,
 } from 'payid-react'
 import { keccak256, parseEther, stringToBytes } from 'viem'
+import { uploadTo0G, uploadToIPFS, resolveStorageURI } from '@/lib/storage'
 import { CHAINLINK_ORACLE_ADDRESSES, CHAINLINK_ORACLE_ABI } from '../../constants/oracles'
 
 // Utility to format price nicely
@@ -234,6 +235,27 @@ function uriToHttp(uri: string): string {
   if (uri.startsWith('0g://'))
     return `${get0GGateway()}/file?root=${uri.slice(5)}`
   return uri
+}
+
+/* ── Unified storage upload (respects localStorage preference) ── */
+async function uploadWithPreference(
+  data: string | object,
+  signer?: any,
+  preference: '0g' | 'ipfs'
+): Promise<{ uri: string; url: string }> {
+  if (preference === '0g' && signer) {
+    const result = await uploadTo0G(data, signer)
+    return { uri: result.uri, url: result.uri }
+  } else if (preference === 'ipfs') {
+    const result = await uploadToIPFS(data)
+    // Convert ipfs:// to HTTP URL for display
+    const cid = result.uri.replace('ipfs://', '')
+    return { uri: result.uri, url: `${getPinataGW()}/ipfs/${cid}` }
+  }
+  // Fallback to inline
+  const str = typeof data === 'string' ? data : JSON.stringify(data)
+  const base64 = btoa(str)
+  return { uri: `data:application/json;base64,${base64}`, url: '' }
 }
 
 /* ── Rule thumbnail — fetches metadata, shows NFT image ── */
@@ -665,7 +687,15 @@ export default function RulesPage() {
   const chains = useChains()
   const currentChain = chains.find(c => c.id === chainId)
   const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
-  const is0G = chainId === 16601
+
+  // Read storage preference from localStorage (set in Settings page)
+  const storagePreference = useMemo(() => {
+    const saved = localStorage.getItem('payid-storage-preference')
+    return (saved === '0g' || saved === 'ipfs') ? saved : '0g'
+  }, [])
+
+  const is0G = storagePreference === '0g'
+
   const { data: myRules = [], refetch: refetchMyRules } = useMyRules()
   const { data: activeCombined } = useActiveCombinedRule(address)
   const { data: sub, refetch: refetchSub } = useSubscription(address)
@@ -771,26 +801,19 @@ export default function RulesPage() {
 
   const handleDeploy = async () => {
     if (!isConnected) return
-    if (!is0G && !getPinataJWT()) {
-      setDeployStage('error')
-      setDeployMsg(
-        'Add VITE_PINATA_JWT to your .env file to enable auto-upload.',
-      )
-      return
-    }
     setDeployStage('uploading')
     setDeployMsg(
-      is0G ? 'Uploading to 0G Storage…' : 'Uploading image + metadata to IPFS…',
+      storagePreference === '0g' ? 'Uploading to 0G Storage…' : 'Uploading to IPFS…',
     )
     try {
       const imgToPin = imgDataUrl ?? genImage(ruleName, ruleHash)
       let imageURL: string
       let tokenUri: string
 
-      if (is0G) {
+      if (storagePreference === '0g') {
         /* ── 0G Storage path (Optimized Parallel) ── */
         const imgBytes = dataUrlToUint8Array(imgToPin)
-        
+
         // Calculate image hash locally first (fast)
         const { MemData } = await import('@0gfoundation/0g-storage-ts-sdk')
         const imgMem = new MemData(imgBytes)
@@ -815,19 +838,19 @@ export default function RulesPage() {
           ruleHash,
           standard: 'payid.rule.v1',
         }
-        
+
         const jsonBytes = new TextEncoder().encode(JSON.stringify(metadata))
-        
+
         // Upload both in parallel
         setDeployMsg('Uploading assets to 0G Storage in parallel...')
         const [_imgRes, jsonRes] = await Promise.all([
           upload0G(imgBytes),
           upload0G(jsonBytes)
         ])
-        
+
         tokenUri = jsonRes.url
       } else {
-        /* ── Pinata / IPFS path ── */
+        /* ── IPFS path ── */
         const { url: imgUrl } = await pinImage(imgToPin, `rule-${ruleName}.png`)
         imageURL = imgUrl
 
@@ -839,6 +862,7 @@ export default function RulesPage() {
             { trait_type: 'Rule ID', value: ruleName },
             { trait_type: 'Engine', value: 'PAY.ID' },
             { trait_type: 'Standard', value: 'payid.rule.v1' },
+            { trait_type: 'Storage', value: 'IPFS' },
           ],
           rule:
             (JSON.parse(ruleJson) as { rule: unknown }).rule ??

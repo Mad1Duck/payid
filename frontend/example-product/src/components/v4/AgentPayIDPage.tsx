@@ -45,7 +45,14 @@ import { agentPayIDAbi } from '@/constants/contracts/AgentPayID'
 import { mockAgentRegistryAbi } from '@/constants/contracts/MockAgentRegistry'
 import { combinedRuleStorageAbi } from '@/constants/contracts/CombinedRuleStorage'
 import { ruleItemERC721Abi } from '@/constants/contracts';
-import { uploadToZGStorage, getEthersSigner, buildZgUri, downloadFromZGStorage } from '@/lib/zgStorage'
+import {
+  uploadTo0G,
+  uploadToIPFS,
+  resolveStorageURI,
+  getEthersSigner,
+  detectStorageProvider,
+} from '@/lib/storage'
+import { downloadFromZGStorage } from '@/lib/zgStorage'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const CHAIN_ID = 16601
@@ -304,10 +311,18 @@ export default function AgentPayIDPage() {
   const [regAgentWallet, setRegAgentWallet] = useState(address ?? '')
   const [regDisplayName, setRegDisplayName] = useState('')
   const [regModel, setRegModel] = useState('qwen/qwen-2.5-7b-instruct')
-  const [regSystemPrompt, setRegSystemPrompt] = useState('')
   const [regEndpoint, setRegEndpoint] = useState('https://compute-network-6.integratenetwork.work/v1/proxy')
-  const [use0gStorage, setUse0gStorage] = useState(false)
-  const [isUploading0g, setIsUploading0g] = useState(false)
+  const [regSystemPrompt, setRegSystemPrompt] = useState('')
+
+  // Read storage preference from localStorage (set in Settings page)
+  const [storageProvider, setStorageProvider] = useState<'inline' | '0g' | 'ipfs'>(() => {
+    const saved = localStorage.getItem('payid-storage-preference')
+    if (saved === '0g') return '0g'
+    if (saved === 'ipfs') return 'ipfs'
+    return '0g' // default
+  })
+
+  const [isUploading, setIsUploading] = useState(false)
   const [loadedMetadata, setLoadedMetadata] = useState<string | null>(null)
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
 
@@ -402,13 +417,30 @@ export default function AgentPayIDPage() {
           let ruleJson: Record<string, unknown> | undefined
           if (uri) {
             try {
-              const res = await fetch(uri)
-              const json = await res.json()
-              name = json.name
-              description = json.description
-              ruleJson = json
-            } catch { /* no metadata */ }
+              let raw: string | null = null
+              if (uri.startsWith('0g://')) {
+                // 0g:// scheme — download via 0G Storage helper (CORS-safe)
+                const rootHash = uri.replace('0g://', '')
+                raw = await downloadFromZGStorage(rootHash)
+              } else if (uri.includes('0g.ai') || uri.includes('indexer')) {
+                // HTTP URL pointing to 0G Storage — extract root hash from path
+                const parts = uri.split('/')
+                const rootHash = parts[parts.length - 1].split('?')[0]
+                if (rootHash) raw = await downloadFromZGStorage(rootHash)
+              } else {
+                // Regular HTTPS (IPFS gateway, Pinata, etc.)
+                const res = await fetch(uri)
+                raw = await res.text()
+              }
+              if (raw) {
+                const json = JSON.parse(raw)
+                name = json.name
+                description = json.description
+                ruleJson = json
+              }
+            } catch { /* no metadata — use hash fallback */ }
           }
+
 
           results.push({ ruleId, hash, uri, name, description, ruleJson, active })
         } catch { /* skip */ }
@@ -893,24 +925,35 @@ export default function AgentPayIDPage() {
                     className={`w-full px-3 py-2 rounded-xl text-xs border ${p.dark ? 'bg-white/5 border-white/10 text-white placeholder:text-slate-600' : 'bg-black/5 border-black/10 text-gray-900 placeholder:text-slate-400'} focus:outline-none focus:ring-1 focus:ring-[#8B5CF6]/40 resize-none`}
                   />
                 </div>
+              </div>
 
-                {/* 0G Storage toggle */}
-                <div className="flex items-center gap-2">
-                  <input
-                    id="use0g"
-                    type="checkbox"
-                    checked={use0gStorage}
-                    onChange={(e) => setUse0gStorage(e.target.checked)}
-                    className="w-3.5 h-3.5 accent-[#8B5CF6] cursor-pointer"
-                  />
-                  <label htmlFor="use0g" className={`text-xs cursor-pointer ${p.textMain}`}>
-                    Upload metadata ke 0G Storage (rekomendasi)
-                  </label>
+              {/* Storage provider selector */}
+              <div className="space-y-1.5">
+                <p className={`text-[10px] font-medium uppercase tracking-wider ${p.textMuted}`}>Storage Provider</p>
+                <div className="flex gap-2">
+                  {(['inline', '0g', 'ipfs'] as const).map((prov) => (
+                    <button
+                      key={prov}
+                      type="button"
+                      onClick={() => setStorageProvider(prov)}
+                      className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-medium border transition-all ${
+                        storageProvider === prov
+                          ? 'border-[#00D084]/40 bg-[#00D084]/10 text-[#00D084]'
+                          : p.dark ? 'border-white/10 text-slate-400 hover:border-white/20' : 'border-black/10 text-slate-500 hover:border-black/20'
+                      }`}
+                    >
+                      {prov === 'inline' ? 'Base64 Inline' : prov === '0g' ? '0G Storage' : 'IPFS'}
+                    </button>
+                  ))}
                 </div>
-
-                {/* Auto-generated metadata preview */}
                 <div className={`p-2 rounded-lg text-[10px] font-mono ${p.dark ? 'bg-white/3 text-slate-500' : 'bg-black/3 text-slate-500'}`}>
-                  <p>{use0gStorage ? 'Metadata akan di-upload ke 0G Storage lalu di-hash' : 'Metadata akan di-hash otomatis saat register (base64)'}</p>
+                  <p>
+                    {storageProvider === '0g'
+                      ? 'Metadata akan di-upload ke 0G Storage lalu di-hash (perlu wallet + A0GI)'
+                      : storageProvider === 'ipfs'
+                      ? 'Metadata akan di-upload ke IPFS via Pinata (perlu VITE_PINATA_JWT)'
+                      : 'Metadata akan di-hash otomatis saat register (base64 inline)'}
+                  </p>
                 </div>
               </div>
 
@@ -928,22 +971,34 @@ export default function AgentPayIDPage() {
                   const metadataHash = keccak256(toBytes(metadata))
                   let encryptedURI: string
 
-                  if (use0gStorage) {
+                  if (storageProvider === '0g') {
                     if (!connectorClient?.transport) {
                       alert('Wallet tidak terhubung untuk sign 0G Storage')
                       return
                     }
-                    setIsUploading0g(true)
+                    setIsUploading(true)
                     try {
                       const signer = await getEthersSigner(connectorClient.transport)
-                      const result = await uploadToZGStorage(metadata, signer)
-                      encryptedURI = buildZgUri(result.rootHash)
+                      const result = await uploadTo0G(metadata, signer)
+                      encryptedURI = result.uri
                     } catch (err: any) {
                       alert('0G Storage upload gagal: ' + (err.message || 'Unknown error'))
-                      setIsUploading0g(false)
+                      setIsUploading(false)
                       return
                     } finally {
-                      setIsUploading0g(false)
+                      setIsUploading(false)
+                    }
+                  } else if (storageProvider === 'ipfs') {
+                    setIsUploading(true)
+                    try {
+                      const result = await uploadToIPFS(metadata)
+                      encryptedURI = result.uri
+                    } catch (err: any) {
+                      alert('IPFS upload gagal: ' + (err.message || 'Unknown error'))
+                      setIsUploading(false)
+                      return
+                    } finally {
+                      setIsUploading(false)
                     }
                   } else {
                     encryptedURI = `data:application/json;base64,${btoa(metadata)}`
@@ -957,10 +1012,10 @@ export default function AgentPayIDPage() {
                     publicEndpoint: regEndpoint.trim(),
                   })
                 }}
-                disabled={isRegisteringAgent || isUploading0g || !regAgentWallet.trim() || !regDisplayName.trim() || !regEndpoint.trim()}
+                disabled={isRegisteringAgent || isUploading || !regAgentWallet.trim() || !regDisplayName.trim() || !regEndpoint.trim()}
                 className="w-full px-3 py-2 rounded-xl bg-[#00D084] text-white text-xs font-medium hover:bg-[#00D084]/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
-                {isUploading0g ? <Loader2 className="w-3 h-3 animate-spin" /> : isRegisteringAgent ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Register Admin Agent'}
+                {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : isRegisteringAgent ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Register Admin Agent'}
               </button>
             </div>
           )}
@@ -1025,41 +1080,71 @@ export default function AgentPayIDPage() {
                 <span className={`font-mono ${p.textMain}`}>{shortHash(agentInfo.metadataHash)}</span>
               </div>
               {/* Metadata Source */}
-              {agentInfo.encryptedURI && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className={p.textMuted}>Metadata Source</span>
-                    <span className={`font-mono text-[10px] ${agentInfo.encryptedURI.startsWith('0g://') ? 'text-[#8B5CF6]' : p.textMuted}`}>
-                      {agentInfo.encryptedURI.startsWith('0g://') ? '0G Storage' : 'Base64 Inline'}
-                    </span>
-                  </div>
-                  {agentInfo.encryptedURI.startsWith('0g://') && !loadedMetadata && (
-                    <button
-                      onClick={async () => {
-                        setIsLoadingMetadata(true)
-                        try {
-                          const data = await downloadFromZGStorage(agentInfo.encryptedURI.replace('0g://', ''))
-                          setLoadedMetadata(data)
-                        } catch (err: any) {
-                          setLoadedMetadata(`Error: ${err.message || 'Failed to load from 0G Storage'}`)
-                        } finally {
-                          setIsLoadingMetadata(false)
-                        }
-                      }}
-                      disabled={isLoadingMetadata}
-                      className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg border border-[#8B5CF6]/30 text-[#8B5CF6] text-[10px] font-medium hover:bg-[#8B5CF6]/10 transition-colors disabled:opacity-50"
-                    >
-                      {isLoadingMetadata ? <Loader2 className="w-3 h-3 animate-spin" /> : <ExternalLink className="w-3 h-3" />}
-                      Load Metadata from 0G Storage
-                    </button>
-                  )}
-                  {loadedMetadata && (
-                    <div className={`p-2 rounded-lg text-[10px] font-mono overflow-x-auto max-h-32 overflow-y-auto ${p.dark ? 'bg-white/5 text-slate-400' : 'bg-black/5 text-slate-600'}`}>
-                      <pre className="whitespace-pre-wrap break-all">{loadedMetadata}</pre>
+              {agentInfo.encryptedURI && (() => {
+                const provider = detectStorageProvider(agentInfo.encryptedURI)
+                const providerLabel = provider === '0g' ? '0G Storage' : provider === 'ipfs' ? 'IPFS' : provider === 'inline' ? 'Base64 Inline' : 'External URL'
+                const providerColor = provider === '0g' ? 'text-[#8B5CF6]' : provider === 'ipfs' ? 'text-[#00B4D8]' : provider === 'inline' ? p.textMuted : 'text-orange-400'
+                return (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={p.textMuted}>Metadata Source</span>
+                      <span className={`font-mono text-[10px] ${providerColor}`}>{providerLabel}</span>
                     </div>
-                  )}
-                </div>
-              )}
+                    {provider !== 'inline' && !loadedMetadata && (
+                      <button
+                        onClick={async () => {
+                          setIsLoadingMetadata(true)
+                          try {
+                            const data = await resolveStorageURI(agentInfo.encryptedURI)
+                            setLoadedMetadata(data)
+                          } catch (err: any) {
+                            const msg = err.message || 'Failed to load metadata'
+                            const isCors = msg.includes('CORS') || msg.includes('Failed to fetch')
+                            if (isCors && provider === '0g') {
+                              const rootHash = agentInfo.encryptedURI.replace('0g://', '')
+                              setLoadedMetadata(`CORS_BLOCKED|https://indexer-storage-testnet-turbo.0g.ai/blob/${rootHash}`)
+                            } else {
+                              setLoadedMetadata(`Error: ${msg}`)
+                            }
+                          } finally {
+                            setIsLoadingMetadata(false)
+                          }
+                        }}
+                        disabled={isLoadingMetadata}
+                        className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg border text-[10px] font-medium transition-colors disabled:opacity-50 ${
+                          provider === '0g'
+                            ? 'border-[#8B5CF6]/30 text-[#8B5CF6] hover:bg-[#8B5CF6]/10'
+                            : provider === 'ipfs'
+                            ? 'border-[#00B4D8]/30 text-[#00B4D8] hover:bg-[#00B4D8]/10'
+                            : 'border-orange-400/30 text-orange-400 hover:bg-orange-400/10'
+                        }`}
+                      >
+                        {isLoadingMetadata ? <Loader2 className="w-3 h-3 animate-spin" /> : <ExternalLink className="w-3 h-3" />}
+                        Load Metadata from {providerLabel}
+                      </button>
+                    )}
+                    {loadedMetadata && loadedMetadata.startsWith('CORS_BLOCKED|') && (
+                      <div className={`p-2 rounded-lg text-[10px] space-y-1 ${p.dark ? 'bg-amber-500/10 border border-amber-500/20 text-amber-300' : 'bg-amber-50 border border-amber-200 text-amber-700'}`}>
+                        <p className="font-medium">Browser CORS blocked download</p>
+                        <p className="opacity-80">Open URL manually or copy:</p>
+                        <a
+                          href={loadedMetadata.replace('CORS_BLOCKED|', '')}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono break-all underline opacity-90 hover:opacity-100"
+                        >
+                          {loadedMetadata.replace('CORS_BLOCKED|', '')}
+                        </a>
+                      </div>
+                    )}
+                    {loadedMetadata && !loadedMetadata.startsWith('CORS_BLOCKED|') && (
+                      <div className={`p-2 rounded-lg text-[10px] font-mono overflow-x-auto max-h-32 overflow-y-auto ${p.dark ? 'bg-white/5 text-slate-400' : 'bg-black/5 text-slate-600'}`}>
+                        <pre className="whitespace-pre-wrap break-all">{loadedMetadata}</pre>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
               <div className="flex items-center justify-between text-xs">
                 <span className={p.textMuted}>Published Rule</span>
                 <span className={`font-mono ${agentRuleInfo?.active ? 'text-[#00D084]' : p.textMuted}`}>
