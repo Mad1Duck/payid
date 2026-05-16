@@ -1,14 +1,14 @@
 services:
-  payid-example-product:
-    build:
-      context: ..
-      dockerfile: frontend/example-product/Dockerfile
-    container_name: payid-example-product
-    restart: unless-stopped
-    expose:
-      - "3000"
-    env_file:
-      - ./example-product/.env
+  # payid-example-product:
+  #   build:
+  #     context: ..
+  #     dockerfile: frontend/example-product/Dockerfile
+  #   container_name: payid-example-product
+  #   restart: unless-stopped
+  #   expose:
+  #     - "3000"
+  #   env_file:
+  #     - ./example-product/.env
 
   payid-frontend-docs:
     build:

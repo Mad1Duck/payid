@@ -1186,271 +1186,263 @@ export default function AgentPayIDPage() {
               </div>
             </button>
 
-            <AnimatePresence>
-              {showRuleSection && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <p className={`text-[11px] ${p.textMuted} mb-2`}>
-                    Select or create a rule to enforce for this AI agent. This policy will be evaluated on-chain for every payment.
-                  </p>
-
-                  {/* One-click: Use My Active Combined Rule */}
-                  {myActiveRule?.hash && myActiveRule.hash !== zeroHash && (
-                    <button
-                      onClick={() => { if (myActiveRule.hash && selectedAgent) setAgentCombinedRule(selectedAgent.agentWallet, myActiveRule.hash) }}
-                      disabled={isSettingRule}
-                      className="w-full mb-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#00D084]/10 border border-[#00D084]/30 text-[#00D084] text-xs font-medium hover:bg-[#00D084]/20 transition-colors disabled:opacity-50"
-                    >
-                      {isSettingRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-                      Use My Active Combined Rule ({shortHash(myActiveRule.hash)})
-                    </button>
-                  )}
-
-                  {/* Mode Toggle: Existing vs New */}
-                  <div className="flex gap-2 mb-3">
-                    <button
-                      onClick={() => setExistingRuleMode(false)}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
-                        !existingRuleMode
-                          ? 'bg-[#8B5CF6]/15 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/30'
-                          : `${p.dark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-500'}`
-                      }`}
-                    >
-                      Create New Rule
-                    </button>
-                    <button
-                      onClick={() => { setExistingRuleMode(true); setSelectedExistingRule(null) }}
-                      disabled={!myRuleSets || myRuleSets.length === 0}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-medium transition-all disabled:opacity-40 ${
-                        existingRuleMode
-                          ? 'bg-[#8B5CF6]/15 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/30'
-                          : `${p.dark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-500'}`
-                      }`}
-                    >
-                      Use Existing ({myRuleSets?.length ?? 0})
-                    </button>
-                  </div>
-
-            {existingRuleMode ? (
-              /* ── Use Existing Combined Rule ── */
+            {showRuleSection && (
               <div className="space-y-2">
-                <p className={`text-[11px] ${p.textMuted}`}>
-                  Select a combined rule you have already registered. This links it to the current agent without creating a new one.
-                </p>
-                <div className="flex gap-2 flex-wrap">
-                  {myRuleSets?.map((rs, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedExistingRule(rs)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                        selectedExistingRule?.hash === rs.hash
-                          ? 'bg-[#8B5CF6]/20 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/40'
-                          : `${p.dark ? 'bg-white/6 text-slate-400 hover:bg-white/10' : 'bg-black/6 text-slate-500 hover:bg-black/10'}`
-                      }`}
-                    >
-                      {shortHash(rs.hash)}
-                    </button>
-                  ))}
-                  {(!myRuleSets || myRuleSets.length === 0) && (
-                    <p className={`text-xs ${p.textMuted}`}>No existing combined rules found. Create one first.</p>
-                  )}
-                </div>
-                {selectedExistingRule && (
-                  <div className="flex items-center gap-2 text-[10px] text-[#00D084]">
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Selected: {shortHash(selectedExistingRule.hash)}</span>
-                  </div>
-                )}
-                <button
-                  onClick={() => {
-                    if (selectedExistingRule?.hash && selectedAgent) {
-                      setAgentCombinedRule(selectedAgent.agentWallet, selectedExistingRule.hash)
-                    }
-                  }}
-                  disabled={isSettingRule || !selectedExistingRule}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#8B5CF6] text-white text-xs font-medium hover:bg-[#8B5CF6]/90 transition-colors disabled:opacity-50"
-                >
-                  {isSettingRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-                  Link to Agent
-                </button>
-              </div>
-            ) : (
-              /* ── Create New Rule ── */
-              <div className="space-y-2">
-                {/* Preset Templates */}
-                <div>
-                  <p className={`text-[10px] font-semibold uppercase tracking-wide ${p.textMuted} mb-1.5`}>Quick Templates</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {PRESET_TEMPLATES.map((t, i) => (
-                      <button
-                        key={i}
-                        onClick={() => {
-                          setSelectedTemplate(i)
-                          setRuleNameInput(t.name)
-                          setRuleDescInput(t.desc)
-                          if (t.json) {
-                            setRuleJsonInput(JSON.stringify(t.json, null, 2))
-                          }
-                          setJsonError('')
-                        }}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all ${
-                          selectedTemplate === i
-                            ? 'bg-[#8B5CF6]/20 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/40'
-                            : `${p.dark ? 'bg-white/6 text-slate-400 hover:bg-white/10' : 'bg-black/6 text-slate-500 hover:bg-black/10'}`
-                        }`}
-                      >
-                        {t.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Rule Name */}
-                <input
-                  type="text"
-                  value={ruleNameInput}
-                  onChange={(e) => { setRuleNameInput(e.target.value); setSelectedTemplate(-1) }}
-                  placeholder="Rule name (e.g. Spending Limit 500 USDC)"
-                  className={`w-full px-3 py-2 rounded-xl text-xs border ${p.inputBorder} ${p.inputBg} ${p.textMain} focus:outline-none focus:border-[#8B5CF6]/40`}
-                />
-                {/* Rule Description */}
-                <input
-                  type="text"
-                  value={ruleDescInput}
-                  onChange={(e) => { setRuleDescInput(e.target.value); setSelectedTemplate(-1) }}
-                  placeholder="Short description..."
-                  className={`w-full px-3 py-2 rounded-xl text-xs border ${p.inputBorder} ${p.inputBg} ${p.textMain} focus:outline-none focus:border-[#8B5CF6]/40`}
-                />
-                {/* Rule JSON Editor */}
-                <div className="relative">
-                  <span className={`absolute top-2 left-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500`}>Rule JSON</span>
-                  <textarea
-                    value={ruleJsonInput}
-                    onChange={(e) => { setRuleJsonInput(e.target.value); setSelectedTemplate(-1); setJsonError('') }}
-                    rows={8}
-                    className={`w-full mt-6 p-3 rounded-xl text-[10px] font-mono border ${p.inputBorder} ${p.inputBg} ${p.textMain} focus:outline-none focus:border-[#8B5CF6]/40 resize-y ${jsonError ? 'border-red-400' : ''}`}
-                    style={{ lineHeight: '1.5' }}
-                  />
-                </div>
-                {/* JSON Validation Error */}
-                {jsonError && (
-                  <div className="flex items-center gap-1.5 text-red-400 text-[10px]">
-                    <AlertTriangle className="w-3 h-3" />
-                    <span>{jsonError}</span>
-                  </div>
-                )}
-                {/* Slot Warning + Subscribe */}
-                {slotsUsed >= slotsMax ? (
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 text-amber-500 text-[10px]">
-                      <AlertTriangle className="w-3 h-3" />
-                      <span>Slot limit reached ({slotsUsed}/{slotsMax}).</span>
-                    </div>
-                    <button
-                      onClick={() => { if (subPrice) subscribe(subPrice as bigint) }}
-                      disabled={isSubscribing || !subPrice}
-                      className="px-2 py-1 rounded-lg bg-[#8B5CF6] text-white text-[10px] font-medium hover:bg-[#8B5CF6]/90 transition-colors disabled:opacity-50"
-                    >
-                      {isSubscribing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Subscribe'}
-                    </button>
-                  </div>
-                ) : null}
-                {/* Create Flow Button */}
-                <button
-                  onClick={() => {
-                    try {
-                      const parsed = JSON.parse(ruleJsonInput)
-                      // Validate PAY.ID rule structure
-                      if (!parsed.version || !parsed.logic || !Array.isArray(parsed.rules)) {
-                        setJsonError('Invalid rule: must have version, logic, and rules array')
-                        return
-                      }
-                      const hash = keccak256(toBytes(JSON.stringify(parsed)))
-                      const uri = `ipfs://rule-${hash.slice(2, 10)}`
-                      setJsonError('')
-                      createRule({ ruleHash: hash, uri })
-                      setShowCreateSuccess(true)
-                      setTimeout(() => setShowCreateSuccess(false), 3000)
-                    } catch {
-                      setJsonError('Invalid JSON syntax')
-                    }
-                  }}
-                  disabled={isCreatingRule || !ruleNameInput.trim() || slotsUsed >= slotsMax}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#00D084] text-white text-xs font-medium hover:bg-[#00D084]/90 transition-colors disabled:opacity-50"
-                >
-                  {isCreatingRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                  Create Rule
-                </button>
-                {/* Success feedback */}
-                {showCreateSuccess && (
-                  <div className="flex items-center gap-2 text-[10px] text-[#00D084]">
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Rule created! Go to <a href="/v3/rules/console" className="underline">Rules Console</a> to activate & combine.</span>
-                  </div>
-                )}
-                <p className={`text-[10px] ${p.textMuted}`}>
-                  Prefer a guided UI? <a href="/v3/rule-builder" className="text-[#8B5CF6] hover:underline">Open Rule Builder</a> for step-by-step rule creation.
+                <p className={`text-[11px] ${p.textMuted} mb-2`}>
+                  Select or create a rule to enforce for this AI agent. This policy will be evaluated on-chain for every payment.
                 </p>
 
-                {/* Or use presets / on-chain rules */}
-                <div className="pt-2 border-t" style={{ borderColor: p.dark ? '#ffffff10' : '#00000010' }}>
-                  <p className={`text-[10px] font-semibold uppercase tracking-wide ${p.textMuted} mb-2`}>Or select existing rule</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {rulesLoaded && onChainRules.length > 0 ? (
-                      onChainRules.map((r, i) => (
-                        <button
-                          key={`onchain-${i}`}
-                          onClick={() => setRuleIdx(i)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                            ruleIdx === i
-                              ? 'bg-[#8B5CF6]/20 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/40'
-                              : `${p.dark ? 'bg-white/6 text-slate-400 hover:bg-white/10' : 'bg-black/6 text-slate-500 hover:bg-black/10'}`
-                          }`}
-                        >
-                          {r.name || `Rule #${r.ruleId}`}
-                        </button>
-                      ))
-                    ) : rulesLoaded ? (
-                      PRESET_RULES.map((r, i) => (
-                        <button
-                          key={`preset-${i}`}
-                          onClick={() => setRuleIdx(i)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                            ruleIdx === i
-                              ? 'bg-[#8B5CF6]/20 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/40'
-                              : `${p.dark ? 'bg-white/6 text-slate-400 hover:bg-white/10' : 'bg-black/6 text-slate-500 hover:bg-black/10'}`
-                          }`}
-                        >
-                          {r.label}
-                        </button>
-                      ))
-                    ) : null}
-                  </div>
-                  {/* Set selected rule as policy */}
+                {/* One-click: Use My Active Combined Rule */}
+                {myActiveRule?.hash && myActiveRule.hash !== zeroHash && (
                   <button
-                    onClick={() => {
-                      const selectedHash = (onChainRules.length > 0 && onChainRules[ruleIdx])
-                        ? onChainRules[ruleIdx].hash
-                        : PRESET_RULES[ruleIdx]?.hash
-                      if (selectedHash && selectedAgent) setAgentCombinedRule(selectedAgent.agentWallet, selectedHash as `0x${string}`)
-                    }}
-                    disabled={isSettingRule || onChainPhase !== 'idle'}
-                    className="w-full mt-2 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#8B5CF6] text-white text-xs font-medium hover:bg-[#8B5CF6]/90 transition-colors disabled:opacity-50"
+                    onClick={() => { if (myActiveRule.hash && selectedAgent) setAgentCombinedRule(selectedAgent.agentWallet, myActiveRule.hash) }}
+                    disabled={isSettingRule}
+                    className="w-full mb-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#00D084]/10 border border-[#00D084]/30 text-[#00D084] text-xs font-medium hover:bg-[#00D084]/20 transition-colors disabled:opacity-50"
                   >
-                    {isSettingRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-                    Set as Agent Policy
+                    {isSettingRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+                    Use My Active Combined Rule ({shortHash(myActiveRule.hash)})
+                  </button>
+                )}
+
+                {/* Mode Toggle: Existing vs New */}
+                <div className="flex gap-2 mb-3">
+                  <button
+                    onClick={() => setExistingRuleMode(false)}
+                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                      !existingRuleMode
+                        ? 'bg-[#8B5CF6]/15 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/30'
+                        : `${p.dark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-500'}`
+                    }`}
+                  >
+                    Create New Rule
+                  </button>
+                  <button
+                    onClick={() => { setExistingRuleMode(true); setSelectedExistingRule(null) }}
+                    disabled={!myRuleSets || myRuleSets.length === 0}
+                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-medium transition-all disabled:opacity-40 ${
+                      existingRuleMode
+                        ? 'bg-[#8B5CF6]/15 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/30'
+                        : `${p.dark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-500'}`
+                    }`}
+                  >
+                    Use Existing ({myRuleSets?.length ?? 0})
                   </button>
                 </div>
+
+                {existingRuleMode ? (
+                  /* ── Use Existing Combined Rule ── */
+                  <div className="space-y-2">
+                    <p className={`text-[11px] ${p.textMuted}`}>
+                      Select a combined rule you have already registered. This links it to the current agent without creating a new one.
+                    </p>
+                    <div className="flex gap-2 flex-wrap">
+                      {myRuleSets?.map((rs, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setSelectedExistingRule(rs)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                            selectedExistingRule?.hash === rs.hash
+                              ? 'bg-[#8B5CF6]/20 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/40'
+                              : `${p.dark ? 'bg-white/6 text-slate-400 hover:bg-white/10' : 'bg-black/6 text-slate-500 hover:bg-black/10'}`
+                          }`}
+                        >
+                          {shortHash(rs.hash)}
+                        </button>
+                      ))}
+                      {(!myRuleSets || myRuleSets.length === 0) && (
+                        <p className={`text-xs ${p.textMuted}`}>No existing combined rules found. Create one first.</p>
+                      )}
+                    </div>
+                    {selectedExistingRule && (
+                      <div className="flex items-center gap-2 text-[10px] text-[#00D084]">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Selected: {shortHash(selectedExistingRule.hash)}</span>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (selectedExistingRule?.hash && selectedAgent) {
+                          setAgentCombinedRule(selectedAgent.agentWallet, selectedExistingRule.hash)
+                        }
+                      }}
+                      disabled={isSettingRule || !selectedExistingRule}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#8B5CF6] text-white text-xs font-medium hover:bg-[#8B5CF6]/90 transition-colors disabled:opacity-50"
+                    >
+                      {isSettingRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+                      Link to Agent
+                    </button>
+                  </div>
+                ) : (
+                  /* ── Create New Rule ── */
+                  <div className="space-y-2">
+                    {/* Preset Templates */}
+                    <div>
+                      <p className={`text-[10px] font-semibold uppercase tracking-wide ${p.textMuted} mb-1.5`}>Quick Templates</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {PRESET_TEMPLATES.map((t, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              setSelectedTemplate(i)
+                              setRuleNameInput(t.name)
+                              setRuleDescInput(t.desc)
+                              if (t.json) {
+                                setRuleJsonInput(JSON.stringify(t.json, null, 2))
+                              }
+                              setJsonError('')
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all ${
+                              selectedTemplate === i
+                                ? 'bg-[#8B5CF6]/20 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/40'
+                                : `${p.dark ? 'bg-white/6 text-slate-400 hover:bg-white/10' : 'bg-black/6 text-slate-500 hover:bg-black/10'}`
+                            }`}
+                          >
+                            {t.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Rule Name */}
+                    <input
+                      type="text"
+                      value={ruleNameInput}
+                      onChange={(e) => { setRuleNameInput(e.target.value); setSelectedTemplate(-1) }}
+                      placeholder="Rule name (e.g. Spending Limit 500 USDC)"
+                      className={`w-full px-3 py-2 rounded-xl text-xs border ${p.inputBorder} ${p.inputBg} ${p.textMain} focus:outline-none focus:border-[#8B5CF6]/40`}
+                    />
+                    {/* Rule Description */}
+                    <input
+                      type="text"
+                      value={ruleDescInput}
+                      onChange={(e) => { setRuleDescInput(e.target.value); setSelectedTemplate(-1) }}
+                      placeholder="Short description..."
+                      className={`w-full px-3 py-2 rounded-xl text-xs border ${p.inputBorder} ${p.inputBg} ${p.textMain} focus:outline-none focus:border-[#8B5CF6]/40`}
+                    />
+                    {/* Rule JSON Editor */}
+                    <div className="relative">
+                      <span className={`absolute top-2 left-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500`}>Rule JSON</span>
+                      <textarea
+                        value={ruleJsonInput}
+                        onChange={(e) => { setRuleJsonInput(e.target.value); setSelectedTemplate(-1); setJsonError('') }}
+                        rows={8}
+                        className={`w-full mt-6 p-3 rounded-xl text-[10px] font-mono border ${p.inputBorder} ${p.inputBg} ${p.textMain} focus:outline-none focus:border-[#8B5CF6]/40 resize-y ${jsonError ? 'border-red-400' : ''}`}
+                        style={{ lineHeight: '1.5' }}
+                      />
+                    </div>
+                    {/* JSON Validation Error */}
+                    {jsonError && (
+                      <div className="flex items-center gap-1.5 text-red-400 text-[10px]">
+                        <AlertTriangle className="w-3 h-3" />
+                        <span>{jsonError}</span>
+                      </div>
+                    )}
+                    {/* Slot Warning + Subscribe */}
+                    {slotsUsed >= slotsMax ? (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-amber-500 text-[10px]">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>Slot limit reached ({slotsUsed}/{slotsMax}).</span>
+                        </div>
+                        <button
+                          onClick={() => { if (subPrice) subscribe(subPrice as bigint) }}
+                          disabled={isSubscribing || !subPrice}
+                          className="px-2 py-1 rounded-lg bg-[#8B5CF6] text-white text-[10px] font-medium hover:bg-[#8B5CF6]/90 transition-colors disabled:opacity-50"
+                        >
+                          {isSubscribing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Subscribe'}
+                        </button>
+                      </div>
+                    ) : null}
+                    {/* Create Flow Button */}
+                    <button
+                      onClick={() => {
+                        try {
+                          const parsed = JSON.parse(ruleJsonInput)
+                          // Validate PAY.ID rule structure
+                          if (!parsed.version || !parsed.logic || !Array.isArray(parsed.rules)) {
+                            setJsonError('Invalid rule: must have version, logic, and rules array')
+                            return
+                          }
+                          const hash = keccak256(toBytes(JSON.stringify(parsed)))
+                          const uri = `ipfs://rule-${hash.slice(2, 10)}`
+                          setJsonError('')
+                          createRule({ ruleHash: hash, uri })
+                          setShowCreateSuccess(true)
+                          setTimeout(() => setShowCreateSuccess(false), 3000)
+                        } catch {
+                          setJsonError('Invalid JSON syntax')
+                        }
+                      }}
+                      disabled={isCreatingRule || !ruleNameInput.trim() || slotsUsed >= slotsMax}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#00D084] text-white text-xs font-medium hover:bg-[#00D084]/90 transition-colors disabled:opacity-50"
+                    >
+                      {isCreatingRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                      Create Rule
+                    </button>
+                    {/* Success feedback */}
+                    {showCreateSuccess && (
+                      <div className="flex items-center gap-2 text-[10px] text-[#00D084]">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Rule created! Go to <a href="/v3/rules/console" className="underline">Rules Console</a> to activate & combine.</span>
+                      </div>
+                    )}
+                    <p className={`text-[10px] ${p.textMuted}`}>
+                      Prefer a guided UI? <a href="/v3/rule-builder" className="text-[#8B5CF6] hover:underline">Open Rule Builder</a> for step-by-step rule creation.
+                    </p>
+
+                    {/* Or use presets / on-chain rules */}
+                    <div className="pt-2 border-t" style={{ borderColor: p.dark ? '#ffffff10' : '#00000010' }}>
+                      <p className={`text-[10px] font-semibold uppercase tracking-wide ${p.textMuted} mb-2`}>Or select existing rule</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {rulesLoaded && onChainRules.length > 0 ? (
+                          onChainRules.map((r, i) => (
+                            <button
+                              key={`onchain-${i}`}
+                              onClick={() => setRuleIdx(i)}
+                              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                                ruleIdx === i
+                                  ? 'bg-[#8B5CF6]/20 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/40'
+                                  : `${p.dark ? 'bg-white/6 text-slate-400 hover:bg-white/10' : 'bg-black/6 text-slate-500 hover:bg-black/10'}`
+                              }`}
+                            >
+                              {r.name || `Rule #${r.ruleId}`}
+                            </button>
+                          ))
+                        ) : rulesLoaded ? (
+                          PRESET_RULES.map((r, i) => (
+                            <button
+                              key={`preset-${i}`}
+                              onClick={() => setRuleIdx(i)}
+                              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                                ruleIdx === i
+                                  ? 'bg-[#8B5CF6]/20 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/40'
+                                  : `${p.dark ? 'bg-white/6 text-slate-400 hover:bg-white/10' : 'bg-black/6 text-slate-500 hover:bg-black/10'}`
+                              }`}
+                            >
+                              {r.label}
+                            </button>
+                          ))
+                        ) : null}
+                      </div>
+                      {/* Set selected rule as policy */}
+                      <button
+                        onClick={() => {
+                          const selectedHash = (onChainRules.length > 0 && onChainRules[ruleIdx])
+                            ? onChainRules[ruleIdx].hash
+                            : PRESET_RULES[ruleIdx]?.hash
+                          if (selectedHash && selectedAgent) setAgentCombinedRule(selectedAgent.agentWallet, selectedHash as `0x${string}`)
+                        }}
+                        disabled={isSettingRule || onChainPhase !== 'idle'}
+                        className="w-full mt-2 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#8B5CF6] text-white text-xs font-medium hover:bg-[#8B5CF6]/90 transition-colors disabled:opacity-50"
+                      >
+                        {isSettingRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                        Set as Agent Policy
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {/* Current policy status */}
             {agentRuleInfo?.active && (
