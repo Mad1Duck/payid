@@ -1,4 +1,3 @@
-import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Play,
@@ -14,73 +13,28 @@ import {
   FileCheck,
   Box,
 } from 'lucide-react'
-import { useV4Palette } from './theme'
 import { ParticleField, StorageHexGrid, SignatureAnimation, BlockChainLink } from '@/features/shared'
-
-type Stage =
-  | 'idle'
-  | 'context'
-  | 'storage'
-  | 'resolve'
-  | 'evaluate'
-  | 'decision'
-  | 'sign'
-  | 'validate'
-  | 'complete'
-
-interface StageInfo {
-  key: Stage
-  title: string
-  subtitle: string
-  icon: React.ElementType
-  color: string
-}
+import { useProofVisualizer } from './proof-visualizer/useProofVisualizer'
+import type { Stage, StageInfo } from './proof-visualizer/useProofVisualizer'
 
 const STAGES: StageInfo[] = [
-  { key: 'context', title: 'Build Context', subtitle: 'tx + payId + env + oracle', icon: Layers, color: '#0EA5E9' },
-  { key: 'storage', title: '0G Storage', subtitle: 'Fetching rule blob from ZGS', icon: Database, color: '#8B5CF6' },
-  { key: 'resolve', title: 'Resolve Rules', subtitle: 'IPFS hash → WASM config', icon: Box, color: '#EC4899' },
-  { key: 'evaluate', title: 'WASM Engine', subtitle: 'Deterministic execution', icon: Cpu, color: '#F59E0B' },
-  { key: 'decision', title: 'Decision', subtitle: 'ALLOW / REJECT', icon: FileCheck, color: '#00D084' },
-  { key: 'sign', title: 'EIP-712 Sign', subtitle: 'Typed data signature', icon: PenTool, color: '#06B6D4' },
-  { key: 'validate', title: 'On-Chain', subtitle: 'PayIDVerifier.validate', icon: Link2, color: '#00D084' },
+  { key: 'context', title: 'Build Context', subtitle: 'tx + payId + env + oracle', icon: 'Layers', color: '#0EA5E9' },
+  { key: 'storage', title: '0G Storage', subtitle: 'Fetching rule blob from ZGS', icon: 'Database', color: '#8B5CF6' },
+  { key: 'resolve', title: 'Resolve Rules', subtitle: 'IPFS hash → WASM config', icon: 'Box', color: '#EC4899' },
+  { key: 'evaluate', title: 'WASM Engine', subtitle: 'Deterministic execution', icon: 'Cpu', color: '#F59E0B' },
+  { key: 'decision', title: 'Decision', subtitle: 'ALLOW / REJECT', icon: 'FileCheck', color: '#00D084' },
+  { key: 'sign', title: 'EIP-712 Sign', subtitle: 'Typed data signature', icon: 'PenTool', color: '#06B6D4' },
+  { key: 'validate', title: 'On-Chain', subtitle: 'PayIDVerifier.validate', icon: 'Link2', color: '#00D084' },
 ]
 
+const ICON_MAP: Record<string, React.ElementType> = {
+  Layers, Database, Box, Cpu, FileCheck, PenTool, Link2,
+}
+
 export default function ProofVisualizer() {
-  const p = useV4Palette()
-  const [stage, setStage] = useState<Stage>('idle')
-  const [history, setHistory] = useState<Stage[]>([])
-  const [result, setResult] = useState<'allow' | 'reject' | null>(null)
-
-  const start = useCallback(() => {
-    setStage('context')
-    setHistory(['context'])
-    setResult(null)
-
-    let current = 0
-    const sequence: Stage[] = ['context', 'storage', 'resolve', 'evaluate', 'decision', 'sign', 'validate']
-
-    const interval = setInterval(() => {
-      current++
-      if (current >= sequence.length) {
-        clearInterval(interval)
-        setStage('complete')
-        setResult(Math.random() > 0.3 ? 'allow' : 'reject')
-        return
-      }
-      const next = sequence[current]
-      setStage(next)
-      setHistory((h) => [...h, next])
-    }, 1800)
-  }, [])
-
-  const reset = useCallback(() => {
-    setStage('idle')
-    setHistory([])
-    setResult(null)
-  }, [])
-
+  const { p, stage, history, result, start, reset } = useProofVisualizer()
   const currentStageInfo = STAGES.find((s) => s.key === stage)
+  const StageIcon = currentStageInfo ? ICON_MAP[currentStageInfo.icon] : null
 
   return (
     <motion.div
@@ -136,7 +90,7 @@ export default function ProofVisualizer() {
                   className="w-16 h-16 rounded-2xl flex items-center justify-center"
                   style={{ background: `${currentStageInfo?.color}15` }}
                 >
-                  {currentStageInfo && <currentStageInfo.icon className="w-8 h-8" style={{ color: currentStageInfo.color }} />}
+                  {StageIcon && <StageIcon className="w-8 h-8" style={{ color: currentStageInfo!.color }} />}
                 </div>
                 <div className="text-center">
                   <h3 className={`text-lg font-bold ${p.textMain}`}>{currentStageInfo?.title}</h3>
@@ -210,7 +164,10 @@ export default function ProofVisualizer() {
                 animate={isActive ? { scale: [1, 1.05, 1] } : {}}
                 transition={{ duration: 1, repeat: Infinity }}
               >
-                <s.icon className="w-4 h-4 mx-auto" style={{ color: isActive ? s.color : isDone ? s.color : '#64748B' }} />
+                {(() => {
+                  const SIcon = ICON_MAP[s.icon]
+                  return SIcon ? <SIcon className="w-4 h-4 mx-auto" style={{ color: isActive ? s.color : isDone ? s.color : '#64748B' }} /> : null
+                })()}
                 <div className={`text-[10px] font-medium ${p.textMain}`}>{s.title.split(' ')[0]}</div>
                 <div className="w-full h-0.5 rounded-full bg-current opacity-20" style={{ color: isDone || isActive ? s.color : '#64748B' }} />
               </motion.div>

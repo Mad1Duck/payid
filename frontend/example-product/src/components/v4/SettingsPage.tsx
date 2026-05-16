@@ -1,4 +1,3 @@
-import { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Globe,
@@ -14,106 +13,31 @@ import {
   Database,
   Cloud,
 } from 'lucide-react'
-import { useAccount, useChainId } from 'wagmi'
-import { useV4Palette, useV4Theme } from './theme'
-import { usePushNotifications } from '../../hooks/usePushNotifications'
-import { useSubscription, useSubscribe, useSubscriptionPrice } from 'payid-react'
-import { parseEther } from 'viem'
 import PremiumButton from './PremiumButton'
-import { toast } from 'sonner'
 import { shortAddr } from '@/features/shared/utils/address'
 import { Avatar } from '@/features/shared/components/Avatar'
+import { useSettingsPage } from './settings/useSettingsPage'
 
 export default function SettingsPage() {
-  const p = useV4Palette()
-  const { toggle } = useV4Theme()
-  const { address, isConnected } = useAccount()
-  const chainId = useChainId()
-  const payId =
-    isConnected && address ? `${shortAddr(address)}@pay.id` : 'connect@pay.id'
-  const { state, subscribe: subNotify, unsubscribe } = usePushNotifications()
-
-  /* ─── Storage Preference (Persistent) ─── */
-  const [storageProvider, setStorageProvider] = useState<'0g' | 'ipfs'>(() => {
-    const saved = localStorage.getItem('payid-storage-preference')
-    return (saved === '0g' || saved === 'ipfs') ? saved : '0g'
-  })
-
-  useEffect(() => {
-    localStorage.setItem('payid-storage-preference', storageProvider)
-  }, [storageProvider])
-
-  /* ─── Subscription ─── */
-  const { data: sub } = useSubscription(address)
-  const { subscribe, isPending: subPending, error: subError } = useSubscribe()
-  const { data: subPrice } = useSubscriptionPrice()
-  const daysLeft = sub?.expiry
-    ? Math.max(0, Math.floor((Number(sub.expiry) - Date.now() / 1000) / 86400))
-    : 0
-  const price = subPrice ? (subPrice as bigint) : parseEther('0.001')
-
-  // Check if on supported chain for subscription
-  const isSupportedChain = chainId === 16601 || chainId === 16602 || chainId === 31337
-
-  // Log subscription state for debugging
-  useEffect(() => {
-    console.log('[SettingsPage] Subscription state:', {
-      chainId,
-      isSupportedChain,
-      isPending: subPending,
-      subError: subError ? String(subError) : null,
-      subPrice: subPrice ? String(subPrice) : null,
-      price: String(price),
-    })
-  }, [chainId, isSupportedChain, subPending, subError, subPrice, price])
-
-  // Show subscription error
-  useEffect(() => {
-    if (subError) {
-      console.error('[SettingsPage] Subscription error:', subError)
-      console.error('[SettingsPage] Current chain:', chainId)
-      console.error('[SettingsPage] Full error object:', JSON.stringify(subError, null, 2))
-      const errorMsg = (subError as { shortMessage?: string; message?: string }).shortMessage ||
-                      (subError as { message?: string }).message ||
-                      'Transaction failed'
-
-      // Check if it's a chain issue
-      if (!isSupportedChain) {
-        toast.error('Subscription Failed', {
-          description: `Contracts not deployed on chain ${chainId}. Switch to 0G Testnet (16601/16602) or Hardhat (31337).`,
-        })
-      } else if (errorMsg.includes('contract') || errorMsg.includes('zero address') || errorMsg.includes('not deployed')) {
-        toast.error('Subscription Failed', {
-          description: 'Contracts not deployed on this chain.',
-        })
-      } else if (errorMsg.includes('insufficient') || errorMsg.includes('balance')) {
-        toast.error('Subscription Failed', {
-          description: 'Insufficient ETH balance to pay for subscription.',
-        })
-      } else if (errorMsg.includes('paused') || errorMsg.includes('Pausable')) {
-        toast.error('Subscription Failed', {
-          description: 'Contract is currently paused. Contact admin.',
-        })
-      } else {
-        toast.error('Subscription Failed', {
-          description: errorMsg,
-        })
-      }
-    }
-  }, [subError, chainId, isSupportedChain])
+  const {
+    p, toggle, address, isConnected, payId,
+    storageProvider, setStorageProvider,
+    sub, subscribe, subPending, price, daysLeft,
+    notifyState, subNotify, unsubNotify,
+  } = useSettingsPage()
 
   const settings = [
     { icon: Globe, label: 'Currency', value: 'USD', color: '#0EA5E9' },
     {
       icon: Bell,
       label: 'Notifications',
-      value: state.subscribed
+      value: notifyState.subscribed
         ? 'On'
-        : state.permission === 'denied'
+        : notifyState.permission === 'denied'
           ? 'Blocked'
           : 'Off',
       color: '#F59E0B',
-      onClick: state.subscribed ? unsubscribe : subNotify,
+      onClick: notifyState.subscribed ? unsubNotify : subNotify,
     },
     { icon: Shield, label: 'Security', value: 'Biometric', color: '#00D084' },
     {

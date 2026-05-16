@@ -1,0 +1,1 @@
+export { useReceivePage } from './useReceivePage'

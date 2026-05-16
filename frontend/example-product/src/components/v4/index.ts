@@ -8,8 +8,6 @@ export { default as RulesConsolePage } from './RulesConsolePage';
 export { default as SettingsPage } from './SettingsPage';
 export { default as LandingPageV4 } from './LandingPageV4';
 export { default as ProofVisualizer } from './ProofVisualizer';
-export { default as PolicyCard } from './PolicyCard';
-export type { PolicyCardData } from './PolicyCard';
 export { default as PolicyMarketplace } from './PolicyMarketplace';
 export { default as TransactionSimulation } from './TransactionSimulation';
 export { default as AdvancedTools } from './AdvancedTools';

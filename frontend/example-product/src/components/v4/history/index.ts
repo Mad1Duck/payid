@@ -1,0 +1,1 @@
+export { useHistoryPage } from './useHistoryPage'
