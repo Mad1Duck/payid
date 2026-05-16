@@ -1,20 +1,18 @@
-FROM oven/bun:1.3.13 AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY . .
+COPY frontend/frontend-docs/package.json ./
 
-ENV NODE_ENV=development
+RUN npm install
 
-RUN bun install
+COPY frontend/frontend-docs ./
 
-WORKDIR /app/frontend/frontend-docs
-
-RUN bunx docusaurus build
+RUN npm run build
 
 FROM nginx:alpine
 
-COPY --from=builder /app/frontend/frontend-docs/build /usr/share/nginx/html
+COPY --from=builder /app/build /usr/share/nginx/html
 COPY frontend/frontend-docs/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3000
