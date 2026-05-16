@@ -1,18 +1,10 @@
-FROM node:20-bookworm-slim AS builder
+FROM oven/bun:1.2.21 AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-  python3 \
-  make \
-  g++ \
-  git \
-  ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
+COPY frontend/frontend-docs/package.json frontend/frontend-docs/bun.lock ./
 
-COPY frontend/frontend-docs/package.json ./
-
-RUN npm install
+RUN bun install --frozen-lockfile
 
 COPY frontend/frontend-docs ./
 
@@ -20,7 +12,7 @@ ENV NODE_ENV=production
 ENV CI=false
 ENV NO_COLOR=1
 
-RUN npm run build
+RUN bun run build
 
 FROM nginx:alpine
 
