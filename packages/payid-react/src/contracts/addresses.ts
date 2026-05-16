@@ -78,6 +78,19 @@ export const PAYID_CONTRACTS: Record<number, PayIDContracts> = {
     aiAgentRegistry: "0x1eB5C49630E08e95Ba7f139BcF4B9BA171C9a8C7",
     aiAgentRuleManager: "0x5A569Ad19272Afa97103fD4DbadF33B2FcbaA175",
   },
+
+  // 0G Galileo Testnet (chain 16602)
+  16602: {
+    ruleAuthority: "0x3d2F9441c589a24A524c36892268f35C6467bFF6",
+    ruleItemERC721: "0xc22fE6CbeE7fA5A35DAf40B30D91d5D3bFfa2fD8",
+    combinedRuleStorage: "0x486a6d305742B0b5847770BF421114161440E79b",
+    payIDVerifier: "0xE2FfE1037b996B8F66dE7cba0398A411850Ecd91",
+    payWithPayID: "0x04eEAF2dc4Ee22E7362a60dd652E1DF450697dbb",
+    vindexRegistry: "0x3F6ba46650f78AcAeebf906306987994555a8CCb",
+    attestationVerifier: "0x524130A6974B3075eb6DB32afA89AE4315bf7b2d",
+    aiAgentRegistry: "0x76E829f48BD5e3c5380f5c77Fe1a3EFBD9AC5a44",
+    aiAgentRuleManager: "0xd5eA6ABe9727061c18fa65Fcd75bd7dAc7E7e7f5",
+  },
 };
 
 export function getContracts(chainId: number): PayIDContracts {

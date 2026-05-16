@@ -105,7 +105,9 @@ function TokenDisplay() {
 Supported chains:
 - Ethereum → ETH
 - Polygon → MATIC
-- 0G Newton → A0GI
+- 0G Newton Testnet (Real) → A0GI (Chain 16600)
+- 0G Newton Testnet (Fork) → A0GI (Chain 16601)
+- 0G Galileo Testnet → A0GI (Chain 16602) ⭐ **Recommended**
 - Lisk Sepolia → LISK
 - Monad Testnet → MON
 - Base Sepolia → ETH

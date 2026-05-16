@@ -9,30 +9,29 @@ export default buildModule("PayIDModule", (m) => {
   // If useMockX is true and XAddress is empty, it will deploy a new Mock.
   // If XAddress is provided, it will use that address.
 
-  let oracleAddress: any = m.getParameter("oracleAddress", "");
-  if (oracleAddress.toString() === "") {
-    oracleAddress = m.getParameter("chainlinkEthUsd", "");
-  }
+  const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
-  const useMockOracle = m.getParameter("useMockOracle", false);
+  let oracleAddress: any = m.getParameter("oracleAddress", ZERO_ADDR);
+  const useMockOracle = m.getParameter("useMockOracle", true);
 
   const useMockEAS = m.getParameter("useMockEAS", true);
-  const easAddress: any = m.getParameter("easAddress", "");
+  const easAddress: any = m.getParameter("easAddress", ZERO_ADDR);
 
   const useMockAgentRegistry = m.getParameter("useMockAgentRegistry", true);
-  const agentRegistryAddress: any = m.getParameter("agentRegistryAddress", "");
+  const agentRegistryAddress: any = m.getParameter("agentRegistryAddress", ZERO_ADDR);
 
   // --- Infrastructure ---
 
-  // Oracle (Chainlink ETH/USD)
+  // Oracle (Chainlink ETH/USD or MockOracle)
   let oracle;
   let mockOracle;
-  if (useMockOracle && oracleAddress.toString() === "") {
+  if (useMockOracle) {
     mockOracle = m.contract("MockOracle");
     oracle = mockOracle;
   } else {
     oracle = m.contractAt("IAggregatorV3", oracleAddress);
   }
+
 
   // EAS (Ethereum Attestation Service)
   let eas;

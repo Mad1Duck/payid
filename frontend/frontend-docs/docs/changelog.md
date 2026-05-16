@@ -324,7 +324,7 @@ Dashboard shows reputation score with color-coded badges:
 
 - Green (800+): Trusted
 - Yellow (500-799): Neutral
-- Red (<500): Low reputation
+- Red (`<500`): Low reputation
 - Blacklisted: Warning banner before sending
 
 ### 5. Push Notifications

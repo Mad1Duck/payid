@@ -87,7 +87,7 @@ export default function SettingsPage() {
   const price = subPrice ? (subPrice as bigint) : parseEther('0.001')
 
   // Check if on supported chain for subscription
-  const isSupportedChain = chainId === 16601 || chainId === 31337
+  const isSupportedChain = chainId === 16601 || chainId === 16602 || chainId === 31337
 
   // Log subscription state for debugging
   useEffect(() => {
@@ -114,7 +114,7 @@ export default function SettingsPage() {
       // Check if it's a chain issue
       if (!isSupportedChain) {
         toast.error('Subscription Failed', {
-          description: `Contracts not deployed on chain ${chainId}. Switch to 0G Newton Testnet (16601) or Hardhat (31337).`,
+          description: `Contracts not deployed on chain ${chainId}. Switch to 0G Testnet (16601/16602) or Hardhat (31337).`,
         })
       } else if (errorMsg.includes('contract') || errorMsg.includes('zero address') || errorMsg.includes('not deployed')) {
         toast.error('Subscription Failed', {

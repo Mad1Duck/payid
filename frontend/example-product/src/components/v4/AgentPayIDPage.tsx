@@ -56,8 +56,12 @@ import {
 import { downloadFromZGStorage } from '@/lib/zgStorage'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const SUPPORTED_CHAIN_IDS = [16600, 16601]
-const EXPLORER = 'https://chainscan-newton.0g.ai'
+const SUPPORTED_CHAIN_IDS = [16600, 16601, 16602]
+const EXPLORER_URLS: Record<number, string> = {
+  16600: 'https://chainscan-newton.0g.ai',
+  16601: 'https://chainscan-newton.0g.ai',
+  16602: 'https://chainscan-galileo.0g.ai',
+}
 const AI_BASE = import.meta.env.VITE_0G_AI_BASE_URL ?? 'https://compute-network-6.integratenetwork.work/v1/proxy'
 const AI_KEY  = import.meta.env.VITE_0G_AI_API_KEY ?? ''
 const AI_MODEL = import.meta.env.VITE_0G_AI_MODEL ?? 'qwen/qwen-2.5-7b-instruct'
@@ -763,7 +767,7 @@ export default function AgentPayIDPage() {
         <div className="rounded-xl p-3 bg-red-500/10 border border-red-500/20 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
           <p className="text-sm text-red-300">
-            Switch to <strong>0G Newton Testnet (16601)</strong>
+            Switch to <strong>0G Testnet (16601 / 16602)</strong>
           </p>
         </div>
       )}
@@ -1668,7 +1672,7 @@ export default function AgentPayIDPage() {
                   {txHashes.map((h, i) => (
                     <a
                       key={h}
-                      href={`${EXPLORER}/tx/${h}`}
+                      href={`${EXPLORER_URLS[activeChainId]}/tx/${h}`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-[10px] font-mono text-[#0EA5E9] hover:underline flex items-center gap-1"
@@ -1720,7 +1724,7 @@ export default function AgentPayIDPage() {
         <div className={`text-[10px] font-mono ${p.textMuted}`}>
           AgentPayID:{' '}
           <a
-            href={`${EXPLORER}/address/${agentPayIDAddr}`}
+            href={`${EXPLORER_URLS[activeChainId]}/address/${agentPayIDAddr}`}
             target="_blank"
             rel="noreferrer"
             className="text-[#0EA5E9] hover:underline"
@@ -1728,7 +1732,7 @@ export default function AgentPayIDPage() {
             {agentPayIDAddr?.slice(0, 10)}…
           </a>
           {' · '}
-          <ShieldCheck className="inline w-3 h-3" /> 0G Newton 16601
+          <ShieldCheck className="inline w-3 h-3" /> 0G {activeChainId}
         </div>
         {(decision || onChainPhase !== 'idle') && (
           <button

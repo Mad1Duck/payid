@@ -47,14 +47,30 @@ This setup goes in your root file (`main.tsx`, `_app.tsx`, or `layout.tsx`):
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { WagmiProvider, createConfig, http } from 'wagmi'
-import { mainnet } from 'wagmi/chains'
+import { injected, metaMask } from 'wagmi/connectors'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PayIDProvider } from 'payid-react'
 import App from './App'
+import type { Chain } from 'viem'
+
+// 0G Galileo Testnet (chain 16602) — recommended for testing
+const zeroGGalileo = {
+  id: 16602,
+  name: '0G Galileo Testnet',
+  nativeCurrency: { decimals: 18, name: 'A0GI', symbol: 'A0GI' },
+  rpcUrls: {
+    default: { http: ['https://evmrpc-testnet.0g.ai'] },
+    public: { http: ['https://evmrpc-testnet.0g.ai'] },
+  },
+  blockExplorers: {
+    default: { name: '0G Galileo Explorer', url: 'https://chainscan-galileo.0g.ai' },
+  },
+} as const satisfies Chain
 
 const wagmiConfig = createConfig({
-  chains: [mainnet],
-  transports: { [mainnet.id]: http() },
+  chains: [zeroGGalileo],
+  connectors: [injected(), metaMask()],
+  transports: { [zeroGGalileo.id]: http() },
 })
 
 const queryClient = new QueryClient()
@@ -62,12 +78,16 @@ const queryClient = new QueryClient()
 // Contract addresses for your deployed network
 // Get these from the Contract Addresses page or deploy your own
 const CONTRACT_ADDRESSES = {
-  [mainnet.id]: {
+  [zeroGGalileo.id]: {
     ruleAuthority:       '0x...',
     ruleItemERC721:      '0x...',
     combinedRuleStorage: '0x...',
     payIDVerifier:       '0x...',
     payWithPayID:        '0x...',
+    vindexRegistry:      '0x...',
+    aiAgentRegistry:     '0x...',
+    aiAgentRuleManager:  '0x...',
+    attestationVerifier: '0x...',
   },
 }
 

@@ -4,6 +4,7 @@ export const CHAINLINK_ORACLE_ADDRESSES: Record<number, `0x${string}` | undefine
   11155111: '0x694AA1769357215DE4FAC081bf1f309aDC325306', // Sepolia
   16600: '0x0000000000000000000000000000000000000000', // 0G Newton Testnet (real) — update after deploy
   16601: '0xd038a2ee73b64f30d65802ad188f27921656f28f', // 0G Newton Testnet (Fork) — deployed oracle
+  16602: '0x49fF785E85e5cA564E8bc1EE7EF5548E41500C12', // 0G Galileo Testnet — deployed MockOracle
   16661: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // 0G Mainnet
   4202: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // Lisk Sepolia
 };
@@ -41,6 +42,11 @@ export const TOKEN_PRICE_ORACLES: Record<number, Record<string, `0x${string}`>> 
     'WBTC/USD': '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // Mock for 0G Newton Testnet Fork
     'LINK/USD': '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // Mock for 0G Newton Testnet Fork
     'UNI/USD': '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // Mock for 0G Newton Testnet Fork
+  },
+  16602: {
+    'USDC/USD': '0x49fF785E85e5cA564E8bc1EE7EF5548E41500C12', // MockOracle on 0G Galileo Testnet
+    'USDT/USD': '0x49fF785E85e5cA564E8bc1EE7EF5548E41500C12',
+    'DAI/USD': '0x49fF785E85e5cA564E8bc1EE7EF5548E41500C12',
   },
 };
 

@@ -37,6 +37,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'integration/react-integration',
+        'integration/ai-agents',
       ],
     },
 

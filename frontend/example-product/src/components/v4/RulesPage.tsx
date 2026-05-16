@@ -192,7 +192,7 @@ async function pinJson(
   return { cid, url: `${getPinataGW()}/ipfs/${cid}` }
 }
 
-/* ── 0G Storage helpers (used when chainId === 16601) ── */
+/* ── 0G Storage helpers (used when chainId === 16601 or 16602) ── */
 const get0GIndexer = () =>
   (
     (import.meta.env.VITE_ZGS_INDEXER_URL as string | undefined) ??
@@ -759,7 +759,7 @@ export default function RulesPage() {
   const { data: subPrice } = useSubscriptionPrice()
 
   // Check if on supported chain for subscription
-  const isSupportedChain = chainId === 16601 || chainId === 31337
+  const isSupportedChain = chainId === 16601 || chainId === 16602 || chainId === 31337
 
   // Log subscription state for debugging
   useEffect(() => {
@@ -785,7 +785,7 @@ export default function RulesPage() {
 
       if (!isSupportedChain) {
         toast.error('Subscription Failed', {
-          description: `Contracts not deployed on chain ${chainId}. Switch to 0G Newton Testnet (16601) or Hardhat (31337).`,
+          description: `Contracts not deployed on chain ${chainId}. Switch to 0G Testnet (16601/16602) or Hardhat (31337).`,
         })
       } else if (errorMsg.includes('insufficient') || errorMsg.includes('balance')) {
         toast.error('Subscription Failed', {

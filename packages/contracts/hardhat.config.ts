@@ -116,10 +116,12 @@ export default defineConfig({
     },
 
     // Real 0G Newton Testnet (chainId 16600)
+    // RPC options: https://rpc-newton.0g.ai | https://16600.rpc.thirdweb.com
+    // If "Invalid chain" error, try alternative RPC or ask 0G team for current endpoint
     zeroGTestnet: {
       type: "http",
       chainId: 16600,
-      url: process.env.ZEROG_RPC_URL ?? "https://16600.rpc.thirdweb.com",
+      url: process.env.ZEROG_RPC_URL ?? "https://rpc-newton.0g.ai",
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
@@ -132,6 +134,14 @@ export default defineConfig({
         mnemonic: "test test test test test test test test test test test junk",
         count: 5,
       },
+    },
+
+    // 0G Galileo Testnet (chainId 16602)
+    zeroGGalileo: {
+      type: "http",
+      chainId: 16602,
+      url: process.env.ZEROG_GALILEO_RPC_URL ?? "https://evmrpc-testnet.0g.ai",
+      accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
     zeroGMainnet: {

@@ -41,7 +41,9 @@ npx hardhat ignition deploy ignition/modules/PayID.ts --network localhost
 
 ---
 
-## Chain 16601 (Chain ID: 16601)
+## 0G Newton Testnet — Fork (Chain ID: 16601)
+
+This is a local fork of 0G Newton Testnet used for development. All mock contracts (MockEAS, MockAgentRegistry, MockOracle) are deployed here.
 
 <!-- sync:16601:start -->
 | Contract | Address |
@@ -58,12 +60,81 @@ npx hardhat ignition deploy ignition/modules/PayID.ts --network localhost
 | `VindexRegistry` | `0x22b1c5C2C9251622f7eFb76E356104E5aF0e996A` |
 | `MockEAS` | `0xa31F4c0eF2935Af25370D9AE275169CCd9793DA3` |
 | `MockAgentRegistry` | `0x1f53E116c31F171e59f45f0752AEc5d1F5aA3714` |
+| `MockOracle` | `0xd038a2ee73b64f30d65802ad188f27921656f28f` |
 <!-- sync:16601:end -->
 
 ```bash
 cd packages/contracts
-bun run deploy:chain-16601
+bun run deploy:zerog-fork
+bun run sync:zerog-fork
 ```
+
+---
+
+## 0G Newton Testnet — Real (Chain ID: 16600)
+
+:::warning Not Deployed Yet
+These are placeholder addresses. Deploy to this network first, then run `bun run sync:zerog-newton` to fill them in.
+:::
+
+| Contract | Address |
+|---|---|
+| `AIAgentRegistry` | `0x0000…0000` |
+| `AIAgentRuleManager` | `0x0000…0000` |
+| `RuleAuthority` | `0x0000…0000` |
+| `RuleItemERC721` | `0x0000…0000` |
+| `CombinedRuleStorage` | `0x0000…0000` |
+| `PayIDVerifier` | `0x0000…0000` |
+| `PayWithPayID` | `0x0000…0000` |
+| `AttestationVerifier` | `0x0000…0000` |
+| `AgentPayID` | `0x0000…0000` |
+| `VindexRegistry` | `0x0000…0000` |
+
+```bash
+cd packages/contracts
+bun run deploy:zerog-newton
+bun run sync:zerog-newton
+```
+
+---
+
+## 0G Galileo Testnet (Chain ID: 16602)
+
+:::tip Deployed & Active
+Contracts deployed to 0G Galileo Testnet. Use these addresses directly.
+:::
+
+| Contract | Address |
+|---|---|
+| `AgentPayID` | `0xC031901680128b1419E6D00Fd7e29c734cE2f311` |
+| `AIAgentRegistry` | `0x76E829f48BD5e3c5380f5c77Fe1a3EFBD9AC5a44` |
+| `AIAgentRuleManager` | `0xd5eA6ABe9727061c18fa65Fcd75bd7dAc7E7e7f5` |
+| `AttestationVerifier` | `0x524130A6974B3075eb6DB32afA89AE4315bf7b2d` |
+| `CombinedRuleStorage` | `0x486a6d305742B0b5847770BF421114161440E79b` |
+| `EscrowMilestone` | `0xA8C4f9a19B2F0a87f6BAaF4EdeB72E2C2fD60504` |
+| `MockAgentRegistry` | `0xFFA2c4bB8075dA83c45698B7489AdC9Cee2f8045` |
+| `MockEAS` | `0x170BdFe8495d3c9e331fF2d412Cb7E96303CC4A0` |
+| `MockOracle` | `0x49fF785E85e5cA564E8bc1EE7EF5548E41500C12` |
+| `PayIDVerifier` | `0xE2FfE1037b996B8F66dE7cba0398A411850Ecd91` |
+| `PayWithPayID` | `0x04eEAF2dc4Ee22E7362a60dd652E1DF450697dbb` |
+| `PayWithPayIDBatch` | `0xC24618Bc5E3E46398FB2845DA71496505AD30e86` |
+| `RecurringPayments` | `0x60d010483B9B9f263923f73ebd7F7F7bA6c0E91b` |
+| `RuleAuthority` | `0x3d2F9441c589a24A524c36892268f35C6467bFF6` |
+| `RuleItemERC721` | `0xc22fE6CbeE7fA5A35DAf40B30D91d5D3bFfa2fD8` |
+| `TimeLockVesting` | `0xa4CA030991ab75F852c017abe6Cc5322e98FCd02` |
+| `VindexRegistry` | `0x3F6ba46650f78AcAeebf906306987994555a8CCb` |
+
+**Network Info:**
+- **RPC**: `https://evmrpc-testnet.0g.ai`
+- **Explorer**: `https://chainscan-galileo.0g.ai`
+- **Faucet**: `https://faucet.0g.ai`
+
+```bash
+cd packages/contracts
+bun run deploy:zerog-galileo
+bun run sync:zerog-galileo
+```
+
 ---
 
 ## Other Networks
@@ -87,6 +158,15 @@ cd packages/contracts
 # Local
 npx hardhat ignition deploy ignition/modules/PayID.ts --network localhost
 
+# 0G Newton Testnet (Fork — Chain 16601)
+bun run deploy:zerog-fork
+
+# 0G Newton Testnet (Real — Chain 16600)
+bun run deploy:zerog-newton
+
+# 0G Galileo Testnet (Chain 16602)
+bun run deploy:zerog-galileo
+
 # Lisk Sepolia
 npx hardhat ignition deploy ignition/modules/PayID.ts \
   --network liskSepolia \
@@ -98,7 +178,14 @@ npx hardhat ignition deploy ignition/modules/PayID.ts \
   --parameters ignition/parameters/monadTestnet.json
 ```
 
-After deploying, copy the addresses from `ignition/deployments/<network>/deployed_addresses.json`.
+After deploying, copy the addresses from `ignition/deployments/<network>/deployed_addresses.json`, or run the sync script:
+
+```bash
+# Sync to frontend and payid-react
+bun run sync:zerog-fork      # for 16601
+bun run sync:zerog-newton    # for 16600
+bun run sync:zerog-galileo   # for 16602
+```
 
 ---
 
@@ -117,6 +204,10 @@ const MY_CONTRACTS: PayIDContracts = {
   combinedRuleStorage: '0x...', // CombinedRuleStorage
   payIDVerifier:       '0x...', // PayIDVerifier
   payWithPayID:        '0x...', // PayWithPayID
+  vindexRegistry:      '0x...', // VindexRegistry
+  aiAgentRegistry:     '0x...', // AIAgentRegistry (optional)
+  aiAgentRuleManager:  '0x...', // AIAgentRuleManager (optional)
+  attestationVerifier: '0x...', // AttestationVerifier (optional)
 }
 
 export default function App() {

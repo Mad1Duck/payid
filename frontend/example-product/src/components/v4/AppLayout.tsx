@@ -145,7 +145,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${p.cardBgSolid} ${p.cardBorder} hover:border-[#00D084]/30 cursor-pointer`}
                 >
                   <Globe
-                    className={`w-3.5 h-3.5 ${chainId === 16601 ? 'text-[#00D084]' : 'text-[#94A3B8]'}`}
+                    className={`w-3.5 h-3.5 ${chainId === 16601 || chainId === 16602 ? 'text-[#00D084]' : 'text-[#94A3B8]'}`}
                   />
                   <span className={`text-xs font-bold ${p.textMain}`}>
                     {chains

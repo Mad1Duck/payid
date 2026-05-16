@@ -69,6 +69,19 @@ export const zeroGFork = {
   },
 } as const satisfies Chain
 
+export const zeroGGalileo = {
+  id: 16602,
+  name: '0G Galileo Testnet',
+  nativeCurrency: { decimals: 18, name: 'A0GI', symbol: 'A0GI' },
+  rpcUrls: {
+    default: { http: [RPC_URLS.zeroGGalileo] },
+    public: { http: [RPC_URLS.zeroGGalileo] },
+  },
+  blockExplorers: {
+    default: { name: '0G Galileo Explorer', url: 'https://chainscan-galileo.0g.ai' },
+  },
+} as const satisfies Chain
+
 export const devNode = {
   id: 31337,
   name: 'DevNode',
@@ -80,12 +93,13 @@ export const devNode = {
 } as const satisfies Chain
 
 const wagmiConfig = createConfig({
-  chains: [devNode, zeroGTestnet, zeroGFork],
+  chains: [devNode, zeroGTestnet, zeroGFork, zeroGGalileo],
   connectors: [injected(), metaMask()],
   transports: {
     [devNode.id]: http(),
     [zeroGTestnet.id]: http(),
     [zeroGFork.id]: http(),
+    [zeroGGalileo.id]: http(),
   },
 })
 
