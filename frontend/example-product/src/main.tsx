@@ -44,12 +44,25 @@ import type { Chain } from 'viem'
 import { RPC_URLS } from './constants/rpc'
 
 export const zeroGTestnet = {
-  id: 16601,
-  name: '0G Newton Testnet (Fork)',
+  id: 16600,
+  name: '0G Newton Testnet',
   nativeCurrency: { decimals: 18, name: 'A0GI', symbol: 'A0GI' },
   rpcUrls: {
     default: { http: [RPC_URLS.zeroG] },
     public: { http: [RPC_URLS.zeroG] },
+  },
+  blockExplorers: {
+    default: { name: '0G Explorer', url: 'https://chainscan-newton.0g.ai' },
+  },
+} as const satisfies Chain
+
+export const zeroGFork = {
+  id: 16601,
+  name: '0G Newton Testnet (Fork)',
+  nativeCurrency: { decimals: 18, name: 'A0GI', symbol: 'A0GI' },
+  rpcUrls: {
+    default: { http: [RPC_URLS.zeroGFork] },
+    public: { http: [RPC_URLS.zeroGFork] },
   },
   blockExplorers: {
     default: { name: '0G Explorer', url: 'https://chainscan-newton.0g.ai' },
@@ -67,11 +80,12 @@ export const devNode = {
 } as const satisfies Chain
 
 const wagmiConfig = createConfig({
-  chains: [devNode, zeroGTestnet],
+  chains: [devNode, zeroGTestnet, zeroGFork],
   connectors: [injected(), metaMask()],
   transports: {
     [devNode.id]: http(),
     [zeroGTestnet.id]: http(),
+    [zeroGFork.id]: http(),
   },
 })
 

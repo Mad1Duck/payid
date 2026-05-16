@@ -115,10 +115,19 @@ export default defineConfig({
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
+    // Real 0G Newton Testnet (chainId 16600)
     zeroGTestnet: {
       type: "http",
+      chainId: 16600,
+      url: process.env.ZEROG_RPC_URL ?? "https://16600.rpc.thirdweb.com",
+      accounts: { mnemonic: process.env.MNEMONIC ?? "" },
+    },
+
+    // Local 0G fork (chainId 16601)
+    zeroGFork: {
+      type: "http",
       chainId: 16601,
-      url: process.env.ZEROG_RPC_URL ?? "http://100.73.196.95:8550",
+      url: process.env.ZEROG_FORK_RPC_URL ?? "http://100.73.196.95:8550",
       accounts: {
         mnemonic: "test test test test test test test test test test test junk",
         count: 5,

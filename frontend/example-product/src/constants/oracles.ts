@@ -2,7 +2,8 @@ export const CHAINLINK_ORACLE_ADDRESSES: Record<number, `0x${string}` | undefine
   31337: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // Mock oracle for local dev
   1: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // Mainnet
   11155111: '0x694AA1769357215DE4FAC081bf1f309aDC325306', // Sepolia
-  16601: '0xd038a2ee73b64f30d65802ad188f27921656f28f', // 0G Newton Testnet (Fork) - deployed oracle
+  16600: '0x0000000000000000000000000000000000000000', // 0G Newton Testnet (real) — update after deploy
+  16601: '0xd038a2ee73b64f30d65802ad188f27921656f28f', // 0G Newton Testnet (Fork) — deployed oracle
   16661: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // 0G Mainnet
   4202: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // Lisk Sepolia
 };

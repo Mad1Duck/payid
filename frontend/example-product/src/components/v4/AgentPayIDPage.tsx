@@ -56,7 +56,7 @@ import {
 import { downloadFromZGStorage } from '@/lib/zgStorage'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const CHAIN_ID = 16601
+const SUPPORTED_CHAIN_IDS = [16600, 16601]
 const EXPLORER = 'https://chainscan-newton.0g.ai'
 const AI_BASE = import.meta.env.VITE_0G_AI_BASE_URL ?? 'https://compute-network-6.integratenetwork.work/v1/proxy'
 const AI_KEY  = import.meta.env.VITE_0G_AI_API_KEY ?? ''
@@ -363,8 +363,9 @@ export default function AgentPayIDPage() {
   const [jsonError, setJsonError] = useState<string>('')
   const [showCreateSuccess, setShowCreateSuccess] = useState(false)
 
-  const isWrongChain = isConnected && chainId !== CHAIN_ID
-  const chainAddresses = (addresses as any)[CHAIN_ID]
+  const isWrongChain = isConnected && !!chainId && !SUPPORTED_CHAIN_IDS.includes(chainId)
+  const activeChainId = chainId && SUPPORTED_CHAIN_IDS.includes(chainId) ? chainId : 16601
+  const chainAddresses = (addresses as any)[activeChainId]
   const agentPayIDAddr = chainAddresses?.AgentPayID
   const mockRegistryAddr = chainAddresses?.MockAgentRegistry
   const combinedRuleStorageAddr = chainAddresses?.CombinedRuleStorage
@@ -384,7 +385,7 @@ export default function AgentPayIDPage() {
     address: ruleItemAddr,
     abi: ruleItemERC721Abi,
     functionName: 'nextRuleId',
-    chainId: CHAIN_ID,
+    chainId: activeChainId,
   })
 
   // ── Fetch & cache on-chain rules metadata ─────────────────────────────────
@@ -492,7 +493,7 @@ export default function AgentPayIDPage() {
     abi: agentPayIDAbi,
     functionName: 'agentRules',
     args: [BigInt(tokenId)],
-    chainId: CHAIN_ID,
+    chainId: activeChainId,
   })
 
   const addLog = (msg: string, level: LogLine['level'] = 'info') =>
@@ -568,7 +569,7 @@ export default function AgentPayIDPage() {
                   receiver: (parsed.receiver ?? '').startsWith('0x') ? parsed.receiver : '0x0000000000000000000000000000000000000000',
                   asset: '0x0000000000000000000000000000000000000000',
                   amount: amountRaw,
-                  chainId: CHAIN_ID,
+                  chainId: activeChainId,
                 },
                 env: {
                   timestamp: Math.floor(Date.now() / 1000),
@@ -643,7 +644,7 @@ export default function AgentPayIDPage() {
           abi: mockAgentRegistryAbi,
           functionName: 'setOwner',
           args: [tid, address],
-          chainId: CHAIN_ID,
+          chainId: activeChainId,
         })
         setTxHashes((h) => [...h, tx1])
         await publicClient.waitForTransactionReceipt({ hash: tx1 })
@@ -656,7 +657,7 @@ export default function AgentPayIDPage() {
           abi: agentPayIDAbi,
           functionName: 'linkAgentRule',
           args: [tid, ruleHashToLink],
-          chainId: CHAIN_ID,
+          chainId: activeChainId,
         })
         setTxHashes((h) => [...h, tx2])
         await publicClient.waitForTransactionReceipt({ hash: tx2 })

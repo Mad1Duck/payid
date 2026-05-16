@@ -2,7 +2,23 @@
 // Last synced: 2026-05-16T14:41:10.624Z
 
 export const addresses = {
-  // 0G Newton Testnet — Chain 16601
+  // 0G Newton Testnet — Chain 16600
+  16600: {
+    AIAgentRegistry: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    AIAgentRuleManager: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    AttestationVerifier: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    CombinedRuleStorage: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    MockEAS: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    PayIDVerifier: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    PayWithPayID: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    RuleAuthority: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    RuleItemERC721: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    AgentPayID: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    MockAgentRegistry: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+    VindexRegistry: "0x0000000000000000000000000000000000000000" as `0x${string}`
+  },
+
+  // 0G Newton Testnet (Fork) — Chain 16601
   16601: {
     AIAgentRegistry: "0x1eB5C49630E08e95Ba7f139BcF4B9BA171C9a8C7" as `0x${string}`,
     AIAgentRuleManager: "0x5A569Ad19272Afa97103fD4DbadF33B2FcbaA175" as `0x${string}`,

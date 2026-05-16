@@ -10,11 +10,15 @@ RUN apt-get update && apt-get install -y \
   ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-COPY frontend/frontend-docs/package.json ./
+COPY frontend/frontend-docs/package.json frontend/frontend-docs/package-lock.json* ./
 
-RUN npm install
+RUN npm ci
 
 COPY frontend/frontend-docs ./
+
+ENV NODE_ENV=production
+ENV CI=true
+ENV NO_COLOR=1
 
 RUN npm run build
 
