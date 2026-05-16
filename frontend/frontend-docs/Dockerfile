@@ -1,6 +1,14 @@
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+  python3 \
+  make \
+  g++ \
+  git \
+  ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY frontend/frontend-docs/package.json ./
 
