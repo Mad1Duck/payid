@@ -1,10 +1,19 @@
-FROM oven/bun:1.2.21 AS builder
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 
-COPY frontend/frontend-docs/package.json frontend/frontend-docs/bun.lock ./
+RUN apt-get update && apt-get install -y \
+  python3 \
+  make \
+  g++ \
+  git \
+  ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
-RUN bun install --frozen-lockfile
+COPY frontend/frontend-docs/package.json ./
+
+RUN npm install --legacy-peer-deps \
+  && npm install --save-dev webpack@5.94.0 --legacy-peer-deps
 
 COPY frontend/frontend-docs ./
 
@@ -12,7 +21,7 @@ ENV NODE_ENV=production
 ENV CI=false
 ENV NO_COLOR=1
 
-RUN bun run build
+RUN npm run build
 
 FROM nginx:alpine
 
