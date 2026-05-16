@@ -8,6 +8,11 @@ export type {
   RuleDefinition,
   SubscriptionInfo,
   CombinedRule,
+  AIAgent,
+  AdminAgent,
+  AgentRuleInfo,
+  AgentSubscription,
+  AgentWithRule,
 } from './types';
 export { RuleDirection } from './types';
 
@@ -71,6 +76,54 @@ export {
 // Hooks: Offline Cache
 export { useOfflineCache } from './hooks/useOfflineCache';
 export type { CacheStats, DraftPayment } from './hooks/useOfflineCache';
+
+// Hooks: AI Agent Registry (Admin + User dual registry)
+export {
+  // Admin agents
+  useIsAdminAIAgent,
+  useAdminAIAgent,
+  useAllAdminAIAgents,
+  useRegisterAdminAIAgent,
+  useUpdateAdminAIAgent,
+  useDeactivateAdminAIAgent,
+  useRegistryAdmin,
+  // User agents
+  useIsUserAIAgent,
+  useUserAIAgent,
+  useUserAIAgentByHandle,
+  useAllUserAIAgents,
+  useRegisterUserAIAgent,
+  useUpdateUserAIAgent,
+  useDeactivateUserAIAgent,
+  useRecordUserInference,
+  useVerifyUserAIAgent,
+  // Backward compatibility aliases
+  useIsAIAgent,
+  useAIAgent,
+  useAIAgentByHandle,
+  useAllAIAgents,
+  useRegisterAIAgent,
+  useUpdateAIAgent,
+  useDeactivateAIAgent,
+  useRecordInference,
+  useVerifyAgent,
+} from './hooks/useAIAgentRegistry';
+
+// Hooks: AI Agent Rules & Subscriptions
+export {
+  useAgentCombinedRule,
+  useAgentSubscription,
+  useIsSubscribedToAgent,
+  usePreferredAgent,
+  useEffectiveAgentRule,
+  useAllAgentsWithRules,
+  useAgentSubscriptionPrice,
+  useSetAgentCombinedRule,
+  useUnsetAgentCombinedRule,
+  useSubscribeToAgent,
+  useUnsubscribeFromAgent,
+  useSetPreferredAgent,
+} from './hooks/useAIAgentRules';
 
 // Contract addresses
 export { PAYID_CONTRACTS, getContracts } from './contracts/addresses';

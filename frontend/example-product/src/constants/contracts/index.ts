@@ -4,6 +4,8 @@ export { addresses } from './addresses';
 export type { SupportedChainId } from './addresses';
 export { chainMeta } from './chain';
 export type { ChainId } from './chain';
+export { aIAgentRegistryAbi } from './AIAgentRegistry';
+export { aIAgentRuleManagerAbi } from './AIAgentRuleManager';
 export { attestationVerifierAbi } from './AttestationVerifier';
 export { combinedRuleStorageAbi } from './CombinedRuleStorage';
 export { mockEASAbi } from './MockEAS';

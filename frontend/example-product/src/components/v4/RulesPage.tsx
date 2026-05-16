@@ -16,7 +16,7 @@ import {
   Wallet,
   Zap,
 } from 'lucide-react'
-import { useAccount, useChainId, useChains, useReadContract } from 'wagmi'
+import { useAccount, useChains, useReadContract } from 'wagmi'
 import {
   useActivateRule,
   useActiveCombinedRule,
@@ -820,7 +820,7 @@ export default function RulesPage() {
         
         // Upload both in parallel
         setDeployMsg('Uploading assets to 0G Storage in parallel...')
-        const [imgRes, jsonRes] = await Promise.all([
+        const [_imgRes, jsonRes] = await Promise.all([
           upload0G(imgBytes),
           upload0G(jsonBytes)
         ])
@@ -846,7 +846,7 @@ export default function RulesPage() {
           ruleHash,
           standard: 'payid.rule.v1',
         }
-        const { cid, url: jsonUrl } = await pinJson(
+        const { url: jsonUrl } = await pinJson(
           metadata,
           `rule-${ruleName}.json`,
         )

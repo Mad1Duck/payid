@@ -16,5 +16,6 @@ export { default as AdvancedTools } from './AdvancedTools';
 export { default as DAOPayroll } from './DAOPayroll';
 export { default as AdminPage } from './AdminPage';
 export { default as AgentPayIDPage } from './AgentPayIDPage';
+export { default as UserAIAgentsPage } from './AIAgentMarketplacePage';
 export { ThemeProvider, useV4Theme } from './theme';
 export { Skeleton, SkeletonText, SkeletonCard } from './Skeleton';

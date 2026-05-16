@@ -18,6 +18,7 @@ import {
   LandingPageV4,
   AdminPage as V4AdminPage,
   AgentPayIDPage as V4AgentPayIDPage,
+  UserAIAgentsPage as V4UserAIAgentsPage,
   AdvancedTools as V4AdvancedTools,
   AppLayout as V4AppLayout,
   DAOPayroll as V4DAOPayroll,
@@ -202,6 +203,12 @@ const v4AgentRoute = createRoute({
   component: V4AgentPayIDPage,
 })
 
+const v4AIAgentMarketplaceRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'ai-agents',
+  component: V4UserAIAgentsPage,
+})
+
 const routeTree = rootRoute.addChildren([
   rootIndexRoute,
   v4Route.addChildren([
@@ -221,6 +228,7 @@ const routeTree = rootRoute.addChildren([
       v4SettingsRoute,
       v4AdminRoute,
       v4AgentRoute,
+      v4AIAgentMarketplaceRoute,
     ]),
   ]),
 ])
@@ -263,6 +271,8 @@ if (rootElement && !rootElement.innerHTML) {
                 combinedRuleStorage: addr.CombinedRuleStorage,
                 vindexRegistry: addr.VindexRegistry,
                 attestationVerifier: addr.AttestationVerifier,
+                aiAgentRegistry: addr.AIAgentRegistry,
+                aiAgentRuleManager: addr.AIAgentRuleManager,
               }
               return acc
             }, {} as any)}

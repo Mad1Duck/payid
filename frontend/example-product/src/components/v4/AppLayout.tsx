@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   Bot,
   ChevronDown,
+  Cpu,
   Globe,
   History,
   LayoutDashboard,
@@ -15,9 +16,7 @@ import {
   Send,
   Settings,
   Shield,
-  Users,
   Wallet,
-  Wrench,
   Zap,
 } from 'lucide-react'
 import {
@@ -56,6 +55,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     { to: '/v4/app/rules', icon: Shield, label: 'Policy' },
     { to: '/v4/app/rules/builder', icon: Pencil, label: 'Rule Builder' },
     { to: '/v4/app/agent', icon: Bot, label: 'AI Agent' },
+    { to: '/v4/app/ai-agents', icon: Cpu, label: 'My AI Agents' },
     { to: '/v4/app/proof', icon: Zap, label: 'Proof' },
     // { to: '/v4/app/tools', icon: Wrench, label: 'Tools' },
     // { to: '/v4/app/payroll', icon: Users, label: 'Payroll' },

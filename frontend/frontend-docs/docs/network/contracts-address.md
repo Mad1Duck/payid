@@ -46,16 +46,18 @@ npx hardhat ignition deploy ignition/modules/PayID.ts --network localhost
 <!-- sync:16601:start -->
 | Contract | Address |
 |---|---|
-| `RuleAuthority` | `0xF66CfDf074D2FFD6A4037be3A669Ed04380Aef2B` |
-| `RuleItemERC721` | `0xFC4EE541377F3b6641c23CBE82F6f04388290421` |
-| `CombinedRuleStorage` | `0x103A3b128991781EE2c8db0454cA99d67b257923` |
-| `PayIDVerifier` | `0x2538a10b7fFb1B78c890c870FC152b10be121f04` |
-| `PayWithPayID` | `0x24432a08869578aAf4d1eadA12e1e78f171b1a2b` |
-| `AttestationVerifier` | `0x3D63c50AD04DD5aE394CAB562b7691DD5de7CF6f` |
-| `AgentPayID` | `0x90b97E83e22AFa2e6A96b3549A0E495D5Bae61aF` |
-| `VindexRegistry` | `0xf5C3953Ae4639806fcbCC3196f71dd81B0da4348` |
-| `MockEAS` | `0x707531c9999AaeF9232C8FEfBA31FBa4cB78d84a` |
-| `MockAgentRegistry` | `0xB9d9e972100a1dD01cd441774b45b5821e136043` |
+| `AIAgentRegistry` | `0x1D13fF25b10C9a6741DFdce229073bed652197c7` |
+| `AIAgentRuleManager` | `0xB9d9e972100a1dD01cd441774b45b5821e136043` |
+| `RuleAuthority` | `0x90c84237fDdf091b1E63f369AF122EB46000bc70` |
+| `RuleItemERC721` | `0x3D63c50AD04DD5aE394CAB562b7691DD5de7CF6f` |
+| `CombinedRuleStorage` | `0xC976c932092ECcD8f328FfD85066C0c05ED54044` |
+| `PayIDVerifier` | `0xA3307BF348ACC4bEDdd67CCA2f7F0c4349d347Db` |
+| `PayWithPayID` | `0x313F922BE1649cEc058EC0f076664500c78bdc0b` |
+| `AttestationVerifier` | `0x24d41dbc3d60d0784f8a937c59FBDe51440D5140` |
+| `AgentPayID` | `0x707531c9999AaeF9232C8FEfBA31FBa4cB78d84a` |
+| `VindexRegistry` | `0xBbc18b580256A82dC0F9A86152b8B22E7C1C8005` |
+| `MockEAS` | `0x76cec9299B6Fa418dc71416FF353737AB7933A7D` |
+| `MockAgentRegistry` | `0xa779C1D17bC5230c07afdC51376CAC1cb3Dd5314` |
 <!-- sync:16601:end -->
 
 ```bash

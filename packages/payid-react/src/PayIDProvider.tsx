@@ -72,6 +72,8 @@ export function PayIDProvider({ children, contracts: overrides, ipfsGateway, zgG
         payWithPayID: '0x0000000000000000000000000000000000000000',
         vindexRegistry: '0x0000000000000000000000000000000000000000',
         attestationVerifier: '0x0000000000000000000000000000000000000000',
+        aiAgentRegistry: '0x0000000000000000000000000000000000000000',
+        aiAgentRuleManager: '0x0000000000000000000000000000000000000000',
       });
 
   const resolvedGateway =

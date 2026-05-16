@@ -10,6 +10,10 @@ export interface PayIDContracts {
   vindexRegistry?: Address;
   /** AttestationVerifier address for EAS attestation checks */
   attestationVerifier?: Address;
+  /** AIAgentRegistry address for AI agent marketplace */
+  aiAgentRegistry?: Address;
+  /** AIAgentRuleManager address for AI agent rule subscriptions */
+  aiAgentRuleManager?: Address;
 }
 
 export interface RuleRef {
@@ -59,5 +63,52 @@ export interface CombinedRule {
   active: boolean;
   ruleRefs: RuleRef[];
   direction?: RuleDirection;
+}
+
+/* ── AI Agent Types ────────────────────────────────────────────── */
+
+/** Admin Agent: minimal on-chain, encrypted metadata, admin-only register */
+export interface AdminAgent {
+  agentWallet: Address;
+  owner: Address;
+  displayName: string;
+  metadataHash: Hash;
+  encryptedURI: string;
+  publicEndpoint: string;
+  registeredAt: bigint;
+  active: boolean;
+}
+
+/** User Agent: rich metadata on-chain, self-registered */
+export interface AIAgent {
+  owner: Address;
+  handle: string;
+  name: string;
+  metadataURI: string;
+  modelType: string;
+  computeProvider: string;
+  computeEndpoint: string;
+  registeredAt: bigint;
+  active: boolean;
+  verified: boolean;
+  reputationScore: bigint;
+  totalInferences: bigint;
+  lastActiveAt: bigint;
+}
+
+export interface AgentRuleInfo {
+  ruleSetHash: Hash;
+  setAt: bigint;
+  active: boolean;
+}
+
+export interface AgentSubscription {
+  expiry: bigint;
+  active: boolean;
+}
+
+export interface AgentWithRule {
+  agent: Address;
+  ruleSetHash: Hash;
 }
 

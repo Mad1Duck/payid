@@ -4,7 +4,6 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
 
 type NavItem = {
   to: string
@@ -26,9 +25,6 @@ export default function DynamicIsland({ navItems, currentPath, p }: DynamicIslan
     const item = navItems.find(item => currentPath === item.to)
     if (item) setActiveItem(item)
   }, [currentPath, navItems])
-
-  // Show first 5 items in collapsed state, all items in expanded state
-  const collapsedItems = navItems.slice(0, 5)
 
   return (
     <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">

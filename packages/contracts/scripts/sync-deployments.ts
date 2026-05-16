@@ -41,6 +41,8 @@ const chainArg = args.find(a => /^\d+$/.test(a) || a === "all") ?? "all";
 
 // ── Contract Registry ─────────────────────────────────────────────────────────
 const CONTRACT_NAMES = [
+  "AIAgentRegistry",
+  "AIAgentRuleManager",
   "AttestationVerifier",
   "CombinedRuleStorage",
   "MockEAS",
@@ -62,6 +64,8 @@ const MOCK_CONTRACTS = new Set<ContractName>([
 
 // Display order in docs tables (core first, mocks last)
 const DOCS_ORDER: ContractName[] = [
+  "AIAgentRegistry",
+  "AIAgentRuleManager",
   "RuleAuthority",
   "RuleItemERC721",
   "CombinedRuleStorage",
@@ -472,8 +476,14 @@ for (const { deploymentId, chainId } of deployments) {
   const count = Object.keys(addrs).length;
   const existing = chainDeploymentMap[chainId];
 
-  if (!existing || count > existing.count) {
+  if (!existing) {
     chainDeploymentMap[chainId] = { deploymentId, count, addrs };
+  } else {
+    // Merge addresses from this deployment into existing (same chain)
+    for (const [name, address] of Object.entries(addrs)) {
+      if (address) existing.addrs[name as ContractName] = address;
+    }
+    existing.count = Object.keys(existing.addrs).length;
   }
 }
 
@@ -482,7 +492,7 @@ const allChainAddresses: Record<number, Partial<Record<ContractName, string>>> =
 for (const [chainIdStr, data] of Object.entries(chainDeploymentMap)) {
   const chainId = Number(chainIdStr);
   const meta = CHAIN_META[chainId];
-  console.log(`\n📋  Chain ${chainId} (${meta?.label ?? "unknown"}) — using deployment "${data.deploymentId}" (${data.count} contracts):`);
+  console.log(`\n📋  Chain ${chainId} (${meta?.label ?? "unknown"}) — merged ${data.count} contracts:`);
   for (const name of CONTRACT_NAMES) {
     if (data.addrs[name]) {
       const isMock = MOCK_CONTRACTS.has(name);

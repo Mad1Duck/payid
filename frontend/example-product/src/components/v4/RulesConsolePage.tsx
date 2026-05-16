@@ -25,6 +25,9 @@ import {
   useSubscribe,
   useSubscription,
   useSubscriptionPrice,
+  useEffectiveAgentRule,
+  usePreferredAgent,
+  useAIAgent,
 } from 'payid-react'
 import { toast } from 'sonner'
 import { Link } from '@tanstack/react-router'
@@ -289,6 +292,11 @@ export default function RulesConsolePage() {
   const { data: activeCombined } = useActiveCombinedRule(address)
   const { data: sub } = useSubscription(address)
   const { contracts } = usePayIDContext()
+
+  /* ── AI Agent hooks ── */
+  const { data: effectiveAgentRule } = useEffectiveAgentRule(address)
+  const { data: preferredAgent } = usePreferredAgent(address)
+  const { data: preferredAgentInfo } = useAIAgent(preferredAgent)
 
   /* ── Write contract ── */
   const {
@@ -807,6 +815,27 @@ export default function RulesConsolePage() {
           </div>
         )}
       </div>
+
+      {/* ── AI Agent Policy Banner ── */}
+      {isConnected && effectiveAgentRule?.ruleSetHash && effectiveAgentRule.ruleSetHash !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
+        <div className={`${card} p-4 flex items-center gap-3`} style={{ backgroundColor: p.cardBg, borderColor: '#00D08440' }}>
+          <Cpu className="w-5 h-5 text-[#00D084]" />
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm ${p.textMain} font-medium`}>
+              Using AI Agent Policy: @{preferredAgentInfo?.handle ?? (preferredAgent ? preferredAgent.slice(0, 6) + '...' + preferredAgent.slice(-4) : '')}
+            </p>
+            <p className={`text-xs ${p.textMuted}`}>
+              Rule: {effectiveAgentRule.ruleSetHash.slice(0, 6) + '...' + effectiveAgentRule.ruleSetHash.slice(-4)} · Subscribed to agent combined rule
+            </p>
+          </div>
+          <Link
+            to="/v4/app/ai-agents"
+            className="shrink-0 text-xs font-medium text-[#00D084] hover:underline"
+          >
+            Manage
+          </Link>
+        </div>
+      )}
 
       {/* ── Connect wallet prompt ── */}
       {!isConnected && (

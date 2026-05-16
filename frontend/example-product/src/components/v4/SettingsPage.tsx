@@ -11,7 +11,6 @@ import {
   LogOut,
   Crown,
   Zap,
-  Loader2,
 } from 'lucide-react'
 import { useAccount } from 'wagmi'
 import { useV4Palette, useV4Theme } from './theme'

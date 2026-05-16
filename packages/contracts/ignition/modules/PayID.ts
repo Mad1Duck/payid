@@ -100,6 +100,13 @@ export default buildModule("PayIDModule", (m) => {
     after: [initVerifier, initAuthority],
   });
 
+  // AI Agent contracts
+  const aiAgentRegistry = m.contract("AIAgentRegistry");
+  const aiAgentRuleManager = m.contract("AIAgentRuleManager", [
+    aiAgentRegistry,
+    combinedRuleStorage,
+  ]);
+
   // Advanced payment tools
   const recurringPayments = m.contract("RecurringPayments");
   const payWithPayIDBatch = m.contract("PayWithPayIDBatch");
@@ -130,6 +137,8 @@ export default buildModule("PayIDModule", (m) => {
     ruleAuthority,
     agentRegistry,
     agentPayID,
+    aiAgentRegistry,
+    aiAgentRuleManager,
     vindexRegistry,
     recurringPayments,
     payWithPayIDBatch,

@@ -66,9 +66,7 @@ export default function PolicyScanning({ pipeline, ruleEvaluations = [], riskSco
 
         {/* Pipeline steps */}
         <div className="relative space-y-2">
-          {pipeline.map((step, i) => {
-            const Icon = step.status === 'done' ? CheckCircle : step.status === 'running' ? Loader2 : Shield
-            return (
+          {pipeline.map((step, i) => (
               <motion.div
                 key={step.id}
                 initial={{ opacity: 0, x: -12 }}
@@ -108,9 +106,8 @@ export default function PolicyScanning({ pipeline, ruleEvaluations = [], riskSco
                   {step.name}
                 </div>
               </motion.div>
-            )
-          })}
-        </div>
+            ))}
+          </div>
 
         {/* Detailed rule evaluations */}
         <AnimatePresence>

@@ -21,7 +21,6 @@ import { useV4Palette } from './theme'
 import { Skeleton, SkeletonCard } from './Skeleton'
 import { useReputation, useOfflineCache } from 'payid-react'
 import { useTxHistory, relativeTime } from '@/hooks/useTxHistory'
-import PremiumButton from './PremiumButton'
 import { formatUSD, formatNumber } from '@/lib/utils'
 
 function shortAddr(addr: string) {
