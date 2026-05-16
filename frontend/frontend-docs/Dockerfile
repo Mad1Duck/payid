@@ -17,7 +17,7 @@ RUN npm install
 COPY frontend/frontend-docs ./
 
 ENV NODE_ENV=production
-ENV CI=true
+ENV CI=false
 ENV NO_COLOR=1
 
 RUN npm run build
