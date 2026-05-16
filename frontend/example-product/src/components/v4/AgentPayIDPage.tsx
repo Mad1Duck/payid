@@ -23,10 +23,9 @@ import {
   useReadContract,
   useWriteContract,
 } from 'wagmi'
-import { keccak256, toBytes, zeroHash } from 'viem'
+import { keccak256, toBytes, zeroAddress, zeroHash } from 'viem'
 import { useV4Palette } from './theme'
 import {
-  useAdminAIAgent,
   useRegisterAdminAIAgent,
   useSetAgentCombinedRule,
   useAgentCombinedRule,
@@ -303,7 +302,6 @@ export default function AgentPayIDPage() {
   const isAdmin = !!address && registryAdmin?.toLowerCase() === address.toLowerCase()
   const { data: connectorClient } = useConnectorClient()
 
-  const { data: agentInfo } = useAdminAIAgent(selectedAgent?.agentWallet as `0x${string}` | undefined)
   const { data: agentRuleInfo } = useAgentCombinedRule(selectedAgent?.agentWallet as `0x${string}` | undefined)
   const { registerAgent, isPending: isRegisteringAgent, isSuccess: isRegisterSuccess } = useRegisterAdminAIAgent()
   const { setAgentCombinedRule, isPending: isSettingRule } = useSetAgentCombinedRule()
@@ -315,7 +313,7 @@ export default function AgentPayIDPage() {
   const [regSystemPrompt, setRegSystemPrompt] = useState('')
 
   // Read storage preference from localStorage (set in Settings page)
-  const [storageProvider, setStorageProvider] = useState<'inline' | '0g' | 'ipfs'>(() => {
+  const [storageProvider, setStorageProvider] = useState<'0g' | 'ipfs'>(() => {
     const saved = localStorage.getItem('payid-storage-preference')
     if (saved === '0g') return '0g'
     if (saved === 'ipfs') return 'ipfs'
@@ -374,9 +372,8 @@ export default function AgentPayIDPage() {
     address: combinedRuleStorageAddr,
     abi: combinedRuleStorageAbi,
     functionName: 'getActiveRuleOf',
-    args: [address ?? '0x0000000000000000000000000000000000000000'],
-    chainId: CHAIN_ID,
-    query: { enabled: !!address },
+    args: [selectedAgent?.agentWallet as `0x${string}` ?? zeroAddress],
+    query: { enabled: !!combinedRuleStorageAddr && !!selectedAgent?.agentWallet },
   })
 
   // ── Fetch nextRuleId to know how many individual rules exist ─────────────
@@ -931,7 +928,7 @@ export default function AgentPayIDPage() {
               <div className="space-y-1.5">
                 <p className={`text-[10px] font-medium uppercase tracking-wider ${p.textMuted}`}>Storage Provider</p>
                 <div className="flex gap-2">
-                  {(['inline', '0g', 'ipfs'] as const).map((prov) => (
+                  {(['0g', 'ipfs'] as const).map((prov) => (
                     <button
                       key={prov}
                       type="button"
@@ -942,7 +939,7 @@ export default function AgentPayIDPage() {
                           : p.dark ? 'border-white/10 text-slate-400 hover:border-white/20' : 'border-black/10 text-slate-500 hover:border-black/20'
                       }`}
                     >
-                      {prov === 'inline' ? 'Base64 Inline' : prov === '0g' ? '0G Storage' : 'IPFS'}
+                      {prov === '0g' ? '0G Storage' : 'IPFS'}
                     </button>
                   ))}
                 </div>
@@ -950,9 +947,7 @@ export default function AgentPayIDPage() {
                   <p>
                     {storageProvider === '0g'
                       ? 'Metadata akan di-upload ke 0G Storage lalu di-hash (perlu wallet + A0GI)'
-                      : storageProvider === 'ipfs'
-                      ? 'Metadata akan di-upload ke IPFS via Pinata (perlu VITE_PINATA_JWT)'
-                      : 'Metadata akan di-hash otomatis saat register (base64 inline)'}
+                      : 'Metadata akan di-upload ke IPFS via Pinata (perlu VITE_PINATA_JWT)'}
                   </p>
                 </div>
               </div>
@@ -969,7 +964,7 @@ export default function AgentPayIDPage() {
                     createdAt: Date.now(),
                   })
                   const metadataHash = keccak256(toBytes(metadata))
-                  let encryptedURI: string
+                  let encryptedURI: string = ''
 
                   if (storageProvider === '0g') {
                     if (!connectorClient?.transport) {
@@ -988,7 +983,8 @@ export default function AgentPayIDPage() {
                     } finally {
                       setIsUploading(false)
                     }
-                  } else if (storageProvider === 'ipfs') {
+                  } else {
+                    // IPFS (only other option after removing inline)
                     setIsUploading(true)
                     try {
                       const result = await uploadToIPFS(metadata)
@@ -1000,8 +996,6 @@ export default function AgentPayIDPage() {
                     } finally {
                       setIsUploading(false)
                     }
-                  } else {
-                    encryptedURI = `data:application/json;base64,${btoa(metadata)}`
                   }
 
                   registerAgent({
@@ -1061,47 +1055,47 @@ export default function AgentPayIDPage() {
           )}
 
           {/* Selected Agent Detail */}
-          {selectedAgent && agentInfo && (
+          {selectedAgent && (
             <div className="space-y-2 pt-2 border-t" style={{ borderColor: p.dark ? '#ffffff10' : '#00000010' }}>
               <div className="flex items-center justify-between text-xs">
                 <span className={p.textMuted}>Agent Wallet</span>
-                <span className={`font-mono font-medium ${p.textMain}`}>{shortAddr(agentInfo.agentWallet)}</span>
+                <span className={`font-mono font-medium ${p.textMain}`}>{shortAddr(selectedAgent.agentWallet)}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className={p.textMuted}>Display Name</span>
-                <span className={`font-medium ${p.textMain}`}>{agentInfo.displayName}</span>
+                <span className={`font-medium ${p.textMain}`}>{selectedAgent.displayName}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className={p.textMuted}>Endpoint</span>
-                <span className={`font-medium ${p.textMain}`}>{agentInfo.publicEndpoint}</span>
+                <span className={`font-medium ${p.textMain}`}>{selectedAgent.publicEndpoint}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className={p.textMuted}>Metadata Hash</span>
-                <span className={`font-mono ${p.textMain}`}>{shortHash(agentInfo.metadataHash)}</span>
+                <span className={`font-mono ${p.textMain}`}>{shortHash(selectedAgent.metadataHash)}</span>
               </div>
               {/* Metadata Source */}
-              {agentInfo.encryptedURI && (() => {
-                const provider = detectStorageProvider(agentInfo.encryptedURI)
-                const providerLabel = provider === '0g' ? '0G Storage' : provider === 'ipfs' ? 'IPFS' : provider === 'inline' ? 'Base64 Inline' : 'External URL'
-                const providerColor = provider === '0g' ? 'text-[#8B5CF6]' : provider === 'ipfs' ? 'text-[#00B4D8]' : provider === 'inline' ? p.textMuted : 'text-orange-400'
+              {selectedAgent.encryptedURI && (() => {
+                const provider = detectStorageProvider(selectedAgent.encryptedURI)
+                const providerLabel = provider === '0g' ? '0G Storage' : provider === 'ipfs' ? 'IPFS' : 'External URL'
+                const providerColor = provider === '0g' ? 'text-[#8B5CF6]' : provider === 'ipfs' ? 'text-[#00B4D8]' : 'text-orange-400'
                 return (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className={p.textMuted}>Metadata Source</span>
                       <span className={`font-mono text-[10px] ${providerColor}`}>{providerLabel}</span>
                     </div>
-                    {provider !== 'inline' && !loadedMetadata && (
+                    {(provider === '0g' || provider === 'ipfs') && !loadedMetadata && (
                       <button
                         onClick={async () => {
                           setIsLoadingMetadata(true)
                           try {
-                            const data = await resolveStorageURI(agentInfo.encryptedURI)
+                            const data = await resolveStorageURI(selectedAgent.encryptedURI)
                             setLoadedMetadata(data)
                           } catch (err: any) {
                             const msg = err.message || 'Failed to load metadata'
                             const isCors = msg.includes('CORS') || msg.includes('Failed to fetch')
                             if (isCors && provider === '0g') {
-                              const rootHash = agentInfo.encryptedURI.replace('0g://', '')
+                              const rootHash = selectedAgent.encryptedURI.replace('0g://', '')
                               setLoadedMetadata(`CORS_BLOCKED|https://indexer-storage-testnet-turbo.0g.ai/blob/${rootHash}`)
                             } else {
                               setLoadedMetadata(`Error: ${msg}`)
@@ -1111,22 +1105,20 @@ export default function AgentPayIDPage() {
                           }
                         }}
                         disabled={isLoadingMetadata}
-                        className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg border text-[10px] font-medium transition-colors disabled:opacity-50 ${
-                          provider === '0g'
-                            ? 'border-[#8B5CF6]/30 text-[#8B5CF6] hover:bg-[#8B5CF6]/10'
-                            : provider === 'ipfs'
-                            ? 'border-[#00B4D8]/30 text-[#00B4D8] hover:bg-[#00B4D8]/10'
-                            : 'border-orange-400/30 text-orange-400 hover:bg-orange-400/10'
-                        }`}
+                        className="text-[10px] px-2 py-1 rounded bg-[#8B5CF6]/10 text-[#8B5CF6] hover:bg-[#8B5CF6]/20 transition-colors"
                       >
-                        {isLoadingMetadata ? <Loader2 className="w-3 h-3 animate-spin" /> : <ExternalLink className="w-3 h-3" />}
-                        Load Metadata from {providerLabel}
+                        {isLoadingMetadata ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" /> : null}
+                        Load Metadata
                       </button>
                     )}
+                    {loadedMetadata && !loadedMetadata.startsWith('CORS_BLOCKED|') && (
+                      <div className={`p-2 rounded-lg text-[10px] font-mono overflow-x-auto max-h-32 overflow-y-auto ${p.dark ? 'bg-white/5 text-slate-400' : 'bg-black/5 text-slate-600'}`}>
+                        <pre className="whitespace-pre-wrap break-all">{loadedMetadata}</pre>
+                      </div>
+                    )}
                     {loadedMetadata && loadedMetadata.startsWith('CORS_BLOCKED|') && (
-                      <div className={`p-2 rounded-lg text-[10px] space-y-1 ${p.dark ? 'bg-amber-500/10 border border-amber-500/20 text-amber-300' : 'bg-amber-50 border border-amber-200 text-amber-700'}`}>
-                        <p className="font-medium">Browser CORS blocked download</p>
-                        <p className="opacity-80">Open URL manually or copy:</p>
+                      <div className={`p-2 rounded-lg text-[10px] font-mono ${p.dark ? 'bg-white/5 text-slate-400' : 'bg-black/5 text-slate-600'}`}>
+                        <p className="mb-1">Metadata URL (CORS blocked, open manually):</p>
                         <a
                           href={loadedMetadata.replace('CORS_BLOCKED|', '')}
                           target="_blank"
@@ -1135,11 +1127,6 @@ export default function AgentPayIDPage() {
                         >
                           {loadedMetadata.replace('CORS_BLOCKED|', '')}
                         </a>
-                      </div>
-                    )}
-                    {loadedMetadata && !loadedMetadata.startsWith('CORS_BLOCKED|') && (
-                      <div className={`p-2 rounded-lg text-[10px] font-mono overflow-x-auto max-h-32 overflow-y-auto ${p.dark ? 'bg-white/5 text-slate-400' : 'bg-black/5 text-slate-600'}`}>
-                        <pre className="whitespace-pre-wrap break-all">{loadedMetadata}</pre>
                       </div>
                     )}
                   </div>
@@ -1151,7 +1138,7 @@ export default function AgentPayIDPage() {
                   {agentRuleInfo?.active ? shortHash(agentRuleInfo.ruleSetHash) : 'Not set'}
                 </span>
               </div>
-              {activeRuleHash && activeRuleHash !== zeroHash && (
+              {selectedAgent?.owner?.toLowerCase() === address?.toLowerCase() && activeRuleHash && activeRuleHash !== zeroHash && (
                 <button
                   onClick={() => setAgentCombinedRule(activeRuleHash)}
                   disabled={isSettingRule}

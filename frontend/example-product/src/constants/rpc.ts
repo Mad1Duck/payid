@@ -3,5 +3,5 @@
 
 export const RPC_URLS = {
   devNode: '/rpc',
-  zeroG: '/rpc',
+  zeroG: 'http://100.73.196.95:8550',
 } as const;

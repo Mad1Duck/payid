@@ -14,6 +14,8 @@ export default buildModule("PayIDModule", (m) => {
     oracleAddress = m.getParameter("chainlinkEthUsd", "");
   }
 
+  const useMockOracle = m.getParameter("useMockOracle", false);
+
   const useMockEAS = m.getParameter("useMockEAS", true);
   const easAddress: any = m.getParameter("easAddress", "");
 
@@ -23,8 +25,14 @@ export default buildModule("PayIDModule", (m) => {
   // --- Infrastructure ---
 
   // Oracle (Chainlink ETH/USD)
-  // MockEthUsdOracle telah dihapus. Kita gunakan interface IAggregatorV3 untuk alamat yang sudah ada.
-  const oracle = m.contractAt("IAggregatorV3", oracleAddress);
+  let oracle;
+  let mockOracle;
+  if (useMockOracle && oracleAddress.toString() === "") {
+    mockOracle = m.contract("MockOracle");
+    oracle = mockOracle;
+  } else {
+    oracle = m.contractAt("IAggregatorV3", oracleAddress);
+  }
 
   // EAS (Ethereum Attestation Service)
   let eas;

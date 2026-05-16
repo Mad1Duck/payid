@@ -240,8 +240,8 @@ function uriToHttp(uri: string): string {
 /* ── Unified storage upload (respects localStorage preference) ── */
 async function uploadWithPreference(
   data: string | object,
-  signer?: any,
-  preference: '0g' | 'ipfs'
+  preference: '0g' | 'ipfs',
+  signer?: any
 ): Promise<{ uri: string; url: string }> {
   if (preference === '0g' && signer) {
     const result = await uploadTo0G(data, signer)
@@ -753,9 +753,55 @@ export default function RulesPage() {
     isPending: subPending,
     isSuccess: subOk,
     isConfirming: subConfirming,
+    error: subError,
   } = useSubscribe()
 
   const { data: subPrice } = useSubscriptionPrice()
+
+  // Check if on supported chain for subscription
+  const isSupportedChain = chainId === 16601 || chainId === 31337
+
+  // Log subscription state for debugging
+  useEffect(() => {
+    console.log('[RulesPage] Subscription state:', {
+      chainId,
+      isSupportedChain,
+      isPending: subPending,
+      isSuccess: subOk,
+      subError: subError ? String(subError) : null,
+      subPrice: subPrice ? String(subPrice) : null,
+    })
+  }, [chainId, isSupportedChain, subPending, subOk, subError, subPrice])
+
+  // Show subscription error
+  useEffect(() => {
+    if (subError) {
+      console.error('[RulesPage] Subscription error:', subError)
+      console.error('[RulesPage] Current chain:', chainId)
+      console.error('[RulesPage] Full error object:', JSON.stringify(subError, null, 2))
+      const errorMsg = (subError as { shortMessage?: string; message?: string }).shortMessage ||
+                      (subError as { message?: string }).message ||
+                      'Transaction failed'
+
+      if (!isSupportedChain) {
+        toast.error('Subscription Failed', {
+          description: `Contracts not deployed on chain ${chainId}. Switch to 0G Newton Testnet (16601) or Hardhat (31337).`,
+        })
+      } else if (errorMsg.includes('insufficient') || errorMsg.includes('balance')) {
+        toast.error('Subscription Failed', {
+          description: `Insufficient ${nativeSymbol} balance to pay for subscription.`,
+        })
+      } else if (errorMsg.includes('paused') || errorMsg.includes('Pausable')) {
+        toast.error('Subscription Failed', {
+          description: 'Contract is currently paused. Contact admin.',
+        })
+      } else {
+        toast.error('Subscription Failed', {
+          description: errorMsg,
+        })
+      }
+    }
+  }, [subError, chainId, isSupportedChain])
 
   const activeCount = myRules.filter((r) => r.active).length
 
@@ -2252,24 +2298,119 @@ export default function RulesPage() {
           ) : (
             <div className="space-y-3">
               {myRules.length > 0 ? (
-                <select
-                  value={activateId}
-                  onChange={(e) => setActivateId(e.target.value)}
-                  className={`${inp} w-full`}
-                >
-                  <option value="">Choose a rule to activate…</option>
-                  {myRules.map((r) => (
-                    <option
-                      key={r.ruleId.toString()}
-                      value={r.ruleId.toString()}
-                    >
-                      Rule #{r.ruleId.toString()}{' '}
-                      {r.tokenId > 0n
-                        ? '(already activated)'
-                        : '(needs activation)'}
-                    </option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-2 gap-3">
+                  {myRules.map((r) => {
+                    const isActivated = r.tokenId > 0n
+                    const isSelected = activateId === r.ruleId.toString()
+                    return (
+                      <motion.button
+                        key={r.ruleId.toString()}
+                        onClick={() => setActivateId(r.ruleId.toString())}
+                        whileHover={{ scale: 1.03, y: -2 }}
+                        whileTap={{ scale: 0.97 }}
+                        className={`
+                          relative group p-4 rounded-2xl border-2 transition-all text-left overflow-hidden
+                          ${isSelected
+                            ? 'border-[#F59E0B] shadow-lg shadow-[#F59E0B]/20'
+                            : isActivated
+                              ? 'border-[#00D084]/40 bg-[#00D084]/5 opacity-70'
+                              : `${p.cardBorder} hover:border-[#F59E0B]/40 hover:shadow-lg hover:shadow-[#F59E0B]/10`}
+                        `}
+                        style={{ 
+                          backgroundColor: isSelected 
+                            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%)'
+                            : p.cardBg 
+                        }}
+                      >
+                        {/* Background gradient overlay */}
+                        <div className={`
+                          absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity
+                          ${isSelected ? 'opacity-100' : ''}
+                          style={{
+                            background: isSelected 
+                              ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, transparent 100%)'
+                              : 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, transparent 100%)'
+                          }}
+                        `} />
+
+                        {/* Content */}
+                        <div className="relative z-10">
+                          {/* Header */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className={`
+                                w-8 h-8 rounded-lg flex items-center justify-center
+                                ${isSelected 
+                                  ? 'bg-[#F59E0B] text-black' 
+                                  : isActivated 
+                                    ? 'bg-[#00D084] text-black' 
+                                    : `${p.cardBorder} bg-[#F59E0B]/10`}
+                              `}>
+                                {isActivated ? (
+                                  <Check className="w-4 h-4" />
+                                ) : isSelected ? (
+                                  <Zap className="w-4 h-4" />
+                                ) : (
+                                  <Shield className="w-4 h-4 text-[#F59E0B]" />
+                                )}
+                              </div>
+                              <div>
+                                <span className={`text-sm font-bold ${isSelected ? 'text-[#F59E0B]' : isActivated ? 'text-[#00D084]' : p.textMain}`}>
+                                  Rule #{r.ruleId.toString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Status badge */}
+                          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium">
+                            {isActivated ? (
+                              <>
+                                <div className="w-1.5 h-1.5 rounded-full bg-[#00D084] animate-pulse" />
+                                <span className="text-[#00D084]">Active</span>
+                              </>
+                            ) : isSelected ? (
+                              <>
+                                <div className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] animate-pulse" />
+                                <span className="text-[#F59E0B]">Selected</span>
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-1.5 h-1.5 rounded-full bg-[#94A3B8]" />
+                                <span className={p.textMuted}>Inactive</span>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Rule hash preview */}
+                          <div className={`mt-3 pt-3 border-t ${p.cardBorder}`}>
+                            <div className={`text-[9px] font-mono ${p.textMuted} truncate`}>
+                              {r.ruleHash.slice(0, 16)}...
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Glow effect */}
+                        {isSelected && (
+                          <motion.div
+                            className="absolute inset-0 rounded-2xl"
+                            style={{
+                              boxShadow: '0 0 20px rgba(245, 158, 11, 0.3), inset 0 0 20px rgba(245, 158, 11, 0.1)'
+                            }}
+                            animate={{
+                              opacity: [0.5, 1, 0.5],
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              ease: "easeInOut"
+                            }}
+                          />
+                        )}
+                      </motion.button>
+                    )
+                  })}
+                </div>
               ) : (
                 <input
                   type="number"
@@ -2287,7 +2428,7 @@ export default function RulesPage() {
                   activateRule(BigInt(activateId))
                 }}
                 disabled={activating || !activateId}
-                className="w-full py-2.5 rounded-xl bg-[#F59E0B] text-black font-semibold text-sm hover:bg-[#F59E0B]/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-black font-semibold text-sm hover:from-[#D97706] hover:to-[#B45309] disabled:opacity-50 disabled:from-gray-400 disabled:to-gray-500 flex items-center justify-center gap-2 shadow-lg shadow-[#F59E0B]/20 transition-all"
               >
                 {activatingPending ? (
                   <>
@@ -2306,11 +2447,13 @@ export default function RulesPage() {
                 )}
               </button>
               {activateMsg && (
-                <p
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
                   className={`text-xs text-center font-medium ${activateStatus === 'done' ? 'text-[#00D084]' : 'text-[#EF4444]'}`}
                 >
                   {activateMsg}
-                </p>
+                </motion.div>
               )}
             </div>
           )}

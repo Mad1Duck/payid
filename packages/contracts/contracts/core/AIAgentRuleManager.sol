@@ -86,41 +86,47 @@ contract AIAgentRuleManager {
     /* ===================== AGENT RULE MANAGEMENT ===================== */
 
     /**
-     * @notice AI Agent set combined rule hash mereka.
-     * @dev Agent harus sudah register di AIAgentRegistry DAN
-     *      combined rule harus aktif dan dimiliki oleh agent di CombinedRuleStorage.
+     * @notice Set combined rule hash untuk AI Agent.
+     * @dev Bisa dipanggil oleh agent wallet sendiri ATAU owner agent.
+     *      Combined rule harus aktif dan dimiliki oleh agent/owner di CombinedRuleStorage.
      */
-    function setAgentCombinedRule(bytes32 ruleSetHash) external {
-        if (!agentRegistry.isRegistered(msg.sender)) revert NotRegisteredAgent();
+    function setAgentCombinedRule(address agentWallet, bytes32 ruleSetHash) external {
+        // adminAgents mapping public returns tuple: (agentWallet, owner, displayName, metadataHash, encryptedURI, publicEndpoint, registeredAt, active)
+        (address regAgentWallet, address owner,,,,,, bool active) = agentRegistry.adminAgents(agentWallet);
+        if (regAgentWallet == address(0) || !active) revert NotRegisteredAgent();
+        if (msg.sender != agentWallet && msg.sender != owner) revert NotAgentOwner();
         if (ruleSetHash == bytes32(0)) revert RuleNotFound();
 
         // Verify rule exists and is active in CombinedRuleStorage
         try combinedRuleStorage.getRuleByHash(ruleSetHash) returns (
-            address owner,
+            address ruleOwner,
             IRuleAuthority.RuleRef[] memory,
             uint64
         ) {
-            if (owner != msg.sender) revert RuleNotOwnedByAgent();
+            if (ruleOwner != agentWallet && ruleOwner != owner) revert RuleNotOwnedByAgent();
         } catch {
             revert RuleNotFound();
         }
 
-        agentRules[msg.sender] = AgentRuleInfo({
+        agentRules[agentWallet] = AgentRuleInfo({
             ruleSetHash: ruleSetHash,
             setAt: block.timestamp,
             active: true
         });
 
-        emit AgentRuleSet(msg.sender, ruleSetHash);
+        emit AgentRuleSet(agentWallet, ruleSetHash);
     }
 
     /**
      * @notice Unset agent rule (deactivate tanpa hapus hash).
+     * @dev Bisa dipanggil oleh agent wallet sendiri ATAU owner agent.
      */
-    function unsetAgentCombinedRule() external {
-        if (!agentRegistry.isRegistered(msg.sender)) revert NotRegisteredAgent();
-        agentRules[msg.sender].active = false;
-        emit AgentRuleUnset(msg.sender);
+    function unsetAgentCombinedRule(address agentWallet) external {
+        (address regAgentWallet, address owner,,,,,, bool active) = agentRegistry.adminAgents(agentWallet);
+        if (regAgentWallet == address(0) || !active) revert NotRegisteredAgent();
+        if (msg.sender != agentWallet && msg.sender != owner) revert NotAgentOwner();
+        agentRules[agentWallet].active = false;
+        emit AgentRuleUnset(agentWallet);
     }
 
     /* ===================== SUBSCRIPTION ===================== */

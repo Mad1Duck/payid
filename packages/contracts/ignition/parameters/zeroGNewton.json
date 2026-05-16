@@ -1,7 +1,7 @@
 {
   "$global": {
     "useMockOracle": false,
-    "oracleAddress": "0xbC06964732EbBd248F10C60CbdECEFd1B1F7d6e9",
+    "oracleAddress": "0xd038a2ee73b64f30d65802ad188f27921656f28f",
     "useMockEAS": true,
     "useMockAgentRegistry": true
   }

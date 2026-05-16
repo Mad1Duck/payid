@@ -46,6 +46,7 @@ const CONTRACT_NAMES = [
   "AttestationVerifier",
   "CombinedRuleStorage",
   "MockEAS",
+  "MockOracle",
   "PayIDVerifier",
   "PayWithPayID",
   "RuleAuthority",
@@ -59,7 +60,7 @@ type ContractName = (typeof CONTRACT_NAMES)[number];
 
 // Contracts only shown on local deployments (mocks)
 const MOCK_CONTRACTS = new Set<ContractName>([
-  "MockEAS", "MockAgentRegistry"
+  "MockEAS", "MockAgentRegistry", "MockOracle"
 ]);
 
 // Display order in docs tables (core first, mocks last)
@@ -76,6 +77,7 @@ const DOCS_ORDER: ContractName[] = [
   "VindexRegistry",
   "MockEAS",
   "MockAgentRegistry",
+  "MockOracle",
 ];
 
 // ── Chain Metadata ────────────────────────────────────────────────────────────
@@ -94,6 +96,7 @@ const CHAIN_META: Record<number, ChainMeta> = {
   80002: { name: "polygonAmoy", label: "Polygon Amoy", isTestnet: true },
   11155111: { name: "sepolia", label: "Sepolia", isTestnet: true },
   84532: { name: "baseSepolia", label: "Base Sepolia", isTestnet: true },
+  16601: { name: "zeroGTestnet", label: "0G Newton Testnet", isTestnet: true },
   137: { name: "polygon", label: "Polygon", isTestnet: false },
   8453: { name: "base", label: "Base", isTestnet: false },
   1284: { name: "moonbeam", label: "Moonbeam", isTestnet: false },
