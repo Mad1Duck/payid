@@ -1,8 +1,8 @@
 services:
   payid-example-product:
     build:
-      context: ./example-product
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: frontend/example-product/Dockerfile
     container_name: payid-example-product
     restart: unless-stopped
     expose:
@@ -12,8 +12,8 @@ services:
 
   payid-frontend-docs:
     build:
-      context: ./frontend-docs
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: frontend/frontend-docs/Dockerfile
     container_name: payid-frontend-docs
     restart: unless-stopped
     expose:
