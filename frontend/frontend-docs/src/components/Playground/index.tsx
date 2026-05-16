@@ -24,7 +24,7 @@ import {
 import { cn } from '@site/src/lib/utils';
 import { createPayID } from 'payid/client';
 // import { setWasmUrl } from 'payid-rule-engine';
-import type { RuleConfig, RuleResultDebug, RuleTraceEntry } from 'payid-types';
+import type { RuleConfig, RuleResultDebug, RuleTraceEntry } from 'payid';
 
 // ─── SDK setup ────────────────────────────────────────────────────────────────
 // Ganti dengan CID Pinata setelah upload, atau biarkan default

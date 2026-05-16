@@ -1,6 +1,6 @@
 import { motion, type Variants } from 'framer-motion';
 import { ArrowRight, Shield, Zap, Globe } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import Link from '@docusaurus/Link';
 import { Button } from '../ui/button';
 import RuleCheckVisual from '../RuleCheckVisual';
 

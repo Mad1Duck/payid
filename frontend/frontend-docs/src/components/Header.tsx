@@ -1,4 +1,5 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from '@docusaurus/Link';
+import { useLocation } from '@docusaurus/router';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 

@@ -2,29 +2,32 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
 const sidebars: SidebarsConfig = {
   tutorialSidebar: [
-    'intro',
-    'quickstart',
-    'simple-usage',
-    'advanced-usage',
-
     {
       type: 'category',
       label: '🚀 Getting Started',
       collapsed: false,
-      items: ['installation/setup'],
+      items: [
+        'intro',
+        'quickstart',
+        'simple-usage',
+        'installation/setup',
+      ],
     },
 
     {
       type: 'category',
       label: '📚 Core Concepts',
-      collapsed: false,
-      items: ['core-concepts/overview'],
+      collapsed: true,
+      items: [
+        'core-concepts/overview',
+        'advanced-usage',
+      ],
     },
 
     {
       type: 'category',
       label: '📋 Rules',
-      collapsed: false,
+      collapsed: true,
       items: [
         'rules/rule-basics',
         'rules/combining-rules',
@@ -34,7 +37,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: '⚛️ React Integration',
-      collapsed: false,
+      collapsed: true,
       items: [
         'integration/react-integration',
         'integration/ai-agents',
@@ -60,30 +63,21 @@ const sidebars: SidebarsConfig = {
       items: [
         'integration/tokochain-simulation',
         'integration/bank-qris-bridge',
-      ],
-    },
-
-    {
-      type: 'category',
-      label: '�️ VRAN',
-      collapsed: true,
-      items: [
         'integration/vran-reputation',
       ],
     },
 
     {
       type: 'category',
-      label: '�📖 Reference',
+      label: '📖 Reference',
       collapsed: true,
       items: [
         'api/sdk-reference',
         'network/contracts-address',
         'contracts/contracts',
+        'changelog',
       ],
     },
-
-    'changelog',
   ],
 };
 
