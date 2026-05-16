@@ -10,9 +10,9 @@ RUN apt-get update && apt-get install -y \
   ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-COPY frontend/frontend-docs/package.json frontend/frontend-docs/package-lock.json* ./
+COPY frontend/frontend-docs/package.json ./
 
-RUN npm ci
+RUN npm install
 
 COPY frontend/frontend-docs ./
 
