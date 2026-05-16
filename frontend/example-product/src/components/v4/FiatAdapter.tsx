@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QrCode, Copy, Check, Globe, DollarSign, ArrowRight, Sparkles } from 'lucide-react'
 import { useV4Palette } from './theme'
+import { useClipboard } from '@/features/shared';
 
 type FiatCurrency = 'IDR' | 'SGD' | 'MYR' | 'THB' | 'PHP' | 'VND'
 
@@ -19,7 +20,7 @@ export default function FiatAdapter() {
   const [amount, setAmount] = useState('')
   const [merchantId, setMerchantId] = useState('')
   const [generatedQR, setGeneratedQR] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useClipboard()
 
   const CURRENCIES: FiatCurrency[] = ['IDR', 'SGD', 'MYR', 'THB', 'PHP', 'VND']
   const CURRENCY_SYMBOLS: Record<FiatCurrency, string> = {
@@ -49,9 +50,7 @@ export default function FiatAdapter() {
 
   const copyToClipboard = () => {
     if (generatedQR) {
-      navigator.clipboard.writeText(generatedQR)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      copy(generatedQR)
     }
   }
 

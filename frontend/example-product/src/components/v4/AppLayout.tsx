@@ -29,10 +29,7 @@ import {
 import { useV4Palette } from './theme'
 import DynamicIsland from './DynamicIsland'
 import type { ReactNode } from 'react'
-
-function shortAddr(addr: string) {
-  return addr.slice(0, 6) + '...' + addr.slice(-4)
-}
+import { shortAddr } from '@/features/shared/utils/address'
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { address, isConnected } = useAccount()

@@ -54,220 +54,14 @@ import {
   detectStorageProvider,
 } from '@/lib/storage'
 import { downloadFromZGStorage } from '@/lib/zgStorage'
+import { SUPPORTED_CHAIN_IDS, EXPLORER_URLS, AI_BASE, AI_KEY, AI_MODEL } from '@/features/agent/data/constants'
+import { PRESET_RULES, PRESET_TEMPLATES, BASE_SYSTEM_PROMPT } from '@/features/agent/data/presets'
+import { shortHash, shortAddr, tsNow } from '@/features/agent/utils/format'
+import { parseDecision } from '@/features/agent/utils/parse'
+import { Bubble } from '@/features/agent/components/Bubble'
+import { Console } from '@/features/agent/components/Console'
+import type { ChatMsg, AiDecision, OnChainRule, OnChainPhase, LogLine } from '@/features/agent/types'
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-const SUPPORTED_CHAIN_IDS = [16600, 16601, 16602]
-const EXPLORER_URLS: Record<number, string> = {
-  16600: 'https://chainscan-newton.0g.ai',
-  16601: 'https://chainscan-newton.0g.ai',
-  16602: 'https://chainscan-galileo.0g.ai',
-}
-const AI_BASE = import.meta.env.VITE_0G_AI_BASE_URL ?? 'https://compute-network-6.integratenetwork.work/v1/proxy'
-const AI_KEY  = import.meta.env.VITE_0G_AI_API_KEY ?? ''
-const AI_MODEL = import.meta.env.VITE_0G_AI_MODEL ?? 'qwen/qwen-2.5-7b-instruct'
-
-const PRESET_RULES = [
-  {
-    label: 'Spending Limit ≤ 500 USDC',
-    hash: keccak256(toBytes('spending_limit_500')),
-    detail: 'Transaction amount must not exceed 500 USDC. Applies to both ETH and ERC20 transfers.',
-  },
-  {
-    label: 'KYC Required Level 1',
-    hash: keccak256(toBytes('kyc_level_1')),
-    detail: 'Payer must have a valid KYC Level 1 attestation from a trusted oracle.',
-  },
-  {
-    label: 'No Restrictions',
-    hash: keccak256(toBytes('no_restrictions')),
-    detail: 'All transactions are allowed. No policy enforcement is applied.',
-  },
-]
-
-const PRESET_TEMPLATES = [
-  {
-    name: 'Spending Limit',
-    desc: 'Limit transaction amount',
-    json: {
-      version: '1.0',
-      logic: 'AND',
-      rules: [{ type: 'simple', field: 'tx.amount', operator: '<=', value: 500000000 }],
-    },
-  },
-  {
-    name: 'Business Hours',
-    desc: 'Allow 09:00-17:00 only',
-    json: {
-      version: '1.0',
-      logic: 'AND',
-      rules: [{ type: 'simple', field: 'env.timestamp|hour', operator: 'between', value: [9, 17] }],
-    },
-  },
-  {
-    name: 'Weekday Only',
-    desc: 'Block weekends',
-    json: {
-      version: '1.0',
-      logic: 'AND',
-      rules: [{ type: 'simple', field: 'env.timestamp|day', operator: 'in', value: [1, 2, 3, 4, 5] }],
-    },
-  },
-  {
-    name: 'KYC Gate',
-    desc: 'Require KYC level 1',
-    json: {
-      version: '1.0',
-      logic: 'AND',
-      rules: [{ type: 'simple', field: 'oracle.kycLevel', operator: '>=', value: 1 }],
-    },
-  },
-  {
-    name: 'Country ID',
-    desc: 'Indonesia only',
-    json: {
-      version: '1.0',
-      logic: 'AND',
-      rules: [{ type: 'simple', field: 'oracle.country|lower', operator: '==', value: 'id' }],
-    },
-  },
-  {
-    name: 'Custom',
-    desc: 'Write your own JSON',
-    json: null,
-  },
-]
-
-const BASE_SYSTEM_PROMPT = `You are an AI payment agent integrated with PAY.ID — a programmable payment policy system on 0G Newton blockchain.
-
-Your capabilities:
-- Analyze payment requests from users
-- Evaluate if the request complies with the agent's linked policy
-- Respond with a decision: APPROVE or REJECT, with a reason
-- Output structured JSON when making a decision
-
-When a user asks you to make a payment, respond with:
-{
-  "decision": "APPROVE" | "REJECT",
-  "reason": "brief explanation",
-  "amount": number,
-  "receiver": "address or name",
-  "policy": "which policy applies"
-}
-
-Be concise, decisive, and always reference the PAY.ID policy context. You operate on 0G Newton Testnet.`
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface ChatMsg {
-  role: 'user' | 'assistant' | 'system'
-  content: string
-}
-interface AiDecision {
-  decision: 'APPROVE' | 'REJECT'
-  reason: string
-  amount?: number
-  receiver?: string
-}
-interface OnChainRule {
-  ruleId: bigint
-  hash: string
-  uri: string
-  name?: string
-  description?: string
-  ruleJson?: Record<string, unknown>
-  active: boolean
-}
-type OnChainPhase = 'idle' | 'register' | 'link' | 'done' | 'error'
-
-function shortHash(h: string) {
-  return h.slice(0, 10) + '…' + h.slice(-6)
-}
-function shortAddr(a: string) {
-  return a.slice(0, 8) + '…' + a.slice(-6)
-}
-const tsNow = () =>
-  new Date().toLocaleTimeString('id', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
-
-// ─── Extract JSON decision from AI reply ─────────────────────────────────────
-function parseDecision(text: string): AiDecision | null {
-  try {
-    const m = text.match(/\{[\s\S]*?"decision"[\s\S]*?\}/)
-    if (!m) return null
-    return JSON.parse(m[0])
-  } catch {
-    return null
-  }
-}
-
-// ─── Chat Bubble ─────────────────────────────────────────────────────────────
-function Bubble({
-  msg,
-  p,
-}: {
-  msg: ChatMsg
-  p: ReturnType<typeof useV4Palette>
-}) {
-  const isUser = msg.role === 'user'
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} gap-2`}>
-      {!isUser && (
-        <div className="w-7 h-7 rounded-full bg-[#8B5CF6]/20 flex items-center justify-center shrink-0 mt-0.5">
-          <Bot className="w-3.5 h-3.5 text-[#8B5CF6]" />
-        </div>
-      )}
-      <div
-        className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
-          isUser
-            ? 'bg-[#8B5CF6] text-white rounded-br-sm'
-            : `${p.dark ? 'bg-white/8' : 'bg-black/6'} ${p.textMain} rounded-bl-sm`
-        }`}
-      >
-        {msg.content}
-      </div>
-    </div>
-  )
-}
-
-// ─── Log Line ─────────────────────────────────────────────────────────────────
-interface LogLine {
-  id: number
-  ts: string
-  level: 'info' | 'ok' | 'err'
-  msg: string
-}
-function Console({ logs }: { logs: Array<LogLine> }) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight
-  }, [logs])
-  const cls = {
-    info: 'text-slate-400',
-    ok: 'text-[#00D084]',
-    err: 'text-red-400',
-  }
-  return (
-    <div
-      ref={ref}
-      className="h-36 overflow-y-auto font-mono text-xs space-y-0.5"
-      style={{ scrollbarWidth: 'thin' }}
-    >
-      {!logs.length && (
-        <p className="text-slate-500 italic text-center pt-4">
-          On-chain logs appear here after AI approves…
-        </p>
-      )}
-      {logs.map((l) => (
-        <div key={l.id} className="flex gap-2">
-          <span className="text-slate-600 shrink-0">{l.ts}</span>
-          <span className={cls[l.level]}>{l.msg}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AgentPayIDPage() {
@@ -290,7 +84,6 @@ export default function AgentPayIDPage() {
   const [onChainPhase, setOnChainPhase] = useState<OnChainPhase>('idle')
   const [logs, setLogs] = useState<Array<LogLine>>([])
   const [txHashes, setTxHashes] = useState<Array<string>>([])
-  const logId = useRef(0)
 
   // AI Agent hooks — admin registry
   const { data: adminAgents } = useAllAdminAIAgents({ onlyActive: true })
@@ -503,7 +296,7 @@ export default function AgentPayIDPage() {
   const addLog = (msg: string, level: LogLine['level'] = 'info') =>
     setLogs((prev) => [
       ...prev,
-      { id: logId.current++, ts: tsNow(), level, msg },
+      { time: tsNow(), level, msg },
     ])
 
   // Auto-scroll chat
@@ -624,7 +417,6 @@ export default function AgentPayIDPage() {
     if (!isConnected || !address || !publicClient) return
     setLogs([])
     setTxHashes([])
-    logId.current = 0
     const tid = BigInt(tokenId)
 
     // Use selected on-chain rule if available, else preset
@@ -1542,7 +1334,7 @@ export default function AgentPayIDPage() {
             </div>
           )}
           {messages.map((m, i) => (
-            <Bubble key={i} msg={m} p={p} />
+            <Bubble key={i} msg={m} />
           ))}
           {aiLoading && (
             <div className="flex gap-2">

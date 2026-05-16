@@ -22,56 +22,9 @@ import type { PayIDFlowStatus } from 'payid-react'
 import { useTxHistory } from '@/hooks/useTxHistory'
 import { formatNumber } from '@/lib/utils'
 import { getTokenConfig, getTokenPriceOracle } from '@/constants/tokens'
-
-type RuleStatus = 'pending' | 'running' | 'done'
-
-type Step = 'who' | 'amount' | 'review' | 'evaluating' | 'signing' | 'success'
-
-const cardBase = 'rounded-2xl relative overflow-hidden'
-
-const FLOW_STEPS = [
-  { id: 'ctx', name: 'Build Context' },
-  { id: 'resolve', name: 'Fetch Rules (IPFS)' },
-  { id: 'evaluate', name: 'WASM Evaluate' },
-  { id: 'decision', name: 'Decision Proof' },
-  { id: 'sign', name: 'EIP-712 Sign' },
-  { id: 'submit', name: 'Submit Tx' },
-]
-
-function getPipeline(
-  s: PayIDFlowStatus,
-): Array<{ id: string; name: string; status: RuleStatus }> {
-  let doneUpTo = -1,
-    runningAt = -1
-  if (s === 'fetching-rule') {
-    runningAt = 0
-  } else if (s === 'evaluating') {
-    doneUpTo = 0
-    runningAt = 1
-  } else if (s === 'proving') {
-    doneUpTo = 1
-    runningAt = 2
-  } else if (s === 'approving') {
-    doneUpTo = 2
-    runningAt = 3
-  } else if (s === 'awaiting-wallet') {
-    doneUpTo = 3
-    runningAt = 4
-  } else if (s === 'confirming') {
-    doneUpTo = 4
-    runningAt = 5
-  } else if (s === 'success') {
-    doneUpTo = 5
-  }
-  return FLOW_STEPS.map((step, i) => ({
-    ...step,
-    status: (i <= doneUpTo
-      ? 'done'
-      : i === runningAt
-        ? 'running'
-        : 'pending') as RuleStatus,
-  }))
-}
+import { cardBase, FLOW_STEPS, getPipeline } from '@/features/send/constants'
+import type { Step } from '@/features/send/types'
+import { CHAIN_NAMES, useClipboard } from '@/features/shared'
 
 export default function SendFlow() {
   const { address, isConnected } = useAccount()
@@ -81,18 +34,8 @@ export default function SendFlow() {
   const currentChain = chains.find((c) => c.id === chainId)
   const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
   const p = useV4Palette()
+  const { copy } = useClipboard()
 
-  const CHAIN_NAMES: Record<number, string> = {
-    31337: 'Hardhat',
-    16601: '0G Newton Fork',
-    16602: '0G Galileo',
-    11155111: 'Sepolia',
-    84532: 'Base Sepolia',
-    4202: 'Lisk Sepolia',
-    10143: 'Monad',
-    1287: 'Moonbase',
-    80002: 'Amoy',
-  }
   const chainName = CHAIN_NAMES[chainId] ?? `Chain #${chainId}`
   const cardBorder = `absolute inset-0 rounded-2xl border pointer-events-none ${p.cardBorder}`
   const cardBg = { background: p.cardBg }
@@ -571,9 +514,7 @@ export default function SendFlow() {
                 </p>
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(
-                      String(flowError ?? denyReason),
-                    )
+                    copy(String(flowError ?? denyReason))
                   }}
                   className="text-[10px] text-red-400/50 hover:text-red-400 underline cursor-pointer transition-colors"
                 >

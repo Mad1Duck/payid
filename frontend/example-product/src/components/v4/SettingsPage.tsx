@@ -21,42 +21,8 @@ import { useSubscription, useSubscribe, useSubscriptionPrice } from 'payid-react
 import { parseEther } from 'viem'
 import PremiumButton from './PremiumButton'
 import { toast } from 'sonner'
-
-function shortAddr(addr: string) {
-  return addr.slice(0, 6) + '...' + addr.slice(-4)
-}
-
-function Avatar({ name, size = 40 }: { name: string; size?: number }) {
-  const initial = name.charAt(0).toUpperCase()
-  const bg = useMemo(() => {
-    const colors = [
-      '#00D084',
-      '#0EA5E9',
-      '#F59E0B',
-      '#EF4444',
-      '#8B5CF6',
-      '#EC4899',
-    ]
-    let hash = 0
-    for (let i = 0; i < name.length; i++)
-      hash = name.charCodeAt(i) + ((hash << 5) - hash)
-    return colors[Math.abs(hash) % colors.length]
-  }, [name])
-
-  return (
-    <div
-      className="rounded-full flex items-center justify-center text-white font-semibold shrink-0"
-      style={{
-        width: size,
-        height: size,
-        background: bg,
-        fontSize: size * 0.4,
-      }}
-    >
-      {initial}
-    </div>
-  )
-}
+import { shortAddr } from '@/features/shared/utils/address'
+import { Avatar } from '@/features/shared/components/Avatar'
 
 export default function SettingsPage() {
   const p = useV4Palette()

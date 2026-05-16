@@ -22,43 +22,8 @@ import { Skeleton, SkeletonCard } from './Skeleton'
 import { useReputation, useOfflineCache } from 'payid-react'
 import { useTxHistory, relativeTime } from '@/hooks/useTxHistory'
 import { formatUSD, formatNumber } from '@/lib/utils'
-
-function shortAddr(addr: string) {
-  return addr.slice(0, 6) + '...' + addr.slice(-4)
-}
-
-/* Avatar with initials */
-function Avatar({ name, size = 32 }: { name: string; size?: number }) {
-  const initial = name.charAt(0).toUpperCase()
-  const bg = useMemo(() => {
-    const colors = [
-      '#00D084',
-      '#0EA5E9',
-      '#F59E0B',
-      '#EF4444',
-      '#8B5CF6',
-      '#EC4899',
-    ]
-    let hash = 0
-    for (let i = 0; i < name.length; i++)
-      hash = name.charCodeAt(i) + ((hash << 5) - hash)
-    return colors[Math.abs(hash) % colors.length]
-  }, [name])
-
-  return (
-    <div
-      className="rounded-full flex items-center justify-center text-white font-semibold shrink-0"
-      style={{
-        width: size,
-        height: size,
-        background: bg,
-        fontSize: size * 0.4,
-      }}
-    >
-      {initial}
-    </div>
-  )
-}
+import { shortAddr, useClipboard } from '@/features/shared'
+import { Avatar } from '@/features/shared/components/Avatar'
 
 export default function Dashboard() {
   const { address, isConnected } = useAccount()
@@ -78,7 +43,7 @@ export default function Dashboard() {
     return () => clearTimeout(t)
   }, [])
   const p = useV4Palette()
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useClipboard()
   const { stats: cacheStats, isReady: cacheReady } = useOfflineCache()
   const [activeTab, setActiveTab] = useState<'all' | 'incoming' | 'outgoing'>(
     'all',
@@ -94,10 +59,8 @@ export default function Dashboard() {
     isConnected && address ? `${shortAddr(address)}@pay.id` : 'connect@pay.id'
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(payId)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }, [payId])
+    copy(payId)
+  }, [copy, payId])
 
   const { txs } = useTxHistory()
 

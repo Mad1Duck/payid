@@ -10,13 +10,12 @@ import {
   Link2,
   Layers,
   Zap,
-  Hexagon,
   RotateCcw,
-  Fingerprint,
   FileCheck,
   Box,
 } from 'lucide-react'
 import { useV4Palette } from './theme'
+import { ParticleField, StorageHexGrid, SignatureAnimation, BlockChainLink } from '@/features/shared'
 
 type Stage =
   | 'idle'
@@ -46,102 +45,6 @@ const STAGES: StageInfo[] = [
   { key: 'sign', title: 'EIP-712 Sign', subtitle: 'Typed data signature', icon: PenTool, color: '#06B6D4' },
   { key: 'validate', title: 'On-Chain', subtitle: 'PayIDVerifier.validate', icon: Link2, color: '#00D084' },
 ]
-
-function ParticleField({ color }: { color: string }) {
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {Array.from({ length: 12 }).map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-1 h-1 rounded-full"
-          style={{ background: color, left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
-          animate={{
-            y: [0, -30, 0],
-            x: [0, Math.random() * 20 - 10, 0],
-            opacity: [0, 1, 0],
-            scale: [0.5, 1.5, 0.5],
-          }}
-          transition={{ duration: 2 + Math.random() * 2, repeat: Infinity, delay: Math.random() * 2 }}
-        />
-      ))}
-    </div>
-  )
-}
-
-function StorageHexGrid({ active }: { active: boolean }) {
-  return (
-    <div className="relative w-full h-24 flex items-center justify-center">
-      <div className="grid grid-cols-6 gap-1">
-        {Array.from({ length: 24 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="w-5 h-5 flex items-center justify-center"
-            animate={active ? { scale: [1, 1.2, 1], opacity: [0.3, 1, 0.3] } : { opacity: 0.2 }}
-            transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.05 }}
-          >
-            <Hexagon className="w-4 h-4 text-[#8B5CF6]" strokeWidth={1.5} />
-          </motion.div>
-        ))}
-      </div>
-      {active && (
-        <motion.div
-          className="absolute inset-0 flex items-center justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-        >
-          <Database className="w-8 h-8 text-[#8B5CF6]" />
-        </motion.div>
-      )}
-    </div>
-  )
-}
-
-function SignatureAnimation({ active }: { active: boolean }) {
-  return (
-    <div className="relative w-full h-20 flex items-center justify-center">
-      <AnimatePresence>
-        {active && (
-          <motion.div
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute"
-          >
-            <Fingerprint className="w-12 h-12 text-[#06B6D4]" />
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {active && (
-        <motion.div
-          className="absolute text-[10px] font-mono text-[#06B6D4]"
-          animate={{ opacity: [0, 1, 0], y: [10, -10, -20] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-        >
-          0x7a3f...e91b
-        </motion.div>
-      )}
-    </div>
-  )
-}
-
-function BlockChainLink({ active }: { active: boolean }) {
-  return (
-    <div className="flex items-center justify-center gap-2 py-2">
-      {[1, 2, 3].map((i) => (
-        <motion.div
-          key={i}
-          className="w-8 h-8 rounded-lg border flex items-center justify-center"
-          style={{ borderColor: active ? '#00D084' : '#334155', background: active ? 'rgba(0,208,132,0.08)' : 'transparent' }}
-          animate={active ? { scale: [1, 1.1, 1], borderColor: ['#334155', '#00D084', '#334155'] } : {}}
-          transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-        >
-          <Link2 className="w-3.5 h-3.5" style={{ color: active ? '#00D084' : '#475569' }} />
-        </motion.div>
-      ))}
-    </div>
-  )
-}
 
 export default function ProofVisualizer() {
   const p = useV4Palette()

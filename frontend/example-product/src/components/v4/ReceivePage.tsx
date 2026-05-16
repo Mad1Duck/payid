@@ -5,17 +5,14 @@ import { useAccount } from 'wagmi'
 import { usePayIDQR } from 'payid-react'
 import { useV4Palette } from './theme'
 import PremiumButton from './PremiumButton'
-
-function shortAddr(addr: string) {
-  return addr.slice(0, 6) + '...' + addr.slice(-4)
-}
+import { shortAddr, useClipboard } from '@/features/shared'
 
 export default function ReceivePage() {
   const p = useV4Palette()
   const { address, isConnected } = useAccount()
   const payId = isConnected && address ? `${shortAddr(address)}@pay.id` : 'connect@pay.id'
   const walletAddress = address ?? ''
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useClipboard()
   const [showAddress, setShowAddress] = useState(false)
 
   /* ─── QR Generation ─── */
@@ -52,10 +49,8 @@ export default function ReceivePage() {
   }
 
   const handleCopy = useCallback((text: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }, [])
+    copy(text)
+  }, [copy])
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
