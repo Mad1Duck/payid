@@ -1,4 +1,4 @@
-name: Deploy Portfolio Web
+name: Deploy PayID Frontends
 
 on:
   push:
@@ -10,9 +10,9 @@ jobs:
     runs-on: [self-hosted, nawasena, production]
 
     steps:
-      - name: Deploy VPS
+      - name: Deploy PayID Frontends
         run: |
-          cd ~/apps/portfolio-web/frontend
+          cd ~/apps/payId-sdk
           git pull
-          docker compose down
-          docker compose up -d --build
+          docker compose -f frontend/docker-compose.yml down
+          docker compose -f frontend/docker-compose.yml up -d --build

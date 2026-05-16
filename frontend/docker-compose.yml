@@ -1,0 +1,27 @@
+services:
+  payid-example-product:
+    build:
+      context: ./example-product
+      dockerfile: Dockerfile
+    container_name: payid-example-product
+    restart: unless-stopped
+    ports:
+      - "3011:3000"
+    env_file:
+      - ./example-product/.env
+
+  payid-frontend-docs:
+    build:
+      context: ./frontend-docs
+      dockerfile: Dockerfile
+    container_name: payid-frontend-docs
+    restart: unless-stopped
+    ports:
+      - "3012:3000"
+    env_file:
+      - ./frontend-docs/.env
+
+networks:
+  default:
+    external: true
+    name: nawasena-network

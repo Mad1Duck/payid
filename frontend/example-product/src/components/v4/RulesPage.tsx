@@ -893,7 +893,13 @@ export default function RulesPage() {
       toast.success('Rule NFT created!', {
         description: 'Refreshing your rules list…',
       })
+      console.log('[RulesPage] Rule created, refetching rules...')
+      // Refetch immediately and again after a delay to ensure data is synced
       refetchMyRules()
+      setTimeout(() => {
+        console.log('[RulesPage] Refetching rules again after 2s...')
+        refetchMyRules()
+      }, 2000)
     }
   }, [created, deployStage])
 

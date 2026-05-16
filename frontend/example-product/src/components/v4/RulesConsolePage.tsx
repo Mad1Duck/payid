@@ -29,6 +29,7 @@ import {
   usePreferredAgent,
   useAIAgent,
 } from 'payid-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { resolveStorageURI } from '@/lib/storage'
 import { toast } from 'sonner'
 import { Link } from '@tanstack/react-router'
@@ -289,10 +290,11 @@ export default function RulesConsolePage() {
   const currentChain = chains.find((c) => c.id === chainId)
   const nativeSymbol = currentChain?.nativeCurrency.symbol ?? 'ETH'
   const { address, isConnected } = useAccount()
-  const { data: myRules = [] } = useMyRules()
-  const { data: activeCombined } = useActiveCombinedRule(address)
+  const { data: myRules = [], refetch: refetchMyRules } = useMyRules()
+  const { data: activeCombined, refetch: refetchActiveCombined } = useActiveCombinedRule(address)
   const { data: sub } = useSubscription(address)
   const { contracts } = usePayIDContext()
+  const queryClient = useQueryClient()
 
   /* ── AI Agent hooks ── */
   const { data: effectiveAgentRule } = useEffectiveAgentRule(address)
@@ -650,6 +652,17 @@ export default function RulesConsolePage() {
       toast.success('Policy Registered', {
         description: 'Combined rule is now live',
       })
+      console.log('[RulesConsole] Combined rule registered, refetching data...')
+      // Refetch all relevant data
+      refetchMyRules()
+      refetchActiveCombined()
+      queryClient.invalidateQueries({ queryKey: ['useAllCombinedRules'] })
+      setTimeout(() => {
+        console.log('[RulesConsole] Refetching again after 2s...')
+        refetchMyRules()
+        refetchActiveCombined()
+        queryClient.invalidateQueries({ queryKey: ['useAllCombinedRules'] })
+      }, 2000)
     }
   }, [registerSuccess, registerStage])
 
