@@ -5,6 +5,8 @@ import {
   Bot,
   Brain,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   Hash,
   Link2,
@@ -354,6 +356,7 @@ export default function AgentPayIDPage() {
   const [ruleJsonInput, setRuleJsonInput] = useState(`{\n  "version": "1.0",\n  "logic": "AND",\n  "rules": [\n    {\n      "type": "simple",\n      "field": "tx.amount",\n      "operator": "<=",\n      "value": 500000000\n    }\n  ]\n}`)
   const [ruleNameInput, setRuleNameInput] = useState('')
   const [ruleDescInput, setRuleDescInput] = useState('')
+  const [showRuleSection, setShowRuleSection] = useState(false)
   const [existingRuleMode, setExistingRuleMode] = useState(false)
   const [selectedExistingRule, setSelectedExistingRule] = useState<CombinedRule | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState<number>(-1)
@@ -1164,54 +1167,74 @@ export default function AgentPayIDPage() {
         {selectedAgent && selectedAgent.owner?.toLowerCase() === address?.toLowerCase() ? (
           /* ── OWNER VIEW: Set Agent Policy ── */
           <>
-            <div className="flex items-center justify-between mb-2">
+            <button
+              onClick={() => setShowRuleSection(v => !v)}
+              className="w-full flex items-center justify-between mb-2 group"
+            >
               <p className={`text-xs font-semibold ${p.textMuted}`}>
                 SET AGENT POLICY
               </p>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#8B5CF6]/10 text-[#8B5CF6] font-medium">
-                Admin
-              </span>
-            </div>
-            <p className={`text-[11px] ${p.textMuted} mb-2`}>
-              Select or create a rule to enforce for this AI agent. This policy will be evaluated on-chain for every payment.
-            </p>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#8B5CF6]/10 text-[#8B5CF6] font-medium">
+                  Admin
+                </span>
+                {showRuleSection ? (
+                  <ChevronUp className={`w-3.5 h-3.5 ${p.textMuted} group-hover:text-[#8B5CF6] transition-colors`} />
+                ) : (
+                  <ChevronDown className={`w-3.5 h-3.5 ${p.textMuted} group-hover:text-[#8B5CF6] transition-colors`} />
+                )}
+              </div>
+            </button>
 
-            {/* One-click: Use My Active Combined Rule */}
-            {myActiveRule?.hash && myActiveRule.hash !== zeroHash && (
-              <button
-                onClick={() => { if (myActiveRule.hash && selectedAgent) setAgentCombinedRule(selectedAgent.agentWallet, myActiveRule.hash) }}
-                disabled={isSettingRule}
-                className="w-full mb-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#00D084]/10 border border-[#00D084]/30 text-[#00D084] text-xs font-medium hover:bg-[#00D084]/20 transition-colors disabled:opacity-50"
-              >
-                {isSettingRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-                Use My Active Combined Rule ({shortHash(myActiveRule.hash)})
-              </button>
-            )}
+            <AnimatePresence>
+              {showRuleSection && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <p className={`text-[11px] ${p.textMuted} mb-2`}>
+                    Select or create a rule to enforce for this AI agent. This policy will be evaluated on-chain for every payment.
+                  </p>
 
-            {/* Mode Toggle: Existing vs New */}
-            <div className="flex gap-2 mb-3">
-              <button
-                onClick={() => setExistingRuleMode(false)}
-                className={`flex-1 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
-                  !existingRuleMode
-                    ? 'bg-[#8B5CF6]/15 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/30'
-                    : `${p.dark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-500'}`
-                }`}
-              >
-                Create New Rule
-              </button>
-              <button
-                onClick={() => { setExistingRuleMode(true); setSelectedExistingRule(null) }}
-                disabled={!myRuleSets || myRuleSets.length === 0}
-                className={`flex-1 py-1.5 rounded-lg text-[10px] font-medium transition-all disabled:opacity-40 ${
-                  existingRuleMode
-                    ? 'bg-[#8B5CF6]/15 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/30'
-                    : `${p.dark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-500'}`
-                }`}
-              >
-                Use Existing ({myRuleSets?.length ?? 0})
-              </button>
-            </div>
+                  {/* One-click: Use My Active Combined Rule */}
+                  {myActiveRule?.hash && myActiveRule.hash !== zeroHash && (
+                    <button
+                      onClick={() => { if (myActiveRule.hash && selectedAgent) setAgentCombinedRule(selectedAgent.agentWallet, myActiveRule.hash) }}
+                      disabled={isSettingRule}
+                      className="w-full mb-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#00D084]/10 border border-[#00D084]/30 text-[#00D084] text-xs font-medium hover:bg-[#00D084]/20 transition-colors disabled:opacity-50"
+                    >
+                      {isSettingRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+                      Use My Active Combined Rule ({shortHash(myActiveRule.hash)})
+                    </button>
+                  )}
+
+                  {/* Mode Toggle: Existing vs New */}
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={() => setExistingRuleMode(false)}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                        !existingRuleMode
+                          ? 'bg-[#8B5CF6]/15 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/30'
+                          : `${p.dark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-500'}`
+                      }`}
+                    >
+                      Create New Rule
+                    </button>
+                    <button
+                      onClick={() => { setExistingRuleMode(true); setSelectedExistingRule(null) }}
+                      disabled={!myRuleSets || myRuleSets.length === 0}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-medium transition-all disabled:opacity-40 ${
+                        existingRuleMode
+                          ? 'bg-[#8B5CF6]/15 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/30'
+                          : `${p.dark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-500'}`
+                      }`}
+                    >
+                      Use Existing ({myRuleSets?.length ?? 0})
+                    </button>
+                  </div>
 
             {existingRuleMode ? (
               /* ── Use Existing Combined Rule ── */
@@ -1425,6 +1448,9 @@ export default function AgentPayIDPage() {
                 </div>
               </div>
             )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Current policy status */}
             {agentRuleInfo?.active && (

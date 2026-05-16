@@ -1,21 +1,16 @@
-FROM oven/bun:1.3.13 AS deps
+FROM oven/bun:1.3.13 AS builder
+
 WORKDIR /app
 
-COPY package.json bun.lock ./
-COPY frontend/frontend-docs/package.json ./frontend/frontend-docs/package.json
-COPY packages ./packages
-COPY tsconfig.json tsconfig.base.json ./
+COPY . .
+
+ENV NODE_ENV=development
 
 RUN bun install
 
-FROM oven/bun:1.3.13 AS builder
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
 WORKDIR /app/frontend/frontend-docs
-RUN bun run build
+
+RUN bunx docusaurus build
 
 FROM nginx:alpine
 
