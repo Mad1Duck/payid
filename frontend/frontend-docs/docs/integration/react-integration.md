@@ -882,6 +882,12 @@ interface PayIDFlowParams {
   context?:              Record<string, unknown>  // extra context fields
   attestationUIDs?:      Hash[]
   ruleAuthorityAddress?: Address
+  /** Token decimals (e.g. 6 for USDC, 18 for ETH). Required for USD oracle injection. */
+  tokenDecimals?:        number
+  /** Chainlink AggregatorV3 address for token/USD. If set, oracle.txValueUsd is auto-injected into context. */
+  tokenPriceOracle?:     Address
+  /** Minimum USD value (8 decimals) for on-chain oracle guard. e.g. 45_00000000 = $45.00 */
+  minUsdValue?:          bigint
 }
 
 // RuleDirection for directional rules

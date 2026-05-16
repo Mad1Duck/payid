@@ -531,6 +531,115 @@ const TEMPLATES = [
     unit: '',
     inputType: 'none' as const,
   },
+  {
+    label: 'USD Minimum',
+    desc: 'Require minimum USD value regardless of token',
+    icon: '💵',
+    fmt: 'simple' as RuleFormat,
+    conds: [
+      {
+        field: 'oracle.txValueUsd',
+        transform: '',
+        transformArg: '',
+        op: '>=',
+        value: '4500000000',
+      },
+    ],
+    unit: 'USD',
+    inputType: 'usd' as const,
+  },
+  {
+    label: 'Whitelist Sender',
+    desc: 'Only allow payments from a specific address',
+    icon: '🔐',
+    fmt: 'simple' as RuleFormat,
+    conds: [
+      {
+        field: 'tx.sender',
+        transform: '',
+        transformArg: '',
+        op: '==',
+        value: '0x0000000000000000000000000000000000000000',
+      },
+    ],
+    unit: '',
+    inputType: 'address' as const,
+  },
+  {
+    label: 'Chain Guard',
+    desc: 'Only allow payments on this chain',
+    icon: '⛓',
+    fmt: 'simple' as RuleFormat,
+    conds: [
+      {
+        field: 'tx.chainId',
+        transform: '',
+        transformArg: '',
+        op: '==',
+        value: '31337',
+      },
+    ],
+    unit: '',
+    inputType: 'chain' as const,
+  },
+  {
+    label: 'QR Payments Only',
+    desc: 'Only allow QR code payments',
+    icon: '📱',
+    fmt: 'simple' as RuleFormat,
+    conds: [
+      {
+        field: 'intent.type',
+        transform: '',
+        transformArg: '',
+        op: '==',
+        value: 'QR',
+      },
+    ],
+    unit: '',
+    inputType: 'none' as const,
+  },
+  {
+    label: 'Daily Budget',
+    desc: 'Block if daily spending limit exceeded',
+    icon: '📊',
+    fmt: 'multi' as RuleFormat,
+    conds: [
+      {
+        field: 'state.spentToday',
+        transform: '',
+        transformArg: '',
+        op: '<=',
+        value: '50000000',
+      },
+      {
+        field: 'state.dailyLimit',
+        transform: '',
+        transformArg: '',
+        op: 'exists',
+        value: '',
+      },
+    ],
+    unit: 'USDC',
+    inputType: 'number' as const,
+  },
+  {
+    label: 'PayID Owner',
+    desc: 'Only allow payments to specific PayID owner',
+    icon: '🆔',
+    fmt: 'simple' as RuleFormat,
+    conds: [
+      {
+        field: 'payId.owner',
+        transform: '',
+        transformArg: '',
+        op: '==',
+        value: '0x0000000000000000000000000000000000000000',
+      },
+    ],
+    unit: '',
+    inputType: 'address' as const,
+  },
 ]
 
 function canonicalize(o: unknown): unknown {
@@ -1500,6 +1609,131 @@ export default function RulesPage() {
                       <p className={`text-sm ${p.textMain}`}>
                         This rule is set. Only payments from Indonesia will be
                         allowed.
+                      </p>
+                    </div>
+                  )
+                }
+
+                if (t.label === 'USD Minimum') {
+                  const usd = c.value ? (Number(c.value) / 1e8).toString() : ''
+                  return (
+                    <div>
+                      <label className={`text-[11px] font-medium ${p.textMuted} block mb-1`}>
+                        Minimum USD value
+                      </label>
+                      <input
+                        type="number"
+                        value={usd}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          updateCond(0, { value: val ? (Number(val) * 1e8).toString() : '' })
+                        }}
+                        placeholder="45"
+                        className={`${inp} w-full`}
+                      />
+                      <p className={`text-[10px] ${p.textMuted} mt-1`}>
+                        Any payment below this USD value will be blocked (regardless of token).
+                      </p>
+                    </div>
+                  )
+                }
+
+                if (t.label === 'Whitelist Sender') {
+                  return (
+                    <div>
+                      <label className={`text-[11px] font-medium ${p.textMuted} block mb-1`}>
+                        Allowed sender address
+                      </label>
+                      <input
+                        type="text"
+                        value={c.value}
+                        onChange={(e) => updateCond(0, { value: e.target.value })}
+                        placeholder="0x..."
+                        className={`${inp} w-full font-mono`}
+                      />
+                      <p className={`text-[10px] ${p.textMuted} mt-1`}>
+                        Only payments from this address will be allowed.
+                      </p>
+                    </div>
+                  )
+                }
+
+                if (t.label === 'Chain Guard') {
+                  return (
+                    <div>
+                      <label className={`text-[11px] font-medium ${p.textMuted} block mb-1`}>
+                        Allowed chain ID
+                      </label>
+                      <input
+                        type="number"
+                        value={c.value}
+                        onChange={(e) => updateCond(0, { value: e.target.value })}
+                        placeholder="31337"
+                        className={`${inp} w-full`}
+                      />
+                      <p className={`text-[10px] ${p.textMuted} mt-1`}>
+                        Only payments on this chain will be allowed.
+                      </p>
+                    </div>
+                  )
+                }
+
+                if (t.label === 'QR Payments Only') {
+                  return (
+                    <div
+                      className={`p-4 rounded-xl border ${p.cardBorder}`}
+                      style={{
+                        backgroundColor: p.dark
+                          ? 'rgba(0,208,132,0.04)'
+                          : 'rgba(0,208,132,0.04)',
+                      }}
+                    >
+                      <p className={`text-sm ${p.textMain}`}>
+                        This rule is set. Only QR code payments will be allowed.
+                      </p>
+                    </div>
+                  )
+                }
+
+                if (t.label === 'Daily Budget') {
+                  const limit = conds[0]?.value ?? '50000000'
+                  return (
+                    <div>
+                      <label className={`text-[11px] font-medium ${p.textMuted} block mb-1`}>
+                        Daily spending limit (USDC)
+                      </label>
+                      <input
+                        type="number"
+                        value={limit ? (Number(limit) / 1_000_000).toString() : ''}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          updateCond(0, { value: val ? (Number(val) * 1_000_000).toString() : '' })
+                        }}
+                        placeholder="50"
+                        className={`${inp} w-full`}
+                      />
+                      <p className={`text-[10px] ${p.textMuted} mt-1`}>
+                        Payments that would exceed this daily limit will be blocked.
+                      </p>
+                    </div>
+                  )
+                }
+
+                if (t.label === 'PayID Owner') {
+                  return (
+                    <div>
+                      <label className={`text-[11px] font-medium ${p.textMuted} block mb-1`}>
+                        Allowed PayID owner
+                      </label>
+                      <input
+                        type="text"
+                        value={c.value}
+                        onChange={(e) => updateCond(0, { value: e.target.value })}
+                        placeholder="0x..."
+                        className={`${inp} w-full font-mono`}
+                      />
+                      <p className={`text-[10px] ${p.textMuted} mt-1`}>
+                        Only payments to this PayID owner will be allowed.
                       </p>
                     </div>
                   )

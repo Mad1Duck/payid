@@ -10,6 +10,14 @@ interface QueryListResult<T> {
   isError: boolean;
   refetch: () => void;
 }
+
+interface QueryResult<T> {
+  data: T | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
+}
+
 import { RuleDirection } from '../types';
 import CombinedRuleStorageArtifact from '../abis/PayIDModule#CombinedRuleStorage.json';
 import RuleAuthorityArtifact from '../abis/PayIDModule#RuleAuthority.json';
@@ -97,7 +105,7 @@ export function useAllCombinedRules(options?: { onlyActive?: boolean; }): QueryL
 }
 
 // useActiveCombinedRule
-export function useActiveCombinedRule(owner: `0x${string}` | undefined) {
+export function useActiveCombinedRule(owner: `0x${string}` | undefined): QueryResult<CombinedRule> {
   const { contracts } = usePayIDContext();
 
   const { data: hash } = useReadContract({
@@ -130,14 +138,19 @@ export function useActiveCombinedRule(owner: `0x${string}` | undefined) {
     };
   }, [result.data, stableHash]);
 
-  return { ...result, data };
+  return {
+    data,
+    isLoading: result.isLoading,
+    isError: result.isError,
+    refetch: result.refetch,
+  };
 }
 
 // useActiveCombinedRuleByDirection
 export function useActiveCombinedRuleByDirection(
   owner: `0x${string}` | undefined,
   direction: RuleDirection
-) {
+): QueryResult<CombinedRule> {
   const { contracts } = usePayIDContext();
 
   const { data: hash } = useReadContract({
@@ -171,7 +184,12 @@ export function useActiveCombinedRuleByDirection(
     };
   }, [result.data, stableHash, direction]);
 
-  return { ...result, data };
+  return {
+    data,
+    isLoading: result.isLoading,
+    isError: result.isError,
+    refetch: result.refetch,
+  };
 }
 
 // useOwnerRuleSets

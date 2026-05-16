@@ -11,7 +11,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAccount, useBalance, useChainId, useChains } from 'wagmi'
-import { formatUnits, isAddress, parseEther } from 'viem'
+import { formatUnits, isAddress, parseEther, parseUnits } from 'viem'
 import { usePayIDFlow } from 'payid-react'
 import { useMultiCurrency } from '../../hooks/useMultiCurrency'
 import { useV4Palette } from './theme'
@@ -21,6 +21,7 @@ import type { Address } from 'viem'
 import type { PayIDFlowStatus } from 'payid-react'
 import { useTxHistory } from '@/hooks/useTxHistory'
 import { formatNumber } from '@/lib/utils'
+import { getTokenConfig, getTokenPriceOracle } from '@/constants/tokens'
 
 type RuleStatus = 'pending' | 'running' | 'done'
 
@@ -136,13 +137,33 @@ export default function SendFlow() {
     }
     setDenyReason('')
     setStep('evaluating')
-    execute({
+
+    const token = getTokenConfig(chainId, asset)
+    const assetAddress = (token?.address ?? '0x0000000000000000000000000000000000000000') as Address
+    const tokenDecimals = token?.decimals ?? 18
+    const amountRaw = tokenDecimals === 18
+      ? parseEther(amount || '0')
+      : parseUnits(amount || '0', tokenDecimals)
+
+    const tokenPriceOracle = getTokenPriceOracle(chainId, asset)
+
+    const execParams: any = {
       receiver: receiver,
-      asset: '0x0000000000000000000000000000000000000000' as Address,
-      amount: parseEther(amount || '0'),
+      asset: assetAddress,
+      amount: amountRaw,
       payId: address ? `${address}@pay.id` : 'anon@pay.id',
-    })
-  }, [payId, amount, address, execute])
+    }
+
+    // Inject oracle price for ERC20 tokens so rule engine can evaluate oracle.txValueUsd
+    if (tokenPriceOracle) {
+      execParams.tokenDecimals = tokenDecimals
+      execParams.tokenPriceOracle = tokenPriceOracle
+      // On-chain USD minimum guard (8 decimals). Remove if contract not yet redeployed.
+      execParams.minUsdValue = 4500000000n // $45.00
+    }
+
+    execute(execParams)
+  }, [payId, amount, address, execute, chainId, asset])
 
   useEffect(() => {
     if (flowStatus === 'success' && flowTxHash) {

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useRouterState } from '@tanstack/react-router'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  Bot,
   ChevronDown,
   Globe,
   History,
@@ -54,6 +55,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     { to: '/v4/app/history', icon: History, label: 'History' },
     { to: '/v4/app/rules', icon: Shield, label: 'Policy' },
     { to: '/v4/app/rules/builder', icon: Pencil, label: 'Rule Builder' },
+    { to: '/v4/app/agent', icon: Bot, label: 'AI Agent' },
     { to: '/v4/app/proof', icon: Zap, label: 'Proof' },
     // { to: '/v4/app/tools', icon: Wrench, label: 'Tools' },
     // { to: '/v4/app/payroll', icon: Users, label: 'Payroll' },
@@ -187,7 +189,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                                   msg.includes('Unrecognized chain') ||
                                   msg.includes('Chain ID') ||
                                   msg.includes('chain id')
-                                if (isUnrecognized && (window as any).ethereum) {
+                                if (
+                                  isUnrecognized &&
+                                  (window as any).ethereum
+                                ) {
                                   try {
                                     await (window as any).ethereum.request({
                                       method: 'wallet_addEthereumChain',
@@ -197,7 +202,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                                           chainName: chain.name,
                                           nativeCurrency: chain.nativeCurrency,
                                           rpcUrls: chain.rpcUrls.default.http,
-                                          blockExplorerUrls: chain.blockExplorers?.default?.url
+                                          blockExplorerUrls: chain
+                                            .blockExplorers?.default.url
                                             ? [chain.blockExplorers.default.url]
                                             : undefined,
                                         },

@@ -17,6 +17,7 @@ import * as TanStackQueryProvider from './integrations/tanstack-query/root-provi
 import {
   LandingPageV4,
   AdminPage as V4AdminPage,
+  AgentPayIDPage as V4AgentPayIDPage,
   AdvancedTools as V4AdvancedTools,
   AppLayout as V4AppLayout,
   DAOPayroll as V4DAOPayroll,
@@ -195,6 +196,12 @@ const v4AdminRoute = createRoute({
   component: V4AdminPage,
 })
 
+const v4AgentRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'agent',
+  component: V4AgentPayIDPage,
+})
+
 const routeTree = rootRoute.addChildren([
   rootIndexRoute,
   v4Route.addChildren([
@@ -213,6 +220,7 @@ const routeTree = rootRoute.addChildren([
       v4DAOPayrollRoute,
       v4SettingsRoute,
       v4AdminRoute,
+      v4AgentRoute,
     ]),
   ]),
 ])

@@ -99,15 +99,55 @@ type RuleObj = {
   message?: string
 }
 
-function resolveField(
-  field: string,
-  ctx: { amount: number; timestamp: number; receiver: string },
-): unknown {
+/* Full demo context matching Context V2 namespaces */
+interface DemoCtx {
+  tx: { sender: string; receiver: string; asset: string; amount: number; chainId: number }
+  payId: { id: string; owner: string }
+  intent: { type: string; expiresAt: number; nonce: string; issuer: string }
+  env: { timestamp: number }
+  oracle: { txValueUsd?: number; kycLevel?: string; country?: string }
+  risk: { score?: number }
+  state: { spentToday?: number; dailyLimit?: number; period?: string }
+}
+
+function resolveField(field: string, ctx: DemoCtx): unknown {
   const [fieldPath, ...transforms] = field.split('|')
   let val: unknown = undefined
-  if (fieldPath === 'tx.amount') val = ctx.amount
-  else if (fieldPath === 'tx.receiver') val = ctx.receiver
-  else if (fieldPath === 'env.timestamp') val = ctx.timestamp
+
+  // ── tx namespace ──
+  if (fieldPath === 'tx.amount') val = ctx.tx.amount
+  else if (fieldPath === 'tx.sender') val = ctx.tx.sender
+  else if (fieldPath === 'tx.receiver') val = ctx.tx.receiver
+  else if (fieldPath === 'tx.asset') val = ctx.tx.asset
+  else if (fieldPath === 'tx.chainId') val = ctx.tx.chainId
+
+  // ── payId namespace ──
+  else if (fieldPath === 'payId.id') val = ctx.payId.id
+  else if (fieldPath === 'payId.owner') val = ctx.payId.owner
+
+  // ── intent namespace ──
+  else if (fieldPath === 'intent.type') val = ctx.intent.type
+  else if (fieldPath === 'intent.expiresAt') val = ctx.intent.expiresAt
+  else if (fieldPath === 'intent.nonce') val = ctx.intent.nonce
+  else if (fieldPath === 'intent.issuer') val = ctx.intent.issuer
+
+  // ── env namespace ──
+  else if (fieldPath === 'env.timestamp') val = ctx.env.timestamp
+
+  // ── oracle namespace ──
+  else if (fieldPath === 'oracle.txValueUsd') val = ctx.oracle.txValueUsd
+  else if (fieldPath === 'oracle.kycLevel') val = ctx.oracle.kycLevel
+  else if (fieldPath === 'oracle.country') val = ctx.oracle.country
+
+  // ── risk namespace ──
+  else if (fieldPath === 'risk.score') val = ctx.risk.score
+
+  // ── state namespace ──
+  else if (fieldPath === 'state.spentToday') val = ctx.state.spentToday
+  else if (fieldPath === 'state.dailyLimit') val = ctx.state.dailyLimit
+  else if (fieldPath === 'state.period') val = ctx.state.period
+
+  // ── transforms ──
   for (const t of transforms) {
     if (t === 'hour') val = new Date(Number(val) * 1000).getHours()
     else if (t === 'day') {
@@ -125,10 +165,7 @@ function resolveField(
   return val
 }
 
-function evalCond(
-  c: Cond,
-  ctx: { amount: number; timestamp: number; receiver: string },
-): boolean {
+function evalCond(c: Cond, ctx: DemoCtx): boolean {
   const lhs = resolveField(c.field, ctx)
   const n = Number(lhs)
   const v = c.value
@@ -172,10 +209,7 @@ function evalCond(
   }
 }
 
-function evalRule(
-  rule: RuleObj,
-  ctx: { amount: number; timestamp: number; receiver: string },
-): { pass: boolean; reason: string } {
+function evalRule(rule: RuleObj, ctx: DemoCtx): { pass: boolean; reason: string } {
   if (rule.if) {
     const pass = evalCond(rule.if, ctx)
     return {
@@ -314,6 +348,12 @@ export default function RulesConsolePage() {
   const [demoReceiver, setDemoReceiver] = useState(
     '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
   )
+  const [demoTxValueUsd, setDemoTxValueUsd] = useState('4500000000')
+  const [demoKycLevel, setDemoKycLevel] = useState('1')
+  const [demoCountry, setDemoCountry] = useState('id')
+  const [demoRiskScore, setDemoRiskScore] = useState('30')
+  const [demoDailyLimit, setDemoDailyLimit] = useState('50000000')
+  const [demoSpentToday, setDemoSpentToday] = useState('0')
   const [demoResult, setDemoResult] = useState<
     'idle' | 'running' | 'ALLOW' | 'REJECT'
   >('idle')
@@ -683,21 +723,16 @@ export default function RulesConsolePage() {
               <Cpu className="w-6 h-6 text-[#8B5CF6]" />
               Rule Console
             </h1>
-            <div className="flex items-center justify-between w-full">
+            <div className="flex items-center justify-between grow w-full">
               <p className={`text-sm ${p.textMuted} mt-0.5`}>
                 Drag &amp; drop rules into slots and register your live payment
                 policy
               </p>
-              <Link
-                to="/v4/app/rules/builder"
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#8B5CF6] text-white text-xs font-semibold hover:bg-[#8B5CF6]/90 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Create Rule
-              </Link>
+             
             </div>
           </div>
           {isConnected && (
+            <div className='flex flex-col gap-2 items-center justify-center'>
             <div
               className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border ${p.cardBorder} text-xs ${p.textMuted}`}
               style={{ backgroundColor: p.cardBg }}
@@ -708,7 +743,16 @@ export default function RulesConsolePage() {
                   ? `Pro · ${myRules.length}/${sub.maxSlots}`
                   : `Free · ${myRules.length}/1`}
               </span>
+              
             </div>
+             <Link
+                to="/v4/app/rules/builder"
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#8B5CF6] text-white text-xs font-semibold hover:bg-[#8B5CF6]/90 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Create Rule
+              </Link>
+              </div>
           )}
         </div>
 
@@ -1340,36 +1384,47 @@ export default function RulesConsolePage() {
                           </div>
 
                           {/* Test inputs */}
-                          <div className="flex gap-2">
-                            <div className="flex-1">
-                              <label
-                                className={`block text-[10px] font-medium ${p.textMuted} mb-1`}
-                              >
-                                Amount (wei)
-                              </label>
-                              <input
-                                type="text"
-                                value={demoAmount}
-                                onChange={(e) => setDemoAmount(e.target.value)}
-                                className={`w-full ${inp}`}
-                                placeholder="1000000000000000000"
-                              />
+                          <div className="grid grid-cols-3 gap-2">
+                            {/* tx namespace */}
+                            <div>
+                              <label className={`block text-[10px] font-medium ${p.textMuted} mb-1`}>tx.amount</label>
+                              <input type="text" value={demoAmount} onChange={(e) => setDemoAmount(e.target.value)} className={`w-full ${inp}`} placeholder="100" />
                             </div>
-                            <div className="flex-2">
-                              <label
-                                className={`block text-[10px] font-medium ${p.textMuted} mb-1`}
-                              >
-                                Receiver
-                              </label>
-                              <input
-                                type="text"
-                                value={demoReceiver}
-                                onChange={(e) =>
-                                  setDemoReceiver(e.target.value)
-                                }
-                                className={`w-full ${inp}`}
-                                placeholder="0x..."
-                              />
+                            <div>
+                              <label className={`block text-[10px] font-medium ${p.textMuted} mb-1`}>tx.receiver</label>
+                              <input type="text" value={demoReceiver} onChange={(e) => setDemoReceiver(e.target.value)} className={`w-full ${inp}`} placeholder="0x..." />
+                            </div>
+                            <div>
+                              <label className={`block text-[10px] font-medium ${p.textMuted} mb-1`}>tx.chainId</label>
+                              <input type="text" value={String(chainId)} disabled className={`w-full ${inp} opacity-60`} />
+                            </div>
+
+                            {/* oracle namespace */}
+                            <div>
+                              <label className={`block text-[10px] font-medium ${p.textMuted} mb-1`}>oracle.txValueUsd</label>
+                              <input type="text" value={demoTxValueUsd} onChange={(e) => setDemoTxValueUsd(e.target.value)} className={`w-full ${inp}`} placeholder="4500000000" />
+                            </div>
+                            <div>
+                              <label className={`block text-[10px] font-medium ${p.textMuted} mb-1`}>oracle.kycLevel</label>
+                              <input type="text" value={demoKycLevel} onChange={(e) => setDemoKycLevel(e.target.value)} className={`w-full ${inp}`} placeholder="1" />
+                            </div>
+                            <div>
+                              <label className={`block text-[10px] font-medium ${p.textMuted} mb-1`}>oracle.country</label>
+                              <input type="text" value={demoCountry} onChange={(e) => setDemoCountry(e.target.value)} className={`w-full ${inp}`} placeholder="id" />
+                            </div>
+
+                            {/* risk + state namespace */}
+                            <div>
+                              <label className={`block text-[10px] font-medium ${p.textMuted} mb-1`}>risk.score</label>
+                              <input type="text" value={demoRiskScore} onChange={(e) => setDemoRiskScore(e.target.value)} className={`w-full ${inp}`} placeholder="30" />
+                            </div>
+                            <div>
+                              <label className={`block text-[10px] font-medium ${p.textMuted} mb-1`}>state.dailyLimit</label>
+                              <input type="text" value={demoDailyLimit} onChange={(e) => setDemoDailyLimit(e.target.value)} className={`w-full ${inp}`} placeholder="50000000" />
+                            </div>
+                            <div>
+                              <label className={`block text-[10px] font-medium ${p.textMuted} mb-1`}>state.spentToday</label>
+                              <input type="text" value={demoSpentToday} onChange={(e) => setDemoSpentToday(e.target.value)} className={`w-full ${inp}`} placeholder="0" />
                             </div>
                           </div>
 
@@ -1379,10 +1434,27 @@ export default function RulesConsolePage() {
                               setDemoResult('running')
                               setTimeout(() => {
                                 const amt = parseFloat(demoAmount) || 0
-                                const ctx = {
-                                  amount: amt,
-                                  timestamp: Math.floor(Date.now() / 1000),
-                                  receiver: demoReceiver,
+                                const txValueUsd = parseFloat(demoTxValueUsd) || 0
+                                const kycLevel = demoKycLevel
+                                const country = demoCountry
+                                const riskScore = parseFloat(demoRiskScore) || 0
+                                const dailyLimit = parseFloat(demoDailyLimit) || 0
+                                const spentToday = parseFloat(demoSpentToday) || 0
+                                const nowSec = Math.floor(Date.now() / 1000)
+                                const ctx: DemoCtx = {
+                                  tx: {
+                                    sender: address ?? '0x0000000000000000000000000000000000000000',
+                                    receiver: demoReceiver,
+                                    asset: '0x0000000000000000000000000000000000000000',
+                                    amount: amt,
+                                    chainId,
+                                  },
+                                  payId: { id: 'demo@pay.id', owner: demoReceiver },
+                                  intent: { type: 'DIRECT', expiresAt: nowSec + 300, nonce: 'demo-nonce', issuer: 'demo' },
+                                  env: { timestamp: nowSec },
+                                  oracle: { txValueUsd, kycLevel, country },
+                                  risk: { score: riskScore },
+                                  state: { spentToday, dailyLimit, period: new Date().toISOString().slice(0, 10) },
                                 }
                                 let rejected = false
                                 let rejectReason = ''

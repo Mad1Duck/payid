@@ -346,6 +346,116 @@ export const payWithPayIDAbi = [
         "internalType": "bytes32[]",
         "name": "attestationUIDs",
         "type": "bytes32[]"
+      },
+      {
+        "internalType": "address",
+        "name": "tokenPriceOracle",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minUsdValue",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "tokenDecimals",
+        "type": "uint8"
+      }
+    ],
+    "name": "payERC20WithOracleGuard",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "version",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "payId",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "payer",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "receiver",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "asset",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "contextHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "ruleSetHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "ruleAuthority",
+            "type": "address"
+          },
+          {
+            "internalType": "uint64",
+            "name": "issuedAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "expiresAt",
+            "type": "uint64"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "nonce",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bool",
+            "name": "requiresAttestation",
+            "type": "bool"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "attestationUIDsHash",
+            "type": "bytes32"
+          }
+        ],
+        "internalType": "struct PayIDVerifier.Decision",
+        "name": "d",
+        "type": "tuple"
+      },
+      {
+        "internalType": "bytes",
+        "name": "sig",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bytes32[]",
+        "name": "attestationUIDs",
+        "type": "bytes32[]"
       }
     ],
     "name": "payNative",

@@ -21,7 +21,12 @@ Currently supported via Chainlink Price Feeds:
 - **UNI/USD** - Uniswap
 - **ETH/USD** - Native Ethereum
 
-## How It Works
+## How It Works (Hybrid Approach)
+
+PAY.ID uses a **hybrid** off-chain + on-chain model for USD value rules:
+
+1. **Off-chain**: SDK fetches Chainlink price → computes `oracle.txValueUsd` → WASM rule engine evaluates
+2. **On-chain**: `PayWithPayID.payERC20WithOracleGuard` spot-checks the same math as defense-in-depth
 
 ### 1. Token Price Oracles
 
@@ -39,7 +44,7 @@ const usdtPriceOracle = TOKEN_PRICE_ORACLES[chainId]['USDT/USD'];
 The USD equivalent is calculated using the formula:
 
 ```
-amountUsd = (tokenAmount × tokenPrice) / (10^tokenDecimals × 10^8)
+txValueUsd = (tokenAmount × tokenPrice) / (10^tokenDecimals × 10^8)
 ```
 
 Where:
@@ -47,19 +52,23 @@ Where:
 - `tokenPrice`: Token price in USD (8 decimals, Chainlink standard)
 - `tokenDecimals`: Token decimals (e.g., 6 for USDC, 18 for ETH)
 
-### 3. Context Extension
-
-The transaction context now includes an optional `amountUsd` field:
+SDK helper:
 
 ```typescript
-interface TxContext {
-  sender: string;
-  receiver: string;
-  asset: string;
-  amount: string;
-  amountUsd?: string; // USD equivalent (calculated from token price oracle)
-  chainId: number;
-  memo?: string;
+import { computeTxValueUsd } from 'payid';
+
+const txValueUsd = computeTxValueUsd(amount, decimals, priceInUsd); // 8-decimal USD
+```
+
+### 3. Context Extension
+
+The computed value is injected into the `oracle` namespace before rule evaluation:
+
+```typescript
+interface OracleContext {
+  txValueUsd: string;        // USD equivalent (8 decimals)
+  txValueUsdFormatted: string; // e.g. "$45.00"
+  tokenPrice: string;          // Raw oracle price
 }
 ```
 
@@ -72,9 +81,9 @@ Create a rule that limits payments to $35 USD regardless of token:
 ```json
 {
   "if": {
-    "field": "tx.amountUsd",
+    "field": "oracle.txValueUsd",
     "op": "<=",
-    "value": 35000000
+    "value": 3500000000
   },
   "message": "Payment exceeds $35 USD limit"
 }
@@ -93,94 +102,101 @@ Require minimum $10 USD payment:
 ```json
 {
   "if": {
-    "field": "tx.amountUsd",
+    "field": "oracle.txValueUsd",
     "op": ">=",
-    "value": 10000000
+    "value": 1000000000
   },
   "message": "Payment below $10 USD minimum"
 }
 ```
 
-### Example 3: Cross-Token Daily Limit
+### Example 3: Cross-Token $45 Minimum
 
-Track daily spending in USD across all tokens:
+The classic "send any token but min $45" rule:
 
 ```json
 {
-  "logic": "AND",
-  "conditions": [
-    {
-      "field": "tx.amountUsd",
-      "op": "<=",
-      "value": "$state.dailyUsdLimit"
-    },
-    {
-      "field": "state.dailyUsdLimit",
-      "op": "exists"
-    }
-  ],
-  "message": "Payment exceeds daily USD limit of {state.dailyUsdLimit|div:1000000} USD"
+  "id": "cross_token_min_45",
+  "if": {
+    "field": "oracle.txValueUsd",
+    "op": ">=",
+    "value": 4500000000
+  },
+  "message": "Min $45 required. You sent ${oracle.txValueUsd|div:100000000} USD-worth of {tx.asset}"
 }
 ```
 
-## SDK Integration
+## Frontend Integration (usePayIDFlow)
 
-### Issuing Token Price Context
-
-Use the `issueTokenPriceContext` function to calculate USD equivalent with attestation:
+`usePayIDFlow` automatically injects `oracle.txValueUsd` when you pass `tokenPriceOracle` and `tokenDecimals`:
 
 ```typescript
-import { issuer } from 'payid';
+import { usePayIDFlow } from 'payid-react';
 
-const { amountUsd, proof } = await issuer.issueTokenPriceContext(
-  wallet,
-  tokenPrice,      // Token price in USD (8 decimals)
-  tokenAmount,     // Raw token amount
-  tokenDecimals    // Token decimals (6 for USDC, 18 for ETH)
-);
+const { execute } = usePayIDFlow();
 
-// Use in your context
-const context = {
-  tx: {
-    sender: '0x...',
-    receiver: '0x...',
-    asset: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
-    amount: '35000000', // 35 USDC (6 decimals)
-    amountUsd: amountUsd, // USD equivalent
-    chainId: 1
-  }
-};
+await execute({
+  receiver: '0xReceiver...',
+  asset: '0xUSDC...',
+  amount: 50_000_000n, // 50 USDC (6 decimals)
+  payId: 'pay.id/alice',
+  tokenDecimals: 6,
+  tokenPriceOracle: '0x...', // Chainlink USDC/USD feed
+  minUsdValue: 45_00000000n, // optional: on-chain guard
+});
 ```
 
-### Frontend Example
+### With Token Config Helper
 
 ```typescript
-import { useReadContract } from 'wagmi';
-import { TOKEN_PRICE_ORACLES, CHAINLINK_ORACLE_ABI } from '@/constants/oracles';
+import { getTokenConfig, getTokenPriceOracle } from '@/constants/tokens';
 
-function MultiTokenPayment() {
-  const chainId = useChainId();
-  
-  // Get USDC price from Chainlink
-  const { data: usdcPrice } = useReadContract({
-    address: TOKEN_PRICE_ORACLES[chainId]?.['USDC/USD'],
-    abi: CHAINLINK_ORACLE_ABI,
-    functionName: 'latestRoundData',
-  });
-  
-  const priceInUsd = usdcPrice?.[1]; // 8 decimals
-  
-  // Calculate USD equivalent
-  const tokenAmount = 35_000_000n; // 35 USDC (6 decimals)
-  const amountUsd = (tokenAmount * priceInUsd) / (10n ** 14n); // 6 + 8 decimals
-  
-  return (
-    <div>
-      <p>Token Amount: 35 USDC</p>
-      <p>USD Equivalent: ${(Number(amountUsd) / 1e8).toFixed(2)}</p>
-    </div>
-  );
-}
+const token = getTokenConfig(chainId, 'USDC');
+const oracle = getTokenPriceOracle(chainId, 'USDC');
+
+await execute({
+  receiver: '0x...',
+  asset: token.address,
+  amount: parseUnits('50', token.decimals),
+  payId: 'pay.id/alice',
+  tokenDecimals: token.decimals,
+  tokenPriceOracle: oracle,
+  minUsdValue: 45_00000000n,
+});
+```
+
+## On-Chain Oracle Guard
+
+For defense-in-depth, `PayWithPayID` includes `payERC20WithOracleGuard`:
+
+```solidity
+function payERC20WithOracleGuard(
+  Decision calldata d,
+  bytes calldata sig,
+  bytes32[] calldata attestationUIDs,
+  address tokenPriceOracle,
+  uint256 minUsdValue,   // 8 decimals
+  uint8 tokenDecimals
+) external;
+```
+
+If `tokenPriceOracle` is set and `minUsdValue > 0`, the contract:
+1. Queries Chainlink `latestRoundData`
+2. Computes `usdValue = (amount * price) / 10^(decimals + 8)`
+3. Reverts with `BELOW_USD_MINIMUM` if under threshold
+
+## SDK Helpers
+
+```typescript
+import { computeTxValueUsd, formatUsdValue } from 'payid';
+
+const usdValue = computeTxValueUsd(
+  1_000_000n,    // 1 USDC
+  6,             // USDC decimals
+  100_000_000n   // $1.00 price (8 decimals)
+); // → 100_000_000n ($1.00)
+
+formatUsdValue(usdValue); // "$1.00"
 ```
 
 ## Oracle Addresses
@@ -216,16 +232,10 @@ export const TOKEN_PRICE_ORACLES: Record<number, Record<string, `0x${string}`>> 
 };
 ```
 
-## Future Extensions
-
-Planned support for:
-- More major ERC20 tokens (AAVE, COMP, etc.)
-- Non-EVM tokens (via cross-chain oracles)
-- Custom token price feeds
-
 ## Notes
 
-- USD values are stored with 8 decimals (Chainlink standard)
-- Token prices are fetched from Chainlink oracles on-chain
+- USD values are stored with **8 decimals** (Chainlink standard)
+- Rule engine uses `oracle.txValueUsd` (not `tx.amountUsd`)
+- `usePayIDFlow` auto-injects oracle context when `tokenPriceOracle` is provided
+- On-chain guard (`payERC20WithOracleGuard`) requires contract redeployment
 - Fallback to mock addresses on localhost for development
-- Oracle data includes staleness checks (max 1 hour old)
