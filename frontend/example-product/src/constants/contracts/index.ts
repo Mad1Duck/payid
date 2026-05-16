@@ -9,6 +9,7 @@ export { aIAgentRuleManagerAbi } from './AIAgentRuleManager';
 export { attestationVerifierAbi } from './AttestationVerifier';
 export { combinedRuleStorageAbi } from './CombinedRuleStorage';
 export { mockEASAbi } from './MockEAS';
+export { mockOracleAbi } from './MockOracle';
 export { payIDVerifierAbi } from './PayIDVerifier';
 export { payWithPayIDAbi } from './PayWithPayID';
 export { ruleAuthorityAbi } from './RuleAuthority';

@@ -87,14 +87,17 @@ const AI_AGENT_RULE_MANAGER_ABI = [
     name: 'setAgentCombinedRule',
     type: 'function',
     stateMutability: 'nonpayable',
-    inputs: [{ name: 'ruleSetHash', type: 'bytes32' }],
+    inputs: [
+      { name: 'agentWallet', type: 'address' },
+      { name: 'ruleSetHash', type: 'bytes32' }
+    ],
     outputs: [],
   },
   {
     name: 'unsetAgentCombinedRule',
     type: 'function',
     stateMutability: 'nonpayable',
-    inputs: [],
+    inputs: [{ name: 'agentWallet', type: 'address' }],
     outputs: [],
   },
   {
@@ -328,19 +331,19 @@ export function useAgentSubscriptionPrice(): QueryResult<bigint> {
 /* ── Hook: useSetAgentCombinedRule ────────────────────────────────── */
 
 export function useSetAgentCombinedRule(): TxHookResult & {
-  setAgentCombinedRule: (ruleSetHash: Hash) => void;
+  setAgentCombinedRule: (agentWallet: Address, ruleSetHash: Hash) => void;
 } {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const setAgentCombinedRule = (ruleSetHash: Hash) => {
+  const setAgentCombinedRule = (agentWallet: Address, ruleSetHash: Hash) => {
     if (!contracts.aiAgentRuleManager) return;
     writeContract({
       address: contracts.aiAgentRuleManager,
       abi: AI_AGENT_RULE_MANAGER_ABI,
       functionName: 'setAgentCombinedRule',
-      args: [ruleSetHash],
+      args: [agentWallet, ruleSetHash],
     });
   };
 
@@ -349,17 +352,18 @@ export function useSetAgentCombinedRule(): TxHookResult & {
 
 /* ── Hook: useUnsetAgentCombinedRule ──────────────────────────────── */
 
-export function useUnsetAgentCombinedRule(): TxHookResult & { unset: () => void; } {
+export function useUnsetAgentCombinedRule(): TxHookResult & { unset: (agentWallet: Address) => void; } {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const unset = () => {
+  const unset = (agentWallet: Address) => {
     if (!contracts.aiAgentRuleManager) return;
     writeContract({
       address: contracts.aiAgentRuleManager,
       abi: AI_AGENT_RULE_MANAGER_ABI,
       functionName: 'unsetAgentCombinedRule',
+      args: [agentWallet],
     });
   };
 

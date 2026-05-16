@@ -8,6 +8,7 @@ export const chainMeta = {
   4202: { name: "liskSepolia", label: "Lisk Sepolia", isTestnet: true as const },
   8453: { name: "base", label: "Base", isTestnet: false as const },
   10143: { name: "monadTestnet", label: "Monad Testnet", isTestnet: true as const },
+  16601: { name: "zeroGTestnet", label: "0G Newton Testnet", isTestnet: true as const },
   31337: { name: "hardhat", label: "Localhost (Hardhat)", isLocal: true as const },
   80002: { name: "polygonAmoy", label: "Polygon Amoy", isTestnet: true as const },
   84532: { name: "baseSepolia", label: "Base Sepolia", isTestnet: true as const },

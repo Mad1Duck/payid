@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Deploy PayID Frontends
         run: |
-          cd ~/apps/payId-sdk
+          cd ~/apps/payid-sdk
           git pull
           docker compose -f frontend/docker-compose.yml down
           docker compose -f frontend/docker-compose.yml up -d --build

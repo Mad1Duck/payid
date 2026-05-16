@@ -1140,7 +1140,7 @@ export default function AgentPayIDPage() {
               </div>
               {selectedAgent?.owner?.toLowerCase() === address?.toLowerCase() && activeRuleHash && activeRuleHash !== zeroHash && (
                 <button
-                  onClick={() => setAgentCombinedRule(activeRuleHash)}
+                  onClick={() => setAgentCombinedRule(selectedAgent.agentWallet, activeRuleHash)}
                   disabled={isSettingRule}
                   className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#00D084]/30 text-[#00D084] text-xs font-medium hover:bg-[#00D084]/10 transition-colors disabled:opacity-50"
                 >
@@ -1179,7 +1179,7 @@ export default function AgentPayIDPage() {
             {/* One-click: Use My Active Combined Rule */}
             {myActiveRule?.hash && myActiveRule.hash !== zeroHash && (
               <button
-                onClick={() => { if (myActiveRule.hash) setAgentCombinedRule(myActiveRule.hash) }}
+                onClick={() => { if (myActiveRule.hash && selectedAgent) setAgentCombinedRule(selectedAgent.agentWallet, myActiveRule.hash) }}
                 disabled={isSettingRule}
                 className="w-full mb-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#00D084]/10 border border-[#00D084]/30 text-[#00D084] text-xs font-medium hover:bg-[#00D084]/20 transition-colors disabled:opacity-50"
               >
@@ -1245,8 +1245,8 @@ export default function AgentPayIDPage() {
                 )}
                 <button
                   onClick={() => {
-                    if (selectedExistingRule?.hash) {
-                      setAgentCombinedRule(selectedExistingRule.hash)
+                    if (selectedExistingRule?.hash && selectedAgent) {
+                      setAgentCombinedRule(selectedAgent.agentWallet, selectedExistingRule.hash)
                     }
                   }}
                   disabled={isSettingRule || !selectedExistingRule}
@@ -1414,7 +1414,7 @@ export default function AgentPayIDPage() {
                       const selectedHash = (onChainRules.length > 0 && onChainRules[ruleIdx])
                         ? onChainRules[ruleIdx].hash
                         : PRESET_RULES[ruleIdx]?.hash
-                      if (selectedHash) setAgentCombinedRule(selectedHash as `0x${string}`)
+                      if (selectedHash && selectedAgent) setAgentCombinedRule(selectedAgent.agentWallet, selectedHash as `0x${string}`)
                     }}
                     disabled={isSettingRule || onChainPhase !== 'idle'}
                     className="w-full mt-2 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#8B5CF6] text-white text-xs font-medium hover:bg-[#8B5CF6]/90 transition-colors disabled:opacity-50"

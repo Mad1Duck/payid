@@ -420,6 +420,11 @@ export const aIAgentRuleManagerAbi = [
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "agentWallet",
+        "type": "address"
+      },
+      {
         "internalType": "bytes32",
         "name": "ruleSetHash",
         "type": "bytes32"
@@ -531,7 +536,13 @@ export const aIAgentRuleManagerAbi = [
     "type": "function"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "agentWallet",
+        "type": "address"
+      }
+    ],
     "name": "unsetAgentCombinedRule",
     "outputs": [],
     "stateMutability": "nonpayable",
