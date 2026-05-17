@@ -11,6 +11,8 @@
 
 # Build outputs
 **/dist/
+!packages/*/dist/
+!frontend/*/dist/
 **/*.tsbuildinfo
 
 # Docker files (not needed inside container)
