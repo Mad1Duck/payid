@@ -197,6 +197,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 PAY.ID
               </span>
             </Link>
+            <div className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#00D084]/8 border border-[#00D084]/15 text-[10px] font-bold text-[#00D084]">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00D084] opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#00D084]" />
+              </span>
+              WASM Sandbox Shield: ACTIVE
+            </div>
             <a
               href="https://docs.payid.nawasena-labs.com/"
               target="_blank"

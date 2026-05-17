@@ -320,6 +320,11 @@ export default function Dashboard() {
                   : isTrusted
                     ? '#00D084'
                     : '#64748B',
+                boxShadow: isBlacklisted
+                  ? '0 0 15px rgba(239, 68, 68, 0.4)'
+                  : isTrusted
+                    ? '0 0 15px rgba(0, 208, 132, 0.4)'
+                    : '0 0 15px rgba(100, 116, 139, 0.15)',
               }}
               animate={repLoading ? { opacity: [0.5, 1, 0.5] } : {}}
               transition={{ duration: 1.5, repeat: Infinity }}
@@ -372,9 +377,17 @@ export default function Dashboard() {
                 { label: 'Drafts', value: cacheStats.drafts, icon: FileText },
                 { label: 'History', value: cacheStats.history, icon: History },
               ].map((item) => (
-                <div
+                <motion.div
                   key={item.label}
-                  className={`p-2.5 rounded-xl text-center ${p.dark ? 'bg-white/3' : 'bg-black/3'}`}
+                  whileHover={{
+                    scale: 1.05,
+                    borderColor: 'rgba(0, 208, 132, 0.3)',
+                    backgroundColor: p.dark ? 'rgba(0, 208, 132, 0.04)' : 'rgba(0, 208, 132, 0.03)',
+                  }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  className={`p-2.5 rounded-xl text-center border border-transparent transition-colors duration-200 cursor-default ${
+                    p.dark ? 'bg-white/3' : 'bg-black/3'
+                  }`}
                 >
                   <item.icon className="w-3.5 h-3.5 mx-auto mb-1 text-[#64748B]" />
                   <div className={`text-sm font-bold font-mono ${p.textMain}`}>
@@ -383,7 +396,7 @@ export default function Dashboard() {
                   <div className={`text-[10px] ${p.textMuted}`}>
                     {item.label}
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
