@@ -21,7 +21,7 @@ export type CheckoutStatus =
 
 export function useCheckout() {
   const p = useV4Palette();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chain } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
 
@@ -141,8 +141,9 @@ export function useCheckout() {
     try {
       const parsed = parseUnits(val, 18);
       const maxAllowed = BigInt(policy.maxAmount);
+      const nativeSymbol = chain?.nativeCurrency?.symbol ?? 'ETH';
       if (parsed > maxAllowed) {
-        setAmountError(`Amount exceeds the policy maximum limit (${formatUnits(maxAllowed, 18)} ETH).`);
+        setAmountError(`Amount exceeds the policy maximum limit (${formatUnits(maxAllowed, 18)} ${nativeSymbol}).`);
       }
     } catch {
       setAmountError('Invalid number format.');

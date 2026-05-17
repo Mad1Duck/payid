@@ -59,7 +59,8 @@ function useCountdown(expiresAt: number | null) {
 }
 
 export default function CheckoutPage() {
-  const { isConnected } = useAccount();
+  const { isConnected, chain } = useAccount();
+  const nativeSymbol = chain?.nativeCurrency?.symbol ?? 'ETH';
   const {
     p,
     status,
@@ -154,7 +155,13 @@ export default function CheckoutPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Glow Header */}
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-2 relative">
+        {timeLeft && timeLeft !== 'Expired' && (
+          <div className="absolute right-0 top-0 hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00D084]/10 border border-[#00D084]/20 text-[#00D084] text-xs font-mono font-bold animate-pulse">
+            <Clock className="w-3.5 h-3.5" />
+            <span>{timeLeft} left</span>
+          </div>
+        )}
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00D084]/10 text-[#00D084] text-xs font-bold uppercase tracking-wider">
           <Globe className="w-3.5 h-3.5" /> PAY.ID On-Chain Checkout
         </span>
@@ -216,7 +223,7 @@ export default function CheckoutPage() {
                     <span className={`text-[10px] font-bold uppercase ${p.textMuted}`}>Max Limit</span>
                   </div>
                   <div className={`text-sm font-bold ${p.textMain}`}>
-                    {policy ? `${formatUnits(BigInt(policy.maxAmount), 18)} ETH` : 'Unlimited'}
+                    {policy ? `${formatUnits(BigInt(policy.maxAmount), 18)} ${nativeSymbol}` : 'Unlimited'}
                   </div>
                 </div>
 
@@ -279,7 +286,7 @@ export default function CheckoutPage() {
 
               {/* Amount Input */}
               <div className="space-y-1.5">
-                <label className={`block text-xs font-medium ${p.textMuted}`}>Payment Amount (ETH)</label>
+                <label className={`block text-xs font-medium ${p.textMuted}`}>Payment Amount ({nativeSymbol})</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -288,7 +295,7 @@ export default function CheckoutPage() {
                     onChange={(e) => handleAmountChange(e.target.value)}
                     className={`w-full pl-3 pr-12 py-3 rounded-xl border ${p.inputBg} ${p.inputBorder} ${p.textMain} focus:outline-none focus:border-[#00D084]/50 text-base font-semibold transition-colors`}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#64748B]">ETH</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#64748B]">{nativeSymbol}</span>
                 </div>
                 {amountError && (
                   <p className="text-red-400 text-xs mt-1">{amountError}</p>

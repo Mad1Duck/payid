@@ -1,6 +1,6 @@
 {
   "name": "payid",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",
@@ -47,6 +47,12 @@
       "import": "./dist/core/server/index.js",
       "require": "./dist/core/server/index.js",
       "default": "./dist/core/server/index.js"
+    },
+    "./decision-proof": {
+      "types": "./dist/decision-proof/index.d.ts",
+      "import": "./dist/decision-proof/index.js",
+      "require": "./dist/decision-proof/index.js",
+      "default": "./dist/decision-proof/index.js"
     }
   },
   "files": [

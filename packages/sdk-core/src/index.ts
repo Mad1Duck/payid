@@ -40,6 +40,7 @@ export { verifyProof } from "./cli/verifyProof";
 export type { VerifyProofOptions, VerifyProofResult } from "./cli/verifyProof";
 
 // ─── Decision proof ───────────────────────────────────────────────────────────
+export { generateDecisionProof } from "./decision-proof/generate";
 export type { DecisionProof, DecisionPayload } from "./decision-proof/types";
 
 // ─── Domain types ─────────────────────────────────────────────────────────────

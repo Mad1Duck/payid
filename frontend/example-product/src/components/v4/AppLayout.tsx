@@ -18,6 +18,7 @@ import {
   Shield,
   Wallet,
   Zap,
+  Gift,
 } from 'lucide-react'
 import {
   useAccount,
@@ -109,6 +110,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     { to: '/v4/app/dashboard', icon: LayoutDashboard, label: 'Overview' },
     { to: '/v4/app/send', icon: Send, label: 'Send' },
     { to: '/v4/app/receive', icon: QrCode, label: 'Receive' },
+    { to: '/v4/app/gift', icon: Gift, label: 'Gift Card' },
     { to: '/v4/app/history', icon: History, label: 'History' },
     { to: '/v4/app/rules', icon: Shield, label: 'Policy' },
     { to: '/v4/app/rules/builder', icon: Pencil, label: 'Rule Builder' },

@@ -32,6 +32,7 @@ import { RulesPage as V4RulesPage, RulesConsolePage as V4RulesConsolePage } from
 import { SendFlow as V4SendFlow } from '@/features/send'
 import { SettingsPage as V4SettingsPage } from '@/features/settings'
 import { CheckoutPage as V4CheckoutPage } from '@/features/checkout'
+import { GiftCardPage as V4GiftCardPage, GiftClaimPage as V4GiftClaimPage } from '@/features/gift'
 
 import { addresses } from './constants/contracts'
 import { Toaster } from './components/ui/sonner'
@@ -169,6 +170,18 @@ const v4ReceiveRoute = createRoute({
   component: V4ReceivePage,
 })
 
+const v4GiftRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'gift',
+  component: V4GiftCardPage,
+})
+
+const v4GiftClaimRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'gift/claim',
+  component: V4GiftClaimPage,
+})
+
 const v4HistoryRoute = createRoute({
   getParentRoute: () => v4AppRoute,
   path: 'history',
@@ -250,6 +263,8 @@ const routeTree = rootRoute.addChildren([
       v4DashboardRoute,
       v4SendRoute,
       v4ReceiveRoute,
+      v4GiftRoute,
+      v4GiftClaimRoute,
       v4HistoryRoute,
       v4RulesRoute,
       v4RulesBuilderRoute,

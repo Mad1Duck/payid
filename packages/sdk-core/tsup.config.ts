@@ -9,6 +9,7 @@ export default defineConfig({
     "src/context/index.ts",
     "src/core/client/index.ts",
     "src/core/server/index.ts",
+    "src/decision-proof/index.ts",
   ],
   format: ["esm"],
   dts: true,

@@ -32,6 +32,9 @@ export function useReceivePage() {
 
   // Hydrate persisted session on mount or wallet change
   useEffect(() => {
+    // Clear hook's internal state on address switch/disconnect to avoid leakage
+    reset();
+
     if (!address) {
       setLocalPayload(null);
       setLocalQrDataUrl(null);
@@ -49,12 +52,22 @@ export function useReceivePage() {
           setLocalExpiresAt(parsed.expiresAt);
         } else {
           localStorage.removeItem(`payid_rx_${address}`);
+          setLocalPayload(null);
+          setLocalQrDataUrl(null);
+          setLocalExpiresAt(null);
         }
       } catch (e) {
         console.error('Failed to parse persisted session:', e);
+        setLocalPayload(null);
+        setLocalQrDataUrl(null);
+        setLocalExpiresAt(null);
       }
+    } else {
+      setLocalPayload(null);
+      setLocalQrDataUrl(null);
+      setLocalExpiresAt(null);
     }
-  }, [address]);
+  }, [address, reset]);
 
   // Save generated session to localStorage
   useEffect(() => {

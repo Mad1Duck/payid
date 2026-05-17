@@ -57,7 +57,8 @@ function useCountdown(expiresAt: number | null, onExpire?: () => void) {
 }
 
 export default function ReceivePage() {
-  const { isConnected } = useAccount()
+  const { isConnected, chain } = useAccount()
+  const nativeSymbol = chain?.nativeCurrency?.symbol ?? 'ETH'
   const {
     p,
     address,
@@ -134,7 +135,7 @@ export default function ReceivePage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={`text-[11px] ${p.textMuted} block mb-1`}>
-                Max Amount (ETH)
+                Max Amount ({nativeSymbol})
               </label>
               <input
                 type="number"
