@@ -1,20 +1,77 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { usePayIDQR } from 'payid-react';
 import { useV4Palette } from '@/components/v4/theme';
-import { shortAddr, useClipboard } from '@/features/shared';
+import { shortAddr } from '@/features/shared';
+import { toast } from 'sonner';
 
 export function useReceivePage() {
   const p = useV4Palette();
   const { address, isConnected } = useAccount();
-  const payId = isConnected && address ? `${shortAddr(address)}@pay.id` : 'connect@pay.id';
+  const payId = isConnected && address ? `${address}@pay.id` : 'connect@pay.id';
+  const displayPayId = isConnected && address ? `${shortAddr(address)}@pay.id` : 'connect@pay.id';
   const walletAddress = address ?? '';
-  const { copied, copy } = useClipboard();
+  
+  // Independent copied states
+  const [copiedPayId, setCopiedPayId] = useState(false);
+  const [copiedPayload, setCopiedPayload] = useState(false);
+  const [copiedWallet, setCopiedWallet] = useState(false);
+  
   const [showAddress, setShowAddress] = useState(false);
 
   const { status, payload, qrDataUrl, error: qrError, generate, reset } = usePayIDQR();
+  
+  // Persisted state
+  const [localPayload, setLocalPayload] = useState<string | null>(null);
+  const [localQrDataUrl, setLocalQrDataUrl] = useState<string | null>(null);
+  const [localExpiresAt, setLocalExpiresAt] = useState<number | null>(null);
+
   const [maxAmount, setMaxAmount] = useState('');
   const [expiryMin, setExpiryMin] = useState('60');
+
+  // Hydrate persisted session on mount or wallet change
+  useEffect(() => {
+    if (!address) {
+      setLocalPayload(null);
+      setLocalQrDataUrl(null);
+      setLocalExpiresAt(null);
+      return;
+    }
+    const stored = localStorage.getItem(`payid_rx_${address}`);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const now = Math.floor(Date.now() / 1000);
+        if (parsed.expiresAt > now) {
+          setLocalPayload(parsed.payload);
+          setLocalQrDataUrl(parsed.qrDataUrl);
+          setLocalExpiresAt(parsed.expiresAt);
+        } else {
+          localStorage.removeItem(`payid_rx_${address}`);
+        }
+      } catch (e) {
+        console.error('Failed to parse persisted session:', e);
+      }
+    }
+  }, [address]);
+
+  // Save generated session to localStorage
+  useEffect(() => {
+    if (payload && qrDataUrl && address) {
+      const durationSec = (Number(expiryMin) || 60) * 60;
+      const expiresAt = Math.floor(Date.now() / 1000) + durationSec;
+      
+      setLocalPayload(payload);
+      setLocalQrDataUrl(qrDataUrl);
+      setLocalExpiresAt(expiresAt);
+
+      localStorage.setItem(`payid_rx_${address}`, JSON.stringify({
+        payload,
+        qrDataUrl,
+        expiresAt,
+      }));
+    }
+  }, [payload, qrDataUrl, address, expiryMin]);
 
   const handleGenerate = () => {
     if (!address) return;
@@ -27,32 +84,100 @@ export function useReceivePage() {
       allowedAsset: '0x0000000000000000000000000000000000000000',
       maxAmount: parsedMax,
       expiresAt,
+      ruleSetHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
     });
   };
 
   const handleSaveQR = () => {
-    if (qrDataUrl) {
+    const dataUrl = localQrDataUrl || qrDataUrl;
+    if (dataUrl) {
       const a = document.createElement('a');
-      a.href = qrDataUrl;
+      a.href = dataUrl;
       a.download = 'payid-qr.png';
       a.click();
-    } else if (payload) {
+      toast.success('QR Code saved successfully!');
+    } else if (localPayload) {
       window.open(
-        `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(payload)}&format=png`,
+        `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(localPayload)}&format=png`,
         '_blank'
       );
+      toast.info('QR Code payload opened in new tab.');
     }
   };
 
-  const handleCopy = useCallback((text: string) => {
-    copy(text);
-  }, [copy]);
+  const handleCopyPayId = useCallback(() => {
+    const activePayload = localPayload || payload;
+    const shareUrl = activePayload
+      ? `${window.location.origin}/v4/app/checkout?payload=${encodeURIComponent(activePayload)}`
+      : `${window.location.origin}/v4/app/send?to=${encodeURIComponent(payId)}`;
+
+    navigator.clipboard.writeText(shareUrl);
+    setCopiedPayId(true);
+    toast.success(activePayload ? 'Checkout link copied to clipboard!' : 'Payment link copied to clipboard!');
+    setTimeout(() => setCopiedPayId(false), 2000);
+  }, [payId, payload, localPayload]);
+
+  const handleCopyPayload = useCallback(() => {
+    const activePayload = localPayload || payload;
+    if (!activePayload) return;
+    navigator.clipboard.writeText(activePayload);
+    setCopiedPayload(true);
+    toast.success('EIP-712 QR Payload copied to clipboard!');
+    setTimeout(() => setCopiedPayload(false), 2000);
+  }, [payload, localPayload]);
+
+  const handleCopyWallet = useCallback(() => {
+    if (!walletAddress) return;
+    navigator.clipboard.writeText(walletAddress);
+    setCopiedWallet(true);
+    toast.success('Wallet Address copied to clipboard!');
+    setTimeout(() => setCopiedWallet(false), 2000);
+  }, [walletAddress]);
+
+  const handleShare = useCallback(() => {
+    const activePayload = localPayload || payload;
+    const shareUrl = activePayload
+      ? `${window.location.origin}/v4/app/checkout?payload=${encodeURIComponent(activePayload)}`
+      : `${window.location.origin}/v4/app/send?to=${encodeURIComponent(payId)}`;
+    const shareText = activePayload
+      ? `Open this link to pay me via PAY.ID Invoice: ${displayPayId}`
+      : `Scan or click this link to pay me via PAY.ID: ${displayPayId}`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: 'PAY.ID Payment Link',
+        text: shareText,
+        url: shareUrl,
+      })
+        .then(() => toast.success('Shared successfully!'))
+        .catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      toast.success(activePayload ? 'Direct checkout link copied to clipboard!' : 'Direct payment link copied to clipboard!');
+    }
+  }, [payId, displayPayId, payload, localPayload]);
+
+  const handleReset = useCallback(() => {
+    reset();
+    setLocalPayload(null);
+    setLocalQrDataUrl(null);
+    setLocalExpiresAt(null);
+    if (address) {
+      localStorage.removeItem(`payid_rx_${address}`);
+    }
+  }, [reset, address]);
 
   return {
-    p, address, isConnected, payId, walletAddress,
-    copied, showAddress, setShowAddress,
-    status, payload, qrDataUrl, qrError, generate, reset,
+    p, address, isConnected, payId, displayPayId, walletAddress,
+    copiedPayId, copiedPayload, copiedWallet,
+    showAddress, setShowAddress,
+    status, 
+    payload: localPayload || payload, 
+    qrDataUrl: localQrDataUrl || qrDataUrl, 
+    qrError,
+    expiresAt: localExpiresAt,
     maxAmount, setMaxAmount, expiryMin, setExpiryMin,
-    handleGenerate, handleSaveQR, handleCopy,
+    handleGenerate, handleSaveQR, handleShare, reset: handleReset,
+    handleCopyPayId, handleCopyPayload, handleCopyWallet,
   };
 }

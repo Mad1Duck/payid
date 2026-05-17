@@ -178,6 +178,7 @@ async function tryLoadQRCode(): Promise<{
 }
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
+const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000' as const;
 
 export function usePayIDQR(): PayIDQRResult {
   const { address: receiver } = useAccount();
@@ -233,7 +234,7 @@ export function usePayIDQR(): PayIDQRResult {
       const signer = await provider.getSigner();
 
       const ruleAuthority = params.ruleAuthorityAddress ?? contracts.combinedRuleStorage;
-      const ruleSetHash = params.ruleSetHash ?? ZERO_ADDRESS;
+      const ruleSetHash = params.ruleSetHash ?? ZERO_BYTES32;
 
       const { createSessionPolicyV2 } = await import('payid/sessionPolicy');
 

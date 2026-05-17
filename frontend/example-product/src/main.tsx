@@ -31,6 +31,7 @@ import { ReceivePage as V4ReceivePage } from '@/features/receive'
 import { RulesPage as V4RulesPage, RulesConsolePage as V4RulesConsolePage } from '@/features/rules'
 import { SendFlow as V4SendFlow } from '@/features/send'
 import { SettingsPage as V4SettingsPage } from '@/features/settings'
+import { CheckoutPage as V4CheckoutPage } from '@/features/checkout'
 
 import { addresses } from './constants/contracts'
 import { Toaster } from './components/ui/sonner'
@@ -234,6 +235,12 @@ const v4AIAgentMarketplaceRoute = createRoute({
   component: V4UserAIAgentsPage,
 })
 
+const v4CheckoutRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'checkout',
+  component: V4CheckoutPage,
+})
+
 const routeTree = rootRoute.addChildren([
   rootIndexRoute,
   v4Route.addChildren([
@@ -254,6 +261,7 @@ const routeTree = rootRoute.addChildren([
       v4AdminRoute,
       v4AgentRoute,
       v4AIAgentMarketplaceRoute,
+      v4CheckoutRoute,
     ]),
   ]),
 ])

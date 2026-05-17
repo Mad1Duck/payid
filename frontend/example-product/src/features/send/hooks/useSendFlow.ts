@@ -60,6 +60,28 @@ export function useSendFlow() {
     setStep('amount');
   }, [payId]);
 
+  // Pre-fill PayID / address from query parameters (e.g. ?to=0x... or ?to=alice@pay.id)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const toParam = params.get('to');
+      if (toParam) {
+        setPayId(toParam);
+        setResolvedName(toParam);
+        if (isAddress(toParam)) {
+          setTargetAddress(toParam as Address);
+        } else if (toParam.includes('@')) {
+          // If it is a payId identifier, let's check if the part before @ is an address
+          const prefix = toParam.split('@')[0];
+          if (isAddress(prefix)) {
+            setTargetAddress(prefix as Address);
+          }
+        }
+        setStep('amount');
+      }
+    }
+  }, []);
+
   const handleRunPolicy = useCallback(() => {
     const receiver = payId.trim();
     if (!isAddress(receiver)) {
