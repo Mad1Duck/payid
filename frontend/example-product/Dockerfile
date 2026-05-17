@@ -2,17 +2,14 @@ FROM oven/bun:1.3.13 AS builder
 WORKDIR /app
 COPY . .
 RUN rm -f bun.lock
-RUN bun install
 WORKDIR /app/frontend/example-product
-RUN bun add payid@1.0.5 payid-react@1.0.7
-RUN ls node_modules/payid-react/dist/ || echo "NO DIST"
+RUN bun install
 RUN bunx vite build
 
 FROM oven/bun:1.3.13 AS runner
+WORKDIR /app
+RUN bun add serve
 WORKDIR /app/frontend/example-product
 COPY --from=builder /app/frontend/example-product/dist ./dist
-COPY --from=builder /app/frontend/example-product/package.json ./package.json
-COPY --from=builder /app/frontend/example-product/vite.config.ts ./vite.config.ts
-COPY --from=builder /app/frontend/example-product/node_modules ./node_modules
 EXPOSE 3000
-CMD ["bunx", "vite", "preview", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["bunx", "serve", "-s", "dist", "-l", "3000"]
