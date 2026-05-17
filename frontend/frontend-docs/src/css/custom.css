@@ -156,3 +156,11 @@
     text-wrap: balance;
   }
 }
+
+/* Hide external link icon on App navbar item */
+.navbar__link[href*="app.payid"] svg,
+.navbar__link[href*="nawasena-labs"] svg,
+a[href*="app.payid"] svg,
+a[href*="nawasena-labs"] svg {
+  display: none !important;
+}

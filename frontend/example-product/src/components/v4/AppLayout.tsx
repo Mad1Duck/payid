@@ -184,7 +184,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       >
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2.5">
+            <Link
+              to="/"
+              className="flex items-center gap-2.5 hover:opacity-90 transition-opacity cursor-pointer"
+            >
               <div className="w-7 h-7 rounded-lg bg-[#00D084]/10 flex items-center justify-center">
                 <div className="w-2.5 h-2.5 rounded-sm bg-[#00D084]" />
               </div>
@@ -193,7 +196,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               >
                 PAY.ID
               </span>
-            </div>
+            </Link>
             <a
               href="https://docs.payid.nawasena-labs.com/"
               target="_blank"
