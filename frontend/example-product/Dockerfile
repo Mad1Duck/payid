@@ -11,7 +11,7 @@ COPY . .
 # ── 2. Install deps (workspace) ──
 RUN bun install
 
-# ── 3. Build workspace packages (with fixed tsup configs - externalized buffer/crypto/fs/process) ──
+# ── 3. Build workspace packages (Buffer removed from source, no externalizations) ──
 RUN cd packages/sdk-core && bun run build
 RUN cd packages/payid-react && bun run build
 

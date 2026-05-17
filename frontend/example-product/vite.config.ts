@@ -37,7 +37,7 @@ export default defineConfig({
 
   optimizeDeps: {
     include: ['payid-react', 'payid', 'payid > ethers'],
-    exclude: ['payid-rule-engine'],
+    exclude: ['payid-rule-engine', 'vite-plugin-node-polyfills/shims/buffer', 'vite-plugin-node-polyfills/shims/process', 'vite-plugin-node-polyfills/shims/global'],
   },
 
   // http/https/zlib remain external (never called in browser).
@@ -45,7 +45,7 @@ export default defineConfig({
   // so 0G Storage SDK can run in the browser.
   build: {
     rollupOptions: {
-      external: ['http', 'https', 'zlib'],
+      external: ['http', 'https', 'zlib', 'vite-plugin-node-polyfills/shims/buffer', 'vite-plugin-node-polyfills/shims/process', 'vite-plugin-node-polyfills/shims/global'],
     },
   },
 

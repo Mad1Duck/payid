@@ -24,14 +24,15 @@ export class ZGStorage {
     const wallet = new ethers.Wallet(this.config.privateKey, provider);
 
     const content = typeof data === 'string' ? data : JSON.stringify(data);
-    const buffer = Buffer.from(content);
+    const encoder = new TextEncoder();
+    const uint8Array = encoder.encode(content);
 
     const file = {
       name: 'metadata.json',
-      size: buffer.length,
+      size: uint8Array.length,
       type: 'application/json',
       lastModified: Date.now(),
-      arrayBuffer: async () => buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+      arrayBuffer: async () => uint8Array.buffer.slice(uint8Array.byteOffset, uint8Array.byteOffset + uint8Array.byteLength)
     };
 
     const blob = new Blob(file as any);

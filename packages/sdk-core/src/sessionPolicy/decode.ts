@@ -93,12 +93,33 @@ export function decodeSessionPolicyV2(
   return policy;
 }
 
+// Browser-compatible base64url helpers
+function base64urlEncode(str: string): string {
+  const encoder = new TextEncoder();
+  const uint8Array = encoder.encode(str);
+  let binary = '';
+  uint8Array.forEach(byte => binary += String.fromCharCode(byte));
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function base64urlDecode(str: string): string {
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) str += '=';
+  const binary = atob(str);
+  const uint8Array = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    uint8Array[i] = binary.charCodeAt(i);
+  }
+  const decoder = new TextDecoder();
+  return decoder.decode(uint8Array);
+}
+
 /**
  * Encode SessionPolicyV2 ke QR / URL string.
  * Format: "payid-v2:<base64url(JSON)>"
  */
 export function encodeSessionPolicyV2QR(policy: SessionPolicyV2): string {
-  const encoded = Buffer.from(JSON.stringify(policy), "utf-8").toString("base64url");
+  const encoded = base64urlEncode(JSON.stringify(policy));
   return `payid-v2:${encoded}`;
 }
 
@@ -117,7 +138,7 @@ export function decodeSessionPolicyV2QR(qrString: string): SessionPolicyV2 {
 
   let policy: SessionPolicyV2;
   try {
-    const json = Buffer.from(qrString.slice(PREFIX.length), "base64url").toString("utf-8");
+    const json = base64urlDecode(qrString.slice(PREFIX.length));
     policy = JSON.parse(json);
   } catch {
     throw new Error("QR_CORRUPT: tidak bisa di-decode");
