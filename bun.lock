@@ -40,8 +40,8 @@
         "framer-motion": "^12.23.26",
         "lucide-react": "^0.544.0",
         "next-themes": "^0.4.6",
-        "payid": "^1.0.2",
-        "payid-react": "^1.0.3",
+        "payid": "^1.0.3",
+        "payid-react": "^1.0.5",
         "react": "18",
         "react-dom": "18",
         "sonner": "^2.0.7",
@@ -131,10 +131,10 @@
     },
     "packages/payid-react": {
       "name": "payid-react",
-      "version": "1.0.3",
+      "version": "1.0.5",
       "dependencies": {
         "ethers": "^6.16.0",
-        "payid": "^1.0.2",
+        "payid": "^1.0.3",
       },
       "devDependencies": {
         "@types/qrcode": "^1.5.6",
@@ -159,7 +159,7 @@
     },
     "packages/sdk-core": {
       "name": "payid",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "dependencies": {
         "@0gfoundation/0g-storage-ts-sdk": "^1.2.9",
         "ethers": "^6.16.0",
@@ -5591,7 +5591,7 @@
 
     "the-product/lucide-react": ["lucide-react@0.544.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-t5tS44bqd825zAW45UQxpG2CvcC4urOwn2TrwSH8u+MjeE+1NnWl6QqeQ/6NdjMqdOygyiT9p3Ev0p1NJykxjw=="],
 
-    "the-product/payid-react": ["payid-react@1.0.3", "", { "dependencies": { "ethers": "^6.16.0", "payid": "^1.0.2" }, "optionalDependencies": { "qrcode": "^1.5.4" }, "peerDependencies": { "@wagmi/core": ">=3", "react": ">=18", "viem": ">=2", "wagmi": ">=3" } }, "sha512-CNoBgldU+4fSzAJ+MEagHGU67Z/KcB8iTGNapkehbn9pLmTL4/ZjE9oxltzzSOL5n0tNMpANDwkjQE90hg3eUQ=="],
+    "the-product/payid-react": ["payid-react@1.0.5", "", { "dependencies": { "ethers": "^6.16.0", "payid": "^1.0.3" }, "optionalDependencies": { "qrcode": "^1.5.4" }, "peerDependencies": { "@wagmi/core": ">=3", "react": ">=18", "viem": ">=2", "wagmi": ">=3" } }, "sha512-3jR5gzhMr29BwhvwqgF+/KjtFZ032h4eLA4aQ0rsFWxUDPdVeH73PQuKTWU5jAw8IMlVDIOZxcgh5cXWatF/jg=="],
 
     "through2/readable-stream": ["readable-stream@2.3.8", "", { "dependencies": { "core-util-is": "~1.0.0", "inherits": "~2.0.3", "isarray": "~1.0.0", "process-nextick-args": "~2.0.0", "safe-buffer": "~5.1.1", "string_decoder": "~1.1.1", "util-deprecate": "~1.0.1" } }, "sha512-8p0AUk4XODgIewSi0l8Epjs+EVnWiK7NoDIEGU0HhE7+ZyY8D1IMY7odu5lRrFXGg71L15KG8QrPmum45RTtdA=="],
 
