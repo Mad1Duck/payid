@@ -1,0 +1,39 @@
+# Exclude workspace packages so bun resolves from npm
+packages/
+
+# Node modules
+**/node_modules/
+
+# Build outputs
+/dist/
+frontend/example-product/dist/
+frontend/frontend-docs/build/
+**/*.tsbuildinfo
+
+# Git
+.git/
+.gitignore
+
+# Docker
+**/Dockerfile
+**/docker-compose.yml
+**/.dockerignore
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Testing
+coverage/
+**/*.test.ts
+**/*.test.tsx
+
+# Docs
+docs/
+examples/
+frontend/frontend-docs/
