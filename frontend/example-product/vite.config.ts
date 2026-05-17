@@ -3,9 +3,11 @@ import viteReact from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
+// import { devtools } from '@tanstack/devtools-vite';
 
 export default defineConfig({
   plugins: [
+    // devtools(),
     viteReact(),
     tailwindcss(),
     nodePolyfills({
@@ -15,7 +17,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: [
-      { find: 'vite-plugin-node-polyfills/shims/buffer', replacement: 'buffer' },
+      // { find: 'vite-plugin-node-polyfills/shims/buffer', replacement: 'buffer' },
       { find: 'vite-plugin-node-polyfills/shims/process', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: 'node:fs/promises', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: 'node:fs', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
