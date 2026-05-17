@@ -336,24 +336,59 @@ export default function RulesPage() {
 
   const card = `rounded-2xl border ${p.cardBorder}`
   const inp = `px-3 py-2 rounded-xl text-sm border ${p.inputBorder} ${p.inputBg} ${p.textMain} focus:outline-none focus:border-[#00D084]/40`
-  const stepBadge = (n: number, label: string, done: boolean) => (
-    <div
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
-        done
-          ? 'border-[#00D084]/40 bg-[#00D084]/10 text-[#00D084]'
-          : `${p.cardBorder} ${p.textMuted}`
-      }`}
-    >
-      <span
-        className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-          done ? 'bg-[#00D084] text-[#0B0F1A]' : 'bg-current/20'
+  const [activeStep, setActiveStep] = useState(1);
+
+  useEffect(() => {
+    if (deployStage === 'done') {
+      setActiveStep(2);
+    }
+  }, [deployStage]);
+
+  const stepBadge = (n: number, label: string, done: boolean) => {
+    const isActive = activeStep === n;
+    return (
+      <button
+        key={n}
+        onClick={() => setActiveStep(n)}
+        className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-semibold transition-all cursor-pointer ${
+          isActive
+            ? 'border-[#00D084]/50 bg-[#00D084]/15 text-[#00D084] shadow-[0_0_12px_rgba(0,208,132,0.1)]'
+            : done
+            ? 'border-[#00D084]/30 bg-[#00D084]/5 text-[#00D084]/80 hover:bg-[#00D084]/10'
+            : `${p.cardBorder} ${p.textMuted} hover:bg-black/5 dark:hover:bg-white/5`
         }`}
       >
-        {n}
-      </span>
-      {label}
-    </div>
-  )
+        <span
+          className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold transition-all ${
+            isActive || done
+              ? 'bg-[#00D084] text-[#0B0F1A]'
+              : 'bg-current/20'
+          }`}
+        >
+          {n}
+        </span>
+        {label}
+      </button>
+    );
+  };
+
+  if (!isConnected) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-md mx-auto text-center py-20"
+      >
+        <Wallet className="w-10 h-10 text-[#64748B] mx-auto mb-4" />
+        <h2 className={`text-lg font-semibold ${p.textMain} mb-1`}>
+          Connect Wallet
+        </h2>
+        <p className={`text-xs ${p.textMuted}`}>
+          Link your wallet to send payments with policy enforcement.
+        </p>
+      </motion.div>
+    )
+  }
 
   return (
     <motion.div
@@ -438,7 +473,7 @@ export default function RulesPage() {
           ].map((s) => (
             <div
               key={s.label}
-              className={`${card} p-4`}
+              className={`${card} p-3 sm:p-4`}
               style={{ backgroundColor: p.cardBg }}
             >
               <p
@@ -454,6 +489,7 @@ export default function RulesPage() {
       )}
 
       {/* ───── STEP 1: BUILD RULE ───── */}
+      {activeStep === 1 && (
       <div
         className={`${card} overflow-hidden`}
         style={{ backgroundColor: p.cardBg }}
@@ -502,7 +538,7 @@ export default function RulesPage() {
                 : 'Start from a template'}
             </p>
             <div
-              className={`grid gap-3 ${simpleMode ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-3'}`}
+              className="grid grid-cols-2 md:grid-cols-3 gap-3"
             >
               {TEMPLATES.map((t) => {
                 const isSelected = selectedTemplate === t.label
@@ -538,12 +574,12 @@ export default function RulesPage() {
                         {t.icon}
                       </span>
                       <span
-                        className={`font-semibold ${simpleMode ? 'text-sm' : 'text-[11px]'} ${isUnavailable ? 'pr-12' : ''}`}
+                        className={`font-semibold truncate w-full block ${simpleMode ? 'text-sm' : 'text-[11px]'} ${isUnavailable ? 'pr-12' : ''}`}
                       >
                         {t.label}
                       </span>
                       {simpleMode && (
-                        <span className="text-[11px] opacity-70 leading-relaxed">
+                        <span className="text-[11px] opacity-70 leading-relaxed truncate w-full block">
                           {t.desc}
                         </span>
                       )}
@@ -583,7 +619,7 @@ export default function RulesPage() {
           {!simpleMode && (
             <>
               {/* ID + Comment */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label
                     className={`text-[11px] font-medium ${p.textMuted} block mb-1`}
@@ -972,7 +1008,7 @@ export default function RulesPage() {
                       >
                         Allowed days
                       </label>
-                      <div className="flex gap-2">
+                      <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 sm:gap-2">
                         {dayLabels.map(({ d, label }) => (
                           <button
                             key={d}
@@ -985,7 +1021,7 @@ export default function RulesPage() {
                                 value: `[${[...cur].sort((a, b) => a - b).join(',')}]`,
                               })
                             }}
-                            className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                            className={`py-2 rounded-lg text-xs font-semibold border transition-colors ${
                               days.has(d)
                                 ? 'bg-[#00D084]/10 border-[#00D084]/30 text-[#00D084]'
                                 : `${p.cardBorder} ${p.textMuted}`
@@ -1351,7 +1387,7 @@ export default function RulesPage() {
                   </span>
                 </div>
                 <div className="p-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label
                         className={`text-[11px] font-medium ${p.textMuted} block mb-1`}
@@ -1409,7 +1445,7 @@ export default function RulesPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <button
                           onClick={() => fileRef.current?.click()}
                           className={`flex-1 py-5 rounded-xl border border-dashed ${p.cardBorder} ${p.textMuted} text-xs font-medium hover:border-[#00D084]/40 hover:text-[#00D084] transition-colors flex flex-col items-center justify-center gap-1.5`}
@@ -1498,6 +1534,7 @@ export default function RulesPage() {
                   setDeployMsg('')
                   setSelectedTemplate(null)
                   setConds([makeBlank()])
+                  setActiveStep(1)
                 }}
                 className={`w-full py-2 rounded-xl text-xs ${p.textMuted} border ${p.cardBorder} hover:bg-black/5 transition-colors`}
               >
@@ -1507,8 +1544,10 @@ export default function RulesPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ───── MY RULES ───── */}
+      {activeStep === 2 && (
       <div
         className={`${card} overflow-hidden`}
         style={{ backgroundColor: p.cardBg }}
@@ -1550,7 +1589,7 @@ export default function RulesPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {myRules.map((rule) => (
                 <RuleCardItem key={rule.ruleId.toString()} rule={rule} p={p} contracts={contracts} refetchMyRules={refetchMyRules} refetchSub={refetchSub} />
               ))}
@@ -1558,8 +1597,10 @@ export default function RulesPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* ───── STEP 3: ACTIVATE ───── */}
+      {activeStep === 3 && (
       <div
         className={`${card} overflow-hidden`}
         style={{ backgroundColor: p.cardBg }}
@@ -1627,7 +1668,7 @@ export default function RulesPage() {
           ) : (
             <div className="space-y-3">
               {myRules.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {myRules.map((r) => {
                     const isActivated = r.tokenId > 0n
                     const isSelected = activateId === r.ruleId.toString()
@@ -1819,6 +1860,7 @@ export default function RulesPage() {
           )}
         </div>
       </div>
+      )}
     </motion.div>
   )
 }
