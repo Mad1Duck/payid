@@ -13,6 +13,7 @@ import { Bot, Cpu, Crown, Loader2, Plug, User } from 'lucide-react'
 import { useV4Palette } from '@/components/v4/theme'
 import { shortAddr } from '@/features/shared/utils/address'
 import { AgentCard, SubscribeModal, RegisterAgentForm } from '@/features/agent'
+import { toast } from 'sonner'
 
 export default function UserAIAgentsPage() {
   const p = useV4Palette()
@@ -49,7 +50,7 @@ export default function UserAIAgentsPage() {
             <div className="flex flex-col gap-2 items-end">
               {!isAgent && (
                 <button
-                  onClick={() => setShowRegister(true)}
+                  onClick={() => toast.info('Register Agent is coming soon!', { description: 'General agent registration will be enabled in the next update.' })}
                   className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D084] text-white text-xs font-semibold hover:bg-[#00D084]/90 transition-colors"
                 >
                   <Bot className="w-3.5 h-3.5" />

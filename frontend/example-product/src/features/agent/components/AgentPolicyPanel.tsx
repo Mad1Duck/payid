@@ -94,9 +94,23 @@ function OwnerPolicyView({ s }: { s: AgentPayIDState }) {
       )}
 
       {s.agentRuleInfo?.active && (
-        <div className="flex items-center gap-2 text-[10px] text-[#00D084]">
-          <CheckCircle2 className="w-3 h-3" />
-          <span>Current policy: {shortHash(s.agentRuleInfo.ruleSetHash)}</span>
+        <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t" style={{ borderColor: p.dark ? '#ffffff10' : '#00000010' }}>
+          <div className="flex items-center gap-2 text-[10px] text-[#00D084]">
+            <CheckCircle2 className="w-3 h-3" />
+            <span>Current policy: {shortHash(s.agentRuleInfo.ruleSetHash)}</span>
+          </div>
+          <button
+            onClick={() => {
+              if (s.selectedAgent) s.setAgentCombinedRule(s.selectedAgent.agentWallet, zeroHash as `0x${string}`)
+            }}
+            disabled={s.isSettingRule}
+            className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all flex items-center gap-1.5 ${
+              p.dark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-500 hover:bg-red-100'
+            } disabled:opacity-50`}
+          >
+            {s.isSettingRule ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+            Unlink Policy
+          </button>
         </div>
       )}
     </>
@@ -301,6 +315,11 @@ function NewRuleView({ s }: { s: AgentPayIDState }) {
 
 function ReadOnlyPolicyView({ s }: { s: AgentPayIDState }) {
   const p = useV4Palette()
+  
+  const activeRule = s.agentRuleInfo?.active && s.rulesLoaded 
+    ? s.onChainRules.find(r => r.hash.toLowerCase() === s.agentRuleInfo!.ruleSetHash.toLowerCase())
+    : null;
+
   return (
     <>
       <div className="flex items-center justify-between mb-2">
@@ -323,6 +342,21 @@ function ReadOnlyPolicyView({ s }: { s: AgentPayIDState }) {
           <p className={`text-[11px] ${p.textMuted}`}>
             This AI agent enforces an on-chain policy. All payment requests will be evaluated against this rule set before approval.
           </p>
+          
+          {activeRule?.ruleJson && (
+            <div className="mt-3">
+              <p className={`text-[10px] font-semibold uppercase tracking-wide ${p.textMuted} mb-1.5`}>Rule Logic Metadata</p>
+              <div 
+                className="p-2.5 rounded-xl overflow-x-auto" 
+                style={{ background: p.dark ? '#00000040' : '#f8fafc', border: `1px solid ${p.dark ? '#ffffff10' : '#00000010'}` }}
+              >
+                <pre className="text-[9px] font-mono leading-relaxed" style={{ color: p.textMain }}>
+                  {JSON.stringify(activeRule.ruleJson, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+          
         </div>
       ) : (
         <div className="space-y-2">

@@ -13,7 +13,7 @@ export function Bubble({ msg }: { msg: ChatMsg }) {
         </div>
       )}
       <div
-        className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
+        className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
           isUser
             ? 'bg-[#8B5CF6] text-white rounded-br-sm'
             : `${p.dark ? 'bg-white/8' : 'bg-black/6'} ${p.textMain} rounded-bl-sm`

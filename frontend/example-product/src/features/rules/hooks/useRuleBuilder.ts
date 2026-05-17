@@ -110,7 +110,7 @@ export function useRuleBuilder(): RuleBuilderState {
 
   const storagePreference = useMemo(() => {
     const saved = localStorage.getItem('payid-storage-preference');
-    return saved === '0g' || saved === 'ipfs' ? saved : '0g';
+    return saved === '0g' || saved === 'ipfs' ? saved : 'ipfs';
   }, []);
 
   const { data: myRules = [], refetch: refetchMyRules } = useMyRules();
@@ -285,8 +285,8 @@ export function useRuleBuilder(): RuleBuilderState {
         const [_imgRes, jsonRes] = await Promise.all([upload0G(imgBytes), upload0G(jsonBytes)]);
         tokenUri = jsonRes.url;
       } else {
-        const { url: imgUrl } = await pinImage(imgToPin, `rule-${ruleName}.png`);
-        imageURL = imgUrl;
+        const { cid: imgCid, url: imgUrl } = await pinImage(imgToPin, `rule-${ruleName}.png`);
+        imageURL = `ipfs://${imgCid}`;
 
         const metadata = {
           name: nftName || `PAY.ID Rule — ${ruleName}`,
@@ -302,8 +302,8 @@ export function useRuleBuilder(): RuleBuilderState {
           ruleHash,
           standard: 'payid.rule.v1',
         };
-        const { url: jsonUrl } = await pinJson(metadata, `rule-${ruleName}.json`);
-        tokenUri = jsonUrl;
+        const { cid: jsonCid, url: jsonUrl } = await pinJson(metadata, `rule-${ruleName}.json`);
+        tokenUri = `ipfs://${jsonCid}`;
       }
 
       setDeployStage('creating');

@@ -669,6 +669,19 @@ export const ruleItemERC721Abi = [
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "ruleId",
+        "type": "uint256"
+      }
+    ],
+    "name": "deactivateRule",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "ruleHash",
         "type": "bytes32"

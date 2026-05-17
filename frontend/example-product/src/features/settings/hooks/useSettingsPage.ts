@@ -19,7 +19,7 @@ export function useSettingsPage() {
   /* ─── Storage Preference (Persistent) ─── */
   const [storageProvider, setStorageProvider] = useState<'0g' | 'ipfs'>(() => {
     const saved = localStorage.getItem('payid-storage-preference');
-    return (saved === '0g' || saved === 'ipfs') ? saved : '0g';
+    return (saved === '0g' || saved === 'ipfs') ? saved : 'ipfs';
   });
 
   useEffect(() => {

@@ -957,35 +957,51 @@ export default function RulesConsolePage() {
                     My Rules ({myRules.length})
                   </p>
                   <div className="space-y-2">
-                    {myRules.map((r) => (
-                      <div
-                        key={r.ruleId.toString()}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${p.cardBorder}`}
-                        style={{ backgroundColor: p.cardBg }}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={`text-[13px] font-medium ${p.textMain}`}
-                          >
-                            Rule #{r.ruleId.toString()}
-                          </p>
-                          <p
-                            className={`text-[10px] font-mono ${p.textMuted} truncate`}
-                          >
-                            {r.ruleHash.slice(0, 28)}…
-                          </p>
-                        </div>
-                        <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${
-                            r.tokenId > 0n
-                              ? 'bg-[#00D084]/10 text-[#00D084]'
-                              : 'bg-amber-500/10 text-amber-400'
-                          }`}
+                    {myRules.map((r) => {
+                      const d = ruleDetails[`rule_${r.ruleId.toString()}`];
+                      let cond: string | null = null;
+                      if (d) {
+                        const simple = d.if as { field?: string; op?: string; value?: unknown } | undefined;
+                        cond = simple?.field
+                          ? `${simple.field} ${simple.op} ${JSON.stringify(simple.value)}`
+                          : d.conditions && d.conditions.length > 0
+                            ? d.conditions
+                                .map((c: MiniCond) => `${c.field} ${c.op} ${JSON.stringify(c.value)}`)
+                                .join(` ${d.logic || 'AND'} `)
+                            : d.message || null;
+                      }
+
+                      return (
+                        <div
+                          key={r.ruleId.toString()}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${p.cardBorder}`}
+                          style={{ backgroundColor: p.cardBg }}
                         >
-                          {r.tokenId > 0n ? '✓ Active' : 'Not activated'}
-                        </span>
-                      </div>
-                    ))}
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-[13px] font-medium ${p.textMain}`}>
+                              Rule #{r.ruleId.toString()}
+                            </p>
+                            <p className={`text-[10px] font-mono ${p.textMuted} truncate`}>
+                              {r.ruleHash.slice(0, 28)}…
+                            </p>
+                            {cond && (
+                              <p className="text-[10px] font-mono text-[#8B5CF6] truncate mt-0.5">
+                                {cond}
+                              </p>
+                            )}
+                          </div>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${
+                              r.tokenId > 0n
+                                ? 'bg-[#00D084]/10 text-[#00D084]'
+                                : 'bg-amber-500/10 text-amber-400'
+                            }`}
+                          >
+                            {r.tokenId > 0n ? '✓ Active' : 'Not activated'}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

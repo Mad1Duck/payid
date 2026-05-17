@@ -5,6 +5,7 @@ import AgentSelector from '../components/AgentSelector'
 import AgentPolicyPanel from '../components/AgentPolicyPanel'
 import AgentChatPanel from '../components/AgentChatPanel'
 import AgentDecisionPanel from '../components/AgentDecisionPanel'
+import AgentChatFlow from '../components/AgentChatFlow'
 import { useAgentPayID } from '../hooks/useAgentPayID'
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ export default function AgentPayIDPage() {
       <AgentSelector s={s} />
       <AgentPolicyPanel s={s} />
       <AgentChatPanel s={s} />
+      <AgentChatFlow s={s} />
       <AgentDecisionPanel s={s} />
     </div>
   )

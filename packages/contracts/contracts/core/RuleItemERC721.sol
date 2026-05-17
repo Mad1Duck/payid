@@ -425,6 +425,43 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         }
 
         rules[ruleId].tokenId = 0;
+        if (logicalRuleCount[owner] > 0) {
+            logicalRuleCount[owner]--;
+        }
+    }
+
+    /* ===================================================== */
+    /* =============== MANUAL DEACTIVATION ================= */
+    /* ===================================================== */
+
+    function deactivateRule(uint256 ruleId) external whenNotPaused {
+        RuleDefinition storage r = rules[ruleId];
+
+        require(r.creator == msg.sender, "NOT_CREATOR");
+        require(!r.deprecated, "RULE_DEPRECATED");
+        require(r.tokenId != 0, "NOT_ACTIVE");
+
+        uint256 tokenId = r.tokenId;
+        require(_ownerOf(tokenId) == msg.sender, "NOT_OWNER");
+
+        uint256 root = rootRuleOf[ruleId];
+
+        _pendingBurn[tokenId] = true;
+        _burn(tokenId);
+        delete tokenRule[tokenId];
+
+        if (activeRuleOf[root] == ruleId) {
+            activeRuleOf[root] = 0;
+        }
+
+        r.tokenId = 0;
+        r.deprecated = true;
+        
+        if (logicalRuleCount[msg.sender] > 0) {
+            logicalRuleCount[msg.sender]--;
+        }
+
+        emit RuleDeprecated(ruleId);
     }
 
     /**

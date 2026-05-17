@@ -1,4 +1,6 @@
+import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion'
+import { useWriteContract } from 'wagmi'
 import {
   Check,
   ChevronDown,
@@ -24,6 +26,185 @@ import { TEMPLATES } from '@/features/rules/data/templates'
 import { useRuleBuilder } from '../hooks/useRuleBuilder'
 import { getPinataJWT, RuleImage } from '@/features/rules';
 import { toast } from 'sonner';
+import { uriToHttp } from '../utils/storage';
+import { ruleItemERC721Abi } from '@/constants/contracts/RuleItemERC721';
+
+function RuleCardItem({ rule, p, contracts }: any) {
+  const [meta, setMeta] = useState<any>(null);
+  const [loadingMeta, setLoadingMeta] = useState(true);
+  const { writeContract } = useWriteContract();
+
+  useEffect(() => {
+    if (!rule.uri) return;
+    let cancel = false;
+    const fetchMeta = async () => {
+      try {
+        const url = uriToHttp(rule.uri);
+        if (url.startsWith('data:')) {
+          const base64 = url.split(',')[1];
+          if (base64) {
+            const json = JSON.parse(decodeURIComponent(escape(atob(base64))));
+            if (!cancel) setMeta(json);
+          }
+          return;
+        }
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('image/')) return;
+        const json = await res.json();
+        if (!cancel) {
+          setMeta(json);
+          setLoadingMeta(false);
+        }
+      } catch (e) {
+        if (!cancel) setLoadingMeta(false);
+      }
+    };
+    fetchMeta();
+    return () => { cancel = true; };
+  }, [rule.uri]);
+
+  return (
+    <div
+      className={`rounded-xl border ${p.cardBorder} overflow-hidden`}
+      style={{
+        backgroundColor: p.dark
+          ? 'rgba(255,255,255,0.03)'
+          : 'rgba(0,0,0,0.02)',
+      }}
+    >
+      <div className="aspect-video bg-[#00D084]/5 relative overflow-hidden group">
+        <RuleImage
+          uri={rule.uri}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
+        <div className="absolute bottom-0 left-0 right-0 p-3">
+          <p className="text-white font-semibold text-sm truncate">
+            {meta?.name || `Rule #${rule.ruleId.toString()}`}
+          </p>
+          {meta?.description && (
+            <p className="text-white/80 text-[10px] truncate mt-0.5">
+              {meta.description}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="p-3">
+        <div className="flex items-center justify-between mb-1">
+          <p className={`text-xs font-semibold ${p.textMain}`}>
+            {meta?.name || `Rule #${rule.ruleId.toString()}`}
+          </p>
+          <span
+            className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+              rule.tokenId > 0n
+                ? 'bg-[#00D084]/15 text-[#00D084]'
+                : 'bg-[#64748B]/15 text-[#64748B]'
+            }`}
+          >
+            {rule.tokenId > 0n ? '✓ Activated' : 'Pending'}
+          </span>
+        </div>
+        
+        {loadingMeta && !meta ? (
+          <p className="text-[10px] text-amber-500 animate-pulse mb-2">Loading IPFS metadata...</p>
+        ) : meta?.attributes && (
+          <div className="flex flex-wrap gap-1 mt-2 mb-2">
+            {meta.attributes.map((attr: any, idx: number) => (
+              <span key={idx} className="px-1.5 py-0.5 rounded bg-black/5 text-[9px] font-medium text-gray-500">
+                {attr.trait_type}: {attr.value}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-1">
+          <p
+            className={`text-[10px] font-mono ${p.textMuted} truncate`}
+          >
+            {rule.ruleHash.slice(0, 18)}…
+          </p>
+          <button
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(rule.ruleHash)
+                toast.success('Hash copied!')
+              } catch {
+                toast.error('Failed to copy')
+              }
+            }}
+            className="shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
+            title="Copy hash"
+          >
+            <Copy className="w-3 h-3 text-[#94a3b8]" />
+          </button>
+        </div>
+        
+        <div className="flex items-center justify-between mt-2">
+          {rule.tokenId > 0n && (
+            <button
+              onClick={async () => {
+                try {
+                  const eth = (window as any).ethereum
+                  if (!eth) {
+                    toast.error('No wallet found')
+                    return
+                  }
+                  await eth.request({
+                    method: 'wallet_watchAsset',
+                    params: {
+                      type: 'ERC721',
+                      options: {
+                        address: contracts.ruleItemERC721,
+                        tokenId: rule.tokenId.toString(),
+                      },
+                    },
+                  })
+                  toast.success('NFT added to wallet!')
+                } catch (e) {
+                  const err = e as Error;
+                  if (err.message?.includes('not owned')) {
+                    toast.error('Failed to add NFT', {
+                      description: 'MetaMask has not detected this NFT yet. Please wait a few seconds for the RPC to sync, then try again.',
+                    })
+                  } else {
+                    toast.error('Failed to add NFT', {
+                      description: err.message,
+                    })
+                  }
+                }
+              }}
+              className="flex items-center gap-1 text-[10px] font-medium text-[#0EA5E9] hover:underline"
+            >
+              <Wallet className="w-3 h-3" /> Add to Wallet
+            </button>
+          )}
+
+          {rule.tokenId > 0n && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm("Deactivate this rule to free up a slot? This action cannot be undone.")) {
+                  writeContract({
+                    address: contracts.ruleItemERC721,
+                    abi: ruleItemERC721Abi,
+                    functionName: 'deactivateRule',
+                    args: [rule.ruleId],
+                  });
+                }
+              }}
+              className="flex items-center gap-1 text-[10px] font-medium text-red-500 hover:text-red-400 hover:underline"
+              title="Deactivate to free slot"
+            >
+              <Trash2 className="w-3 h-3" /> Deactivate
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ── Context field suggestions (datalist) ── */
 const CTX_FIELDS = [
@@ -120,6 +301,8 @@ export default function RulesPage() {
     ruleJson, ruleHash, summary,
     updateCond, handleFileChange, handleDeploy,
   } = useRuleBuilder()
+
+  const { writeContract } = useWriteContract()
 
   const card = `rounded-2xl border ${p.cardBorder}`
   const inp = `px-3 py-2 rounded-xl text-sm border ${p.inputBorder} ${p.inputBg} ${p.textMain} focus:outline-none focus:border-[#00D084]/40`
@@ -1286,74 +1469,7 @@ export default function RulesPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {myRules.map((rule) => (
-                <div
-                  key={rule.ruleId.toString()}
-                  className={`rounded-xl border ${p.cardBorder} overflow-hidden`}
-                  style={{
-                    backgroundColor: p.dark
-                      ? 'rgba(255,255,255,0.03)'
-                      : 'rgba(0,0,0,0.02)',
-                  }}
-                >
-                  <div className="aspect-video bg-[#00D084]/5 relative overflow-hidden">
-                    <RuleImage
-                      uri={rule.uri}
-                      className="w-8 h-8 text-[#00D084]/30"
-                    />
-                  </div>
-                  <div className="p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className={`text-xs font-semibold ${p.textMain}`}>
-                        Rule #{rule.ruleId.toString()}
-                      </p>
-                      <span
-                        className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                          rule.tokenId > 0n
-                            ? 'bg-[#00D084]/15 text-[#00D084]'
-                            : 'bg-[#64748B]/15 text-[#64748B]'
-                        }`}
-                      >
-                        {rule.tokenId > 0n ? '✓ Activated' : 'Pending'}
-                      </span>
-                    </div>
-                    <p
-                      className={`text-[10px] font-mono ${p.textMuted} truncate`}
-                    >
-                      {rule.ruleHash.slice(0, 18)}…
-                    </p>
-                    {rule.tokenId > 0n && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            const eth = (window as any).ethereum
-                            if (!eth) {
-                              toast.error('No wallet found')
-                              return
-                            }
-                            await eth.request({
-                              method: 'wallet_watchAsset',
-                              params: {
-                                type: 'ERC721',
-                                options: {
-                                  address: contracts.ruleItemERC721,
-                                  tokenId: rule.tokenId.toString(),
-                                },
-                              },
-                            })
-                            toast.success('NFT added to wallet!')
-                          } catch (e) {
-                            toast.error('Failed to add NFT', {
-                              description: (e as Error).message,
-                            })
-                          }
-                        }}
-                        className="mt-2 flex items-center gap-1 text-[10px] font-medium text-[#0EA5E9] hover:underline"
-                      >
-                        <Wallet className="w-3 h-3" /> Add to Wallet
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <RuleCardItem key={rule.ruleId.toString()} rule={rule} p={p} contracts={contracts} />
               ))}
             </div>
           )}
@@ -1490,6 +1606,27 @@ export default function RulesPage() {
                                 </span>
                               </div>
                             </div>
+                            
+                            {/* Deactivate button for active rules */}
+                            {isActivated && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm("Deactivate this rule to free up a slot? This action cannot be undone.")) {
+                                    writeContract({
+                                      address: contracts.ruleItemERC721,
+                                      abi: ruleItemERC721Abi,
+                                      functionName: 'deactivateRule',
+                                      args: [r.ruleId],
+                                    });
+                                  }
+                                }}
+                                className={`p-1.5 rounded-lg text-red-500 bg-red-500/10 hover:bg-red-500/20 transition-colors tooltip-trigger`}
+                                title="Deactivate to free slot"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
 
                           {/* Status badge */}

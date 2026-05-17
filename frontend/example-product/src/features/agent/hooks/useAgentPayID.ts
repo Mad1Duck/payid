@@ -33,6 +33,8 @@ import {
   getEthersSigner,
 } from '@/lib/storage';
 import { downloadFromZGStorage } from '@/lib/zgStorage';
+import { genImage } from '@/features/rules/utils/image';
+import { pinImage, pinJson } from '@/features/rules/utils/storage';
 import { SUPPORTED_CHAIN_IDS, AI_BASE, AI_KEY, AI_MODEL } from '@/features/agent/data/constants';
 import { PRESET_RULES, PRESET_TEMPLATES, BASE_SYSTEM_PROMPT } from '@/features/agent/data/presets';
 import { shortHash, shortAddr, tsNow } from '@/features/agent/utils/format';
@@ -140,13 +142,14 @@ export interface AgentPayIDState {
   setJsonError: (s: string) => void;
   showCreateSuccess: boolean;
   setShowCreateSuccess: (v: boolean) => void;
-  handleCreateRule: () => void;
+  handleCreateRule: () => Promise<void>;
   isCreatingRule: boolean;
 
   // On-chain rules
   onChainRules: OnChainRule[];
   rulesLoaded: boolean;
   hasApiKey: boolean;
+  chatFlowStep: number;
 }
 
 export function useAgentPayID(): AgentPayIDState {
@@ -159,6 +162,7 @@ export function useAgentPayID(): AgentPayIDState {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [chatFlowStep, setChatFlowStep] = useState(0);
   const [decision, setDecision] = useState<AiDecision | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
 
@@ -199,7 +203,7 @@ export function useAgentPayID(): AgentPayIDState {
     const saved = localStorage.getItem('payid-storage-preference');
     if (saved === '0g') return '0g';
     if (saved === 'ipfs') return 'ipfs';
-    return '0g';
+    return 'ipfs';
   });
 
   const [isUploading, setIsUploading] = useState(false);
@@ -295,13 +299,14 @@ export function useAgentPayID(): AgentPayIDState {
 
       await Promise.all(ruleIds.map(async (ruleId) => {
         try {
-          const [hash, uri, , , , deprecated, active] = await publicClient.readContract({
+          const [hash, uri, , , , deprecated, tokenId] = await publicClient.readContract({
             address: ruleItemAddr,
             abi: ruleItemERC721Abi,
-            functionName: 'getRule',
+            functionName: 'rules',
             args: [ruleId],
-          }) as [string, string, string, bigint, number, boolean, boolean];
+          }) as [string, string, string, bigint, number, boolean, bigint];
 
+          const active = tokenId > 0n;
           if (deprecated || !active) return;
 
           let name: string | undefined;
@@ -318,7 +323,11 @@ export function useAgentPayID(): AgentPayIDState {
                 const rootHash = parts[parts.length - 1].split('?')[0];
                 if (rootHash) raw = await downloadFromZGStorage(rootHash);
               } else {
-                const res = await fetch(uri);
+                let fetchUri = uri;
+                if (uri.startsWith('ipfs://')) {
+                  fetchUri = uri.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
+                }
+                const res = await fetch(fetchUri);
                 raw = await res.text();
               }
               if (raw) {
@@ -360,16 +369,28 @@ export function useAgentPayID(): AgentPayIDState {
   const buildSystemPrompt = useCallback(() => {
     const agentName = selectedAgent?.displayName ?? 'Agent';
     const agentSection = `\n\nYou are currently representing AI Agent: "${agentName}".`;
+    
+    let ruleJsonStr = 'No specific rules loaded.';
+    if (agentRuleInfo?.active && agentRuleInfo.ruleSetHash && rulesLoaded) {
+      const activeRule = onChainRules.find(r => r.hash.toLowerCase() === agentRuleInfo.ruleSetHash.toLowerCase());
+      if (activeRule?.ruleJson) {
+        ruleJsonStr = JSON.stringify(activeRule.ruleJson, null, 2);
+      }
+    }
+
     const policySection = agentRuleInfo?.active
       ? `\n\nCURRENT LINKED POLICY:\n` +
       `Policy Hash: ${agentRuleInfo.ruleSetHash}\n` +
-      `Status: ACTIVE\n\n` +
-      `You MUST enforce this policy when evaluating payment requests. ` +
-      `If a transaction violates the policy, respond with "REJECT" and explain why.`
+      `Status: ACTIVE\n` +
+      `Policy Logic:\n${ruleJsonStr}\n\n` +
+      `Current User (Sender) Address: ${address ?? 'Not connected'}\n\n` +
+      `You MUST evaluate the user's request against this policy logic. ` +
+      `If the request (or the user's address) violates the policy, you MUST respond with "REJECT" and provide the exact reason based on the policy logic.`
       : `\n\nNo active policy linked to this agent. ` +
       `Tell the user that the agent owner needs to set a policy first.`;
+      
     return BASE_SYSTEM_PROMPT + agentSection + policySection;
-  }, [selectedAgent, agentRuleInfo]);
+  }, [selectedAgent, agentRuleInfo, rulesLoaded, onChainRules, ruleIdx, selectedTemplate, address]);
 
   const { data: currentRuleHash } = useReadContract({
     address: agentPayIDAddr,
@@ -390,6 +411,15 @@ export function useAgentPayID(): AgentPayIDState {
   const callAI = useCallback(
     async (userMsg: string) => {
       setAiLoading(true);
+
+      // ── 1. User Message (Step 1 -> 2) ──
+      setChatFlowStep(2); // Start IPFS Load step
+      await new Promise((r) => setTimeout(r, 600));
+
+      // ── 2. Load Rule NFT (IPFS) (Step 2 -> 3) ──
+      setChatFlowStep(3); // Start AI Inference step
+      await new Promise((r) => setTimeout(r, 600));
+
       const systemPrompt = buildSystemPrompt();
       const history: ChatMsg[] = [
         { role: 'system', content: systemPrompt },
@@ -418,12 +448,17 @@ export function useAgentPayID(): AgentPayIDState {
         let finalReply = reply;
         let finalDecision = parsed;
 
-        if (parsed && selectedAgent) {
+        if (selectedAgent) {
+          // ── 4. WASM Engine (Step 3 -> 4) ──
+          setChatFlowStep(4);
+          await new Promise((r) => setTimeout(r, 800));
+
           let ruleJson: Record<string, unknown> | null = null;
-          if (rulesLoaded && onChainRules.length > 0 && onChainRules[ruleIdx]?.ruleJson) {
-            ruleJson = onChainRules[ruleIdx].ruleJson!;
-          } else if (selectedTemplate >= 0 && PRESET_TEMPLATES[selectedTemplate]?.json) {
-            ruleJson = PRESET_TEMPLATES[selectedTemplate].json as Record<string, unknown>;
+          if (agentRuleInfo?.active && agentRuleInfo.ruleSetHash && rulesLoaded) {
+            const activeRule = onChainRules.find(r => r.hash.toLowerCase() === agentRuleInfo.ruleSetHash.toLowerCase());
+            if (activeRule?.ruleJson) {
+              ruleJson = activeRule.ruleJson;
+            }
           }
 
           if (ruleJson) {
@@ -432,11 +467,11 @@ export function useAgentPayID(): AgentPayIDState {
               const client = createPayIDClient();
               await client.ready();
 
-              const amountRaw = Math.floor((parsed.amount ?? 0) * 1_000_000).toString();
+              const amountRaw = Math.floor((parsed?.amount ?? 0) * 1_000_000).toString();
               const context = {
                 tx: {
                   sender: address ?? '0x0000000000000000000000000000000000000000',
-                  receiver: (parsed.receiver ?? '').startsWith('0x') ? parsed.receiver : '0x0000000000000000000000000000000000000000',
+                  receiver: (parsed?.receiver ?? '').startsWith('0x') ? parsed!.receiver : '0x0000000000000000000000000000000000000000',
                   asset: '0x0000000000000000000000000000000000000000',
                   amount: amountRaw,
                   chainId: activeChainId,
@@ -448,10 +483,44 @@ export function useAgentPayID(): AgentPayIDState {
 
               const result = await client.evaluate(context, ruleJson as any);
               const wasmDecision = result.decision === 'ALLOW' ? 'APPROVE' : 'REJECT';
-              finalDecision = { ...parsed, decision: wasmDecision, reason: result.reason ?? '' };
+              
+              let ruleDesc = 'Custom Rule';
+              if (ruleJson.id) ruleDesc = ruleJson.id as string;
+              let ruleCondition = '';
+              if (ruleJson.if) {
+                const c = ruleJson.if as any;
+                if (c.field && c.op && c.value !== undefined) {
+                  ruleCondition = `${c.field} ${c.op} ${c.value}`;
+                } else if (c.conditions) {
+                  ruleCondition = `Complex logic with ${c.conditions.length} conditions`;
+                }
+              }
 
-              const matchStatus = wasmDecision === parsed.decision ? 'Match' : 'Corrected by PAY.ID';
-              finalReply = reply + `\n\n---\n**PAY.ID Rule Engine Verification**\n- AI Decision: ${parsed.decision}\n- WASM Result: ${wasmDecision}\n- Reason: ${result.reason}\n- Status: ${matchStatus}`;
+              if (wasmDecision === 'REJECT') {
+                finalDecision = { decision: 'REJECT', reason: result.reason ?? 'Blocked by policy', amount: 0, receiver: '' };
+                finalReply = `*Interaction Blocked*\n\n` + reply + `\n\n---\n**🔍 PAY.ID Evaluation Flow**\n` +
+                  `1️⃣ **AI Inference**\n   ↳ ${parsed ? `Decision: ${parsed.decision}` : 'Conversational response'}\n` +
+                  `2️⃣ **Load On-Chain Policy**\n   ↳ Rule ID: \`${ruleDesc}\`\n   ↳ Logic: \`${ruleCondition}\`\n` +
+                  `3️⃣ **WASM Rule Engine Execution**\n   ↳ Context: Sender = ${address ?? 'unknown'}\n   ↳ Result: REJECT\n   ↳ Reason: ${result.reason}\n` +
+                  `4️⃣ **Final Enforcement**\n   ↳ Action: ⛔ Blocked by PAY.ID Policy`;
+              } else {
+                if (parsed) {
+                  finalDecision = { ...parsed, decision: wasmDecision, reason: result.reason ?? '' };
+                  const matchStatus = wasmDecision === parsed.decision ? 'Match' : 'Corrected by PAY.ID';
+                  finalReply = reply + `\n\n---\n**🔍 PAY.ID Evaluation Flow**\n` +
+                    `1️⃣ **AI Inference**\n   ↳ Decision: ${parsed.decision} (Amount: ${parsed.amount || 0})\n` +
+                    `2️⃣ **Load On-Chain Policy**\n   ↳ Rule ID: \`${ruleDesc}\`\n   ↳ Logic: \`${ruleCondition}\`\n` +
+                    `3️⃣ **WASM Rule Engine Execution**\n   ↳ Context: Amount = ${parsed.amount || 0}, Receiver = ${parsed.receiver || 'N/A'}\n   ↳ Result: ${wasmDecision}\n   ↳ Reason: ${result.reason || 'OK'}\n` +
+                    `4️⃣ **Final Enforcement**\n   ↳ Status: ${matchStatus}\n   ↳ Action: ✅ Transaction Allowed`;
+                } else {
+                  finalDecision = null;
+                  finalReply = reply + `\n\n---\n**🔍 PAY.ID Evaluation Flow**\n` +
+                    `1️⃣ **AI Inference**\n   ↳ Conversational response\n` +
+                    `2️⃣ **Load On-Chain Policy**\n   ↳ Rule ID: \`${ruleDesc}\`\n   ↳ Logic: \`${ruleCondition}\`\n` +
+                    `3️⃣ **WASM Rule Engine Execution**\n   ↳ Context: Sender = ${address ?? 'unknown'}\n   ↳ Result: APPROVE\n` +
+                    `4️⃣ **Final Enforcement**\n   ↳ Action: ✅ Interaction Allowed`;
+                }
+              }
             } catch (err) {
               console.error('PAY.ID WASM error:', err);
               finalReply = reply + '\n\n*(Note: PAY.ID rule engine verification unavailable)*';
@@ -465,8 +534,10 @@ export function useAgentPayID(): AgentPayIDState {
       } catch (e: unknown) {
         const msg = (e as Error).message || 'Failed to reach 0G AI';
         setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${msg}` }]);
+        setChatFlowStep(5);
       } finally {
         setAiLoading(false);
+        setChatFlowStep(5); // ── 5. Final Action (Step 4 -> 5) ──
       }
     },
     [messages, selectedAgent, agentRuleInfo, address, rulesLoaded, onChainRules, ruleIdx, selectedTemplate, buildSystemPrompt, activeChainId],
@@ -476,6 +547,8 @@ export function useAgentPayID(): AgentPayIDState {
     if (!input.trim() || aiLoading) return;
     const userMsg = input.trim();
     setInput('');
+    setDecision(null);
+    setChatFlowStep(1); // Set to step 1 initially
     setMessages((prev) => [...prev, { role: 'user', content: userMsg }]);
     await callAI(userMsg);
   }, [input, aiLoading, callAI]);
@@ -611,7 +684,8 @@ export function useAgentPayID(): AgentPayIDState {
     });
   }, [regAgentWallet, regDisplayName, regEndpoint, regModel, regSystemPrompt, storageProvider, connectorClient, registerAgent]);
 
-  const handleCreateRule = useCallback(() => {
+  const handleCreateRule = useCallback(async () => {
+    console.log('[handleCreateRule] START — new code running');
     try {
       const parsed = JSON.parse(ruleJsonInput);
       if (!parsed.version || !parsed.logic || !Array.isArray(parsed.rules)) {
@@ -619,15 +693,65 @@ export function useAgentPayID(): AgentPayIDState {
         return;
       }
       const hash = keccak256(toBytes(JSON.stringify(parsed)));
-      const uri = `ipfs://rule-${hash.slice(2, 10)}`;
+      console.log('[handleCreateRule] hash:', hash);
+
+      setIsUploading(true);
+      let metadataUri: string;
+      try {
+        // Generate NFT image
+        const imgDataUrl = genImage(hash.slice(2, 10), hash);
+        console.log('[handleCreateRule] uploading image...');
+        const { cid: imgCid } = await pinImage(imgDataUrl, `rule-${hash.slice(2, 10)}.png`);
+        const imageUrl = `ipfs://${imgCid}`;
+        console.log('[handleCreateRule] imageUrl:', imageUrl);
+
+        // Build full metadata
+        const metadata = {
+          name: `PAY.ID Rule #${hash.slice(2, 10)}`,
+          description: 'PAY.ID programmable payment policy',
+          image: imageUrl,
+          attributes: [
+            { trait_type: 'Rule Hash', value: hash },
+            { trait_type: 'Engine', value: 'PAY.ID' },
+            { trait_type: 'Standard', value: 'payid.rule.v1' },
+          ],
+          rule: parsed,
+          ruleHash: hash,
+          standard: 'payid.rule.v1',
+        };
+
+        console.log('[handleCreateRule] uploading metadata...');
+        const { cid: jsonCid } = await pinJson(metadata, `rule-${hash.slice(2, 10)}.json`);
+        metadataUri = `ipfs://${jsonCid}`;
+        console.log('[handleCreateRule] metadataUri:', metadataUri);
+      } catch (err: any) {
+        console.error('[handleCreateRule] Pinata failed, fallback:', err.message);
+        // Fallback: inline metadata with inline image (no Pinata JWT)
+        const imgDataUrl = genImage(hash.slice(2, 10), hash);
+        const metadata = {
+          name: `PAY.ID Rule #${hash.slice(2, 10)}`,
+          description: 'PAY.ID programmable payment policy',
+          image: imgDataUrl,
+          rule: parsed,
+          ruleHash: hash,
+          standard: 'payid.rule.v1',
+        };
+        const result = await uploadToIPFS(JSON.stringify(metadata));
+        metadataUri = result.uri;
+        console.log('[handleCreateRule] fallback metadataUri:', metadataUri);
+      } finally {
+        setIsUploading(false);
+      }
+
+      console.log('[handleCreateRule] calling createRule with uri:', metadataUri);
       setJsonError('');
-      createRule({ ruleHash: hash, uri });
+      createRule({ ruleHash: hash, uri: metadataUri });
       setShowCreateSuccess(true);
       setTimeout(() => setShowCreateSuccess(false), 3000);
     } catch {
       setJsonError('Invalid JSON syntax');
     }
-  }, [ruleJsonInput, createRule]);
+  }, [ruleJsonInput, createRule, setIsUploading]);
 
   const hasApiKey = !!AI_KEY && AI_KEY !== 'YOUR_0G_AI_API_KEY_HERE';
 
@@ -729,5 +853,6 @@ export function useAgentPayID(): AgentPayIDState {
     onChainRules,
     rulesLoaded,
     hasApiKey,
+    chatFlowStep,
   };
 }
