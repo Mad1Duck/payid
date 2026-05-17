@@ -233,7 +233,7 @@ export default function ReceivePage() {
           </div>
           {payload && (
             <button
-              onClick={handleShare}
+              onClick={handleCopyPayload}
               className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 text-white text-xs hover:bg-white/25 transition-colors cursor-pointer"
             >
               {copiedPayload ? (

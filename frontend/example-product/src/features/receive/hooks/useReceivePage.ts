@@ -4,6 +4,7 @@ import { usePayIDQR } from 'payid-react';
 import { useV4Palette } from '@/components/v4/theme';
 import { shortAddr } from '@/features/shared';
 import { toast } from 'sonner';
+import { decodeSessionPolicyV2QR } from 'payid/sessionPolicy';
 
 export function useReceivePage() {
   const p = useV4Palette();
@@ -44,7 +45,7 @@ export function useReceivePage() {
         const now = Math.floor(Date.now() / 1000);
         if (parsed.expiresAt > now) {
           setLocalPayload(parsed.payload);
-          setLocalQrDataUrl(parsed.qrDataUrl);
+          setLocalQrDataUrl(parsed.qrDataUrl || null);
           setLocalExpiresAt(parsed.expiresAt);
         } else {
           localStorage.removeItem(`payid_rx_${address}`);
@@ -57,17 +58,24 @@ export function useReceivePage() {
 
   // Save generated session to localStorage
   useEffect(() => {
-    if (payload && qrDataUrl && address) {
-      const durationSec = (Number(expiryMin) || 60) * 60;
-      const expiresAt = Math.floor(Date.now() / 1000) + durationSec;
+    if (payload && address) {
+      let expiresAt = Math.floor(Date.now() / 1000) + (Number(expiryMin) || 60) * 60;
+      try {
+        const decoded = decodeSessionPolicyV2QR(payload);
+        if (decoded && decoded.expiresAt) {
+          expiresAt = Number(decoded.expiresAt);
+        }
+      } catch (e) {
+        console.error('Failed to decode expiresAt from payload:', e);
+      }
       
       setLocalPayload(payload);
-      setLocalQrDataUrl(qrDataUrl);
+      setLocalQrDataUrl(qrDataUrl || null);
       setLocalExpiresAt(expiresAt);
 
       localStorage.setItem(`payid_rx_${address}`, JSON.stringify({
         payload,
-        qrDataUrl,
+        qrDataUrl: qrDataUrl || null,
         expiresAt,
       }));
     }
