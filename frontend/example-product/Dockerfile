@@ -11,8 +11,8 @@ COPY . .
 # ── 2. Install ALL workspace deps ──
 RUN bun install
 
-# ── 3. Patch tsup configs to fix DTS resolution, then build ──
-RUN sed -i 's/dts: true,/dts: { resolve: true },/' packages/sdk-core/tsup.config.ts
+# ── 3. Build workspace packages (skip dts for sdk-core to avoid cross-entry resolution bug) ──
+RUN sed -i 's/dts: true,/dts: false,/' packages/sdk-core/tsup.config.ts
 RUN cd packages/sdk-core && bun run build
 RUN cd packages/payid-react && bun run build
 
