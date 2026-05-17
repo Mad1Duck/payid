@@ -1,4 +1,4 @@
-import type { Template } from '../types'
+import type { Template } from '../types';
 
 export const TEMPLATES: Array<Template> = [
   {
@@ -113,7 +113,7 @@ export const TEMPLATES: Array<Template> = [
         field: 'oracle.txValueUsd',
         transform: '',
         transformArg: '',
-        op: '>=',
+        op: '<=',
         value: '4500000000',
       },
     ],
@@ -212,4 +212,4 @@ export const TEMPLATES: Array<Template> = [
     unit: '',
     inputType: 'address',
   },
-]
+];

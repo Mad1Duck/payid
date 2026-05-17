@@ -119,6 +119,7 @@ export interface PayIDFlowResult {
   decision: 'ALLOW' | 'DENY' | null;
   denyReason: string | null;
   txHash: Hash | undefined;
+  loadedRules: any[];
   execute: (params: PayIDFlowParams) => Promise<void>;
   reset: () => void;
 }
@@ -245,6 +246,7 @@ export function usePayIDFlow(): PayIDFlowResult {
   const [decision, setDecision] = useState<'ALLOW' | 'DENY' | null>(null);
   const [denyReason, setDenyReason] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<Hash | undefined>();
+  const [loadedRules, setLoadedRules] = useState<any[]>([]);
 
   const { writeContractAsync } = useWriteContract();
   const { isSuccess: isTxConfirmed, isError: isTxFailed, error: txReceiptError } = useWaitForTransactionReceipt({ hash: txHash });
@@ -285,6 +287,7 @@ export function usePayIDFlow(): PayIDFlowResult {
     setDecision(null);
     setDenyReason(null);
     setTxHash(undefined);
+    setLoadedRules([]);
   }, []);
 
   const execute = useCallback(async (params: PayIDFlowParams) => {
@@ -385,6 +388,7 @@ export function usePayIDFlow(): PayIDFlowResult {
 
       if (ruleRefs.length > 0) {
         const ruleConfigs = await loadRuleConfigs(ruleRefs, publicClient, ipfsGateway, zgGateway);
+        setLoadedRules(ruleConfigs);
         authorityRule = {
           version: String(activeVersion),
           logic: 'AND' as const,
@@ -507,6 +511,19 @@ export function usePayIDFlow(): PayIDFlowResult {
       });
 
       log('step-4', 'result', { decision: result.decision, reason: (result as any).reason });
+
+      // Provide clearer error messages for common rule failures
+      const rawReason = (result as any).reason ?? '';
+      const ruleCode = (result as any).code ?? '';
+      if (result.decision === 'REJECT') {
+        if (rawReason.includes('oracle.txValueUsd') || ruleCode === 'usd_minimum') {
+          if (!(oracleContext as any).oracle?.txValueUsd) {
+            (result as any).reason = 'USD value unavailable for this token. Try sending USDC instead, or ask the recipient to remove the USD Minimum rule.';
+          } else {
+            (result as any).reason = `Transaction USD value (${(result as any).reason}) below minimum threshold. Increase amount or ask recipient to lower the minimum.`;
+          }
+        }
+      }
 
       setDecision(result.decision as 'ALLOW' | 'DENY');
 
@@ -718,6 +735,7 @@ export function usePayIDFlow(): PayIDFlowResult {
     decision,
     denyReason,
     txHash,
+    loadedRules,
     execute,
     reset,
   };

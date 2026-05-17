@@ -27,7 +27,7 @@ export default function AgentChatPanel({ s }: Props) {
       </div>
 
       {/* Messages */}
-      <div ref={s.chatRef} className="h-72 overflow-y-auto p-4 space-y-3" style={{ scrollbarWidth: 'thin' }}>
+      <div ref={s.chatRef as any} className="h-72 overflow-y-auto p-4 space-y-3" style={{ scrollbarWidth: 'thin' }}>
         {s.messages.length === 0 && !s.selectedAgent && (
           <div className={`text-center text-xs ${p.textMuted} pt-10`}>Select an AI agent above to start chatting.</div>
         )}

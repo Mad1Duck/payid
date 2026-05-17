@@ -1,5 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  AlertTriangle,
+  ArrowLeft,
   ArrowRight,
   Check,
   Copy,
@@ -10,10 +12,57 @@ import {
   X,
 } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
+import { getTokenConfig } from '@/constants/tokens'
 import { cardBase } from '@/features/send/constants'
 import TransactionSimulation from '@/components/v4/TransactionSimulation'
 import PolicyScanning from '@/components/v4/PolicyScanning'
+import TargetPolicyInfo from '../components/TargetPolicyInfo'
 import { useSendFlow } from '../hooks/useSendFlow'
+
+function shortenAddr(addr: string): string {
+  return addr.length > 12 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
+}
+
+function explainRule(condition: string): string {
+  if (condition.includes('oracle.txValueUsd')) {
+    if (condition.includes('>=')) {
+      const val = condition.split('>=')[1]?.trim();
+      const usd = val ? (Number(val) / 1e8).toFixed(2) : '?';
+      return `⚠️ INVERTED OPERATOR: This rule REJECTS transactions worth MORE than $${usd} USD. "Minimum" rules should use "<=" not ">=".`;
+    }
+    if (condition.includes('<=')) {
+      const val = condition.split('<=')[1]?.trim();
+      const usd = val ? (Number(val) / 1e8).toFixed(2) : '?';
+      return `Transaction must be worth AT LEAST $${usd} USD.`;
+    }
+    return 'Checks the USD value of this transaction.';
+  }
+  if (condition.includes('tx.amount')) {
+    return 'Checks the token amount of this transaction.';
+  }
+  if (condition.includes('env.timestamp')) {
+    return 'Checks the time this transaction is sent.';
+  }
+  if (condition.includes('oracle.kycLevel')) {
+    return 'Requires sender KYC verification.';
+  }
+  if (condition.includes('oracle.country')) {
+    return 'Checks sender country/region.';
+  }
+  if (condition.includes('risk.score')) {
+    return 'Checks risk score of this transaction.';
+  }
+  if (condition.includes('tx.sender')) {
+    return 'Checks sender wallet address.';
+  }
+  if (condition.includes('tx.chainId')) {
+    return 'Checks which blockchain this is sent on.';
+  }
+  if (condition.includes('intent.type')) {
+    return 'Checks payment method (QR, Direct, etc).';
+  }
+  return 'Evaluates a condition on this transaction.';
+}
 
 export default function SendFlow() {
   const {
@@ -25,9 +74,10 @@ export default function SendFlow() {
     amount, setAmount,
     asset, setAsset,
     txHash,
-    denyReason,
+    denyReason, setDenyReason,
     flowStatus, flowIsPending, flowError,
     balanceValue, pipeline,
+    targetPolicy, preflightWarning,
     resolvePayId, handleRunPolicy, reset, copy,
   } = useSendFlow()
 
@@ -143,11 +193,19 @@ export default function SendFlow() {
             exit={{ opacity: 0, x: -12 }}
             className="space-y-4"
           >
-            <div>
-              <h2 className={`text-lg font-semibold ${p.textMain}`}>Amount</h2>
-              <p className={`text-xs ${p.textMuted} mt-0.5`}>
-                How much do you want to send?
-              </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setStep('who')}
+                className={`p-2 rounded-lg ${p.cardBorder} ${p.textMuted} hover:bg-black/5 transition-colors`}
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <div>
+                <h2 className={`text-lg font-semibold ${p.textMain}`}>Amount</h2>
+                <p className={`text-xs ${p.textMuted} mt-0.5`}>
+                  How much do you want to send?
+                </p>
+              </div>
             </div>
 
             <div className={`${cardBase} p-5`} style={cardBg}>
@@ -158,11 +216,19 @@ export default function SendFlow() {
                   To: {resolvedName}
                 </div>
 
+                {/* Target Policy Info */}
+                {targetPolicy && (
+                  <TargetPolicyInfo policy={targetPolicy} p={p} />
+                )}
+
                 <div className="flex gap-3">
                   <div className="flex-1 relative">
                     <input
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
+                      onChange={(e) => {
+                        setAmount(e.target.value);
+                        setDenyReason('');
+                      }}
                       type="number"
                       placeholder="0.00"
                       className={`w-full px-4 py-3 rounded-xl ${p.inputBg} border ${p.inputBorder} ${p.textMain} placeholder-[#64748B] focus:outline-none focus:border-[#00D084]/40 transition-colors font-mono text-xl`}
@@ -231,11 +297,19 @@ export default function SendFlow() {
             exit={{ opacity: 0, x: -12 }}
             className="space-y-4"
           >
-            <div>
-              <h2 className={`text-lg font-semibold ${p.textMain}`}>Review</h2>
-              <p className={`text-xs ${p.textMuted} mt-0.5`}>
-                Verify details before policy evaluation.
-              </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setStep('amount')}
+                className={`p-2 rounded-lg ${p.cardBorder} ${p.textMuted} hover:bg-black/5 transition-colors`}
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <div>
+                <h2 className={`text-lg font-semibold ${p.textMain}`}>Review</h2>
+                <p className={`text-xs ${p.textMuted} mt-0.5`}>
+                  Verify details before policy evaluation.
+                </p>
+              </div>
             </div>
 
             <div className={`${cardBase} p-5`} style={cardBg}>
@@ -264,6 +338,29 @@ export default function SendFlow() {
                 ))}
               </div>
             </div>
+
+            {preflightWarning && !denyReason && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`${cardBase} p-4 flex items-start gap-3`}
+                style={{ background: 'rgba(245,158,11,0.06)' }}
+              >
+                <div
+                  className={cardBorder}
+                  style={{ borderColor: 'rgba(245,158,11,0.2)' }}
+                />
+                <AlertTriangle className="w-4 h-4 text-[#F59E0B] shrink-0 relative mt-0.5" />
+                <div className="relative">
+                  <div className="text-[13px] font-medium text-[#F59E0B]">
+                    Warning: Policy May Reject This
+                  </div>
+                  <div className={`text-[11px] ${p.textMuted}`}>
+                    {preflightWarning}
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             {denyReason && (
               <motion.div
@@ -317,30 +414,75 @@ export default function SendFlow() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            className="space-y-4"
           >
             <PolicyScanning
               pipeline={pipeline}
-              ruleEvaluations={[
-                {
-                  id: 'min_amount',
-                  name: 'Minimum Amount Check',
-                  status: 'passed',
-                  message: 'Amount meets minimum requirement',
-                },
-                {
-                  id: 'daily_limit',
-                  name: 'Daily Spending Limit',
-                  status: 'passed',
-                  message: 'Within daily limit',
-                },
-                {
-                  id: 'kyc_level',
-                  name: 'KYC Verification',
-                  status: 'running',
-                },
-              ]}
-              riskScore={25}
+              onBack={() => {
+                setStep('review');
+                setDenyReason('');
+              }}
+              backDisabled={flowIsPending}
+              ruleEvaluations={
+                targetPolicy?.ruleRefs && targetPolicy.ruleRefs.length > 0
+                  ? targetPolicy.ruleRefs.map((ref, idx) => {
+                      const isDenied = flowStatus === 'denied';
+                      const isEvaluating = ['fetching-rule', 'evaluating', 'proving'].includes(flowStatus);
+                      const ruleName = `Rule NFT ${shortenAddr(ref.ruleNFT)} #${String(ref.tokenId)}`;
+
+                      // Always show rule explanation for denied transactions
+                      let message: string;
+                      if (isDenied) {
+                        const hasOracle = !!getTokenConfig(chainId, asset)?.oracleKey;
+
+                        // When token has no oracle but recipient has rules, it's almost certainly a USD rule
+                        if (!hasOracle) {
+                          const condition = 'oracle.txValueUsd >= 1000000000';
+                          const plainEnglish = explainRule(condition);
+                          const explanation = `\n\nWhy this failed:\n• You're sending ${asset}\n• ${asset} has no price oracle on chain ${chainId}\n• The recipient's rule checks USD value\n• Without a price, the rule cannot evaluate → REJECT`;
+                          message = `Condition: ${condition}\n${plainEnglish}${explanation}\n\nResult: ${denyReason}`;
+                        } else {
+                          message = `Recipient has an active rule that rejected this transaction.\n\nResult: ${denyReason}`;
+                        }
+                      } else if (isEvaluating) {
+                        message = 'Evaluating rule from IPFS...';
+                      } else {
+                        message = 'Rule loaded from IPFS';
+                      }
+
+                      return {
+                        id: String(ref.tokenId),
+                        name: ruleName,
+                        status: isDenied ? 'failed' : isEvaluating ? 'running' : 'pending' as const,
+                        message,
+                      };
+                    })
+                  : [
+                      {
+                        id: 'no-rules',
+                        name: 'No rules configured',
+                        status: 'passed' as const,
+                        message: 'Recipient has no active policy rules',
+                      },
+                    ]
+              }
+              riskScore={flowStatus === 'denied' ? 80 : 25}
+              errorDetail={denyReason || null}
             />
+
+            {denyReason && (
+              <div className="flex justify-center">
+                <button
+                  onClick={() => {
+                    setStep('amount');
+                    setDenyReason('');
+                  }}
+                  className={`text-[11px] px-3 py-1.5 rounded-lg ${p.cardBorder} ${p.textMain} hover:bg-black/5 transition-colors`}
+                >
+                  Modify Transaction
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
 

@@ -1,5 +1,4 @@
 import { AlertTriangle } from 'lucide-react'
-import { useV4Palette } from '@/components/v4/theme'
 
 interface Props {
   hasApiKey: boolean
@@ -8,7 +7,6 @@ interface Props {
 }
 
 export default function AgentStatusAlerts({ hasApiKey, isConnected, isWrongChain }: Props) {
-  const p = useV4Palette()
   return (
     <>
       {!hasApiKey && (

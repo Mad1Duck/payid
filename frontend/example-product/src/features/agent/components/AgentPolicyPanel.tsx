@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Hash, Link2, Loader2, ShieldCheck, Sparkles } from 'lucide-react'
 import { zeroHash } from 'viem'
 import { useV4Palette } from '@/components/v4/theme'
