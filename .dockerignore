@@ -32,12 +32,15 @@ coverage/
 **/*.test.ts
 **/*.test.tsx
 
-# Documentation (not needed for frontend build)
+# Documentation site (not needed for example-product build)
 docs/
-frontend/frontend-docs/
 
 # Examples (not needed for build)
 examples/
+
+# Frontend docs build output
+frontend/frontend-docs/build/
+frontend/frontend-docs/node_modules/
 
 # Contract artifacts (built in container if needed)
 packages/contracts/artifacts/
