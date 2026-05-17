@@ -21,10 +21,6 @@ export default defineConfig({
       { find: 'node:fs', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: /^fs\/promises$/, replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: /^fs$/, replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
-      // Alias shims ke empty stub — nodePolyfills() sudah handle globals
-      { find: 'vite-plugin-node-polyfills/shims/buffer', replacement: fileURLToPath(new URL('./src/stubs/empty.stub.ts', import.meta.url)) },
-      { find: 'vite-plugin-node-polyfills/shims/process', replacement: fileURLToPath(new URL('./src/stubs/empty.stub.ts', import.meta.url)) },
-      { find: 'vite-plugin-node-polyfills/shims/global', replacement: fileURLToPath(new URL('./src/stubs/empty.stub.ts', import.meta.url)) },
       { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
     ],
     dedupe: ['react', 'react-dom', 'wagmi', 'viem', '@wagmi/core'],
@@ -34,11 +30,11 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['payid-react', 'payid', 'payid > ethers'],
-    exclude: ['payid-rule-engine'],
+    exclude: ['payid-rule-engine', 'vite-plugin-node-polyfills/shims/buffer', 'vite-plugin-node-polyfills/shims/process', 'vite-plugin-node-polyfills/shims/global'],
   },
   build: {
     rollupOptions: {
-      external: ['http', 'https', 'zlib'],
+      external: ['http', 'https', 'zlib', 'vite-plugin-node-polyfills/shims/buffer', 'vite-plugin-node-polyfills/shims/process', 'vite-plugin-node-polyfills/shims/global'],
     },
   },
   server: {

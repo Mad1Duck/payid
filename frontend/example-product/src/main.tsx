@@ -91,11 +91,10 @@ export const devNode = {
 } as const satisfies Chain
 
 const wagmiConfig = createConfig({
-  chains: [devNode, zeroGTestnet, zeroGFork, zeroGGalileo],
+  chains: [devNode, zeroGFork, zeroGGalileo],
   connectors: [injected({ shimDisconnect: true })],
   transports: {
     [devNode.id]: http(),
-    [zeroGTestnet.id]: http(),
     [zeroGFork.id]: http(),
     [zeroGGalileo.id]: http(),
   },

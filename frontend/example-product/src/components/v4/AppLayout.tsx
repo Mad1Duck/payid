@@ -43,6 +43,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { chains, switchChain } = useSwitchChain()
   const [showConnectMenu, setShowConnectMenu] = useState(false)
   const [showNetworkMenu, setShowNetworkMenu] = useState(false)
+  const [switchingChainId, setSwitchingChainId] = useState<number | null>(null)
   const location = useLocation()
   const currentPath = location.pathname
   const p = useV4Palette()
@@ -182,15 +183,26 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         className={`fixed top-0 left-0 right-0 z-50 border-b ${p.cardBorder} backdrop-blur-2xl ${p.dark ? 'bg-[#0B0F1A]/70' : 'bg-[#F1F5F9]/70'}`}
       >
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-[#00D084]/10 flex items-center justify-center">
-              <div className="w-2.5 h-2.5 rounded-sm bg-[#00D084]" />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-[#00D084]/10 flex items-center justify-center">
+                <div className="w-2.5 h-2.5 rounded-sm bg-[#00D084]" />
+              </div>
+              <span
+                className={`text-[15px] font-semibold tracking-tight ${p.textMain}`}
+              >
+                PAY.ID
+              </span>
             </div>
-            <span
-              className={`text-[15px] font-semibold tracking-tight ${p.textMain}`}
+            <a
+              href="https://docs.payid.nawasena-labs.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`hidden sm:flex items-center gap-1 text-xs font-medium ${p.textSecondary} hover:text-[#00D084] transition-colors`}
             >
-              PAY.ID
-            </span>
+              Docs
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+            </a>
           </div>
 
           {isConnected && address ? (
@@ -201,15 +213,21 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   onClick={() => setShowNetworkMenu((v) => !v)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${p.cardBgSolid} ${p.cardBorder} hover:border-[#00D084]/30 cursor-pointer`}
                 >
-                  <Globe
-                    className={`w-3.5 h-3.5 ${chainId === 16601 || chainId === 16602 ? 'text-[#00D084]' : 'text-[#94A3B8]'}`}
-                  />
+                  {switchingChainId !== null ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#00D084]" />
+                  ) : (
+                    <Globe
+                      className={`w-3.5 h-3.5 ${chainId === 16601 || chainId === 16602 ? 'text-[#00D084]' : 'text-[#94A3B8]'}`}
+                    />
+                  )}
                   <span className={`text-xs font-bold ${p.textMain}`}>
-                    {chains
-                      .find((c) => c.id === chainId)
-                      ?.name.replace('Newton ', '')
-                      .replace('Testnet', '')
-                      .trim() || 'Select'}
+                    {switchingChainId !== null
+                      ? 'Switching…'
+                      : chains
+                          .find((c) => c.id === chainId)
+                          ?.name.replace('Newton ', '')
+                          .replace('Testnet', '')
+                          .trim() || 'Select'}
                   </span>
                   <ChevronDown className="w-3 h-3 text-[#64748B]" />
                 </button>
@@ -235,7 +253,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                         {chains.map((chain) => (
                           <button
                             key={chain.id}
+                            disabled={switchingChainId !== null}
                             onClick={async () => {
+                              setSwitchingChainId(chain.id)
                               try {
                                 await switchChain({ chainId: chain.id })
                               } catch (err: any) {
@@ -273,20 +293,28 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                                 }
                               }
                               setShowNetworkMenu(false)
+                              setSwitchingChainId(null)
                             }}
-                            className={`w-full flex items-center justify-between px-4 py-2.5 text-left text-sm font-medium transition-colors ${p.textMain} ${p.cardHover}`}
+                            className={`w-full flex items-center justify-between px-4 py-2.5 text-left text-sm font-medium transition-colors ${p.textMain} ${p.cardHover} ${switchingChainId === chain.id ? 'opacity-60' : ''}`}
                           >
                             <div className="flex items-center gap-2.5">
-                              <Globe
-                                className={`w-3.5 h-3.5 ${chainId === chain.id ? 'text-[#00D084]' : 'text-[#64748B]'}`}
-                              />
+                              {switchingChainId === chain.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#00D084]" />
+                              ) : (
+                                <Globe
+                                  className={`w-3.5 h-3.5 ${chainId === chain.id ? 'text-[#00D084]' : 'text-[#64748B]'}`}
+                                />
+                              )}
                               {chain.name
                                 .replace('Newton ', '')
                                 .replace('Testnet', '')
                                 .trim()}
                             </div>
-                            {chainId === chain.id && (
+                            {chainId === chain.id && switchingChainId !== chain.id && (
                               <div className="w-1.5 h-1.5 rounded-full bg-[#00D084]" />
+                            )}
+                            {switchingChainId === chain.id && (
+                              <span className="text-[10px] text-[#00D084]">Switching…</span>
                             )}
                           </button>
                         ))}
