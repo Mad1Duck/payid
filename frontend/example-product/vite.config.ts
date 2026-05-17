@@ -30,11 +30,11 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['payid-react', 'payid', 'payid > ethers'],
-    exclude: ['payid-rule-engine', 'vite-plugin-node-polyfills/shims/buffer', 'vite-plugin-node-polyfills/shims/process', 'vite-plugin-node-polyfills/shims/global'],
+    exclude: ['payid-rule-engine'],
   },
   build: {
     rollupOptions: {
-      external: ['http', 'https', 'zlib', 'vite-plugin-node-polyfills/shims/buffer', 'vite-plugin-node-polyfills/shims/process', 'vite-plugin-node-polyfills/shims/global'],
+      external: ['http', 'https', 'zlib'],
     },
   },
   server: {

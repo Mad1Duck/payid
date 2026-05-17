@@ -34,13 +34,15 @@ export default function AgentSelector({ s }: Props) {
             </span>
           )}
         </div>
-        <button
-          onClick={() => s.setShowAgentRegister(!s.showAgentRegister)}
-          disabled={s.slotsUsed >= s.slotsMax}
-          className="text-[10px] px-2 py-0.5 rounded-full bg-[#8B5CF6]/10 text-[#8B5CF6] font-medium hover:bg-[#8B5CF6]/20 transition-colors disabled:opacity-40"
-        >
-          {s.showAgentRegister ? 'Cancel' : 'Register New'}
-        </button>
+        {s.isAdmin && (
+          <button
+            onClick={() => s.setShowAgentRegister(!s.showAgentRegister)}
+            disabled={s.slotsUsed >= s.slotsMax}
+            className="text-[10px] px-2 py-0.5 rounded-full bg-[#8B5CF6]/10 text-[#8B5CF6] font-medium hover:bg-[#8B5CF6]/20 transition-colors disabled:opacity-40"
+          >
+            {s.showAgentRegister ? 'Cancel' : 'Register New'}
+          </button>
+        )}
       </div>
 
       {s.showAgentRegister && s.isAdmin && <AgentRegisterForm s={s} />}
