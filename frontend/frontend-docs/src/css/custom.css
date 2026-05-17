@@ -95,7 +95,7 @@
   --ring: 210 50% 60%;
 
   /* Docusaurus Integration: Unify background with v4 brand theme */
-  --ifm-background-color: #0b0f1a !important;
+  --ifm-background-color: transparent !important;
   --ifm-navbar-background-color: #0b0f1a !important;
 }
 
@@ -162,9 +162,9 @@
 }
 
 /* Hide external link icon on App navbar item */
-.navbar__link[href*="app.payid"] svg,
-.navbar__link[href*="nawasena-labs"] svg,
-a[href*="app.payid"] svg,
-a[href*="nawasena-labs"] svg {
+.navbar__link[href*='app.payid'] svg,
+.navbar__link[href*='nawasena-labs'] svg,
+a[href*='app.payid'] svg,
+a[href*='nawasena-labs'] svg {
   display: none !important;
 }
