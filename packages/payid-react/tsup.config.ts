@@ -8,6 +8,6 @@ export default defineConfig({
   },
   clean: true,
   outDir: "dist",
-  external: ["react", "wagmi", "viem", "@wagmi/core", "ethers"],
+  external: ["react", "wagmi", "viem", "@wagmi/core", "ethers", "buffer", "crypto", "fs", "process"],
   treeshake: true,
 });
