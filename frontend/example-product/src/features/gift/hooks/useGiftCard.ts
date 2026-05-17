@@ -3,7 +3,7 @@ import { useAccount, useChainId, useConnectorClient, useBalance } from 'wagmi';
 import { usePayIDContext } from 'payid-react';
 import { useV4Palette } from '@/components/v4/theme';
 import { toast } from 'sonner';
-import { BrowserProvider, formatUnits } from 'ethers';
+import { BrowserProvider, Contract, formatUnits } from 'ethers';
 
 export interface GiftCardData {
   id: string;
@@ -47,7 +47,7 @@ export function useGiftCard() {
     if (amount && !isNaN(Number(amount)) && parseFloat(amount) > 0) {
       parsedAmount = BigInt(Math.floor(parseFloat(amount) * 1e18));
     }
-  } catch (e) {}
+  } catch (e) { }
   const remainingValue = balanceValue > parsedAmount ? balanceValue - parsedAmount : 0n;
 
   const balanceFormatted = balance ? parseFloat(formatUnits(balanceValue, 18)).toFixed(4) : '0.0000';
@@ -101,20 +101,65 @@ export function useGiftCard() {
       return;
     }
 
+
     setIsLoading(true);
     try {
       const expiresAt = Math.floor(Date.now() / 1000) + (Number(expiryMinutes) || 60) * 60;
       const parsedAmount = BigInt(Math.floor(parseFloat(amount) * 1e18));
-      
+
       const targetReceiver = type === 'targeted' ? receiver : address;
       const payId = `${address.slice(0, 6)}@gift.pay.id`;
 
       // Import generateDecisionProof and sessionPolicy utilities
       const { generateDecisionProof } = await import('payid/decision-proof');
       const { encodeSessionPolicyV2QR } = await import('payid/sessionPolicy');
-      
+
       const provider = new BrowserProvider(connectorClient.transport as any);
       const signer = await provider.getSigner();
+
+      // For ERC20 gifts, approve PayWithPayID to pull tokens from sender at claim time
+      if (mode === 'gift') {
+        const erc20 = new Contract(
+          erc20Address,
+          ['function approve(address spender, uint256 amount) returns (bool)'],
+          signer,
+        );
+        toast.info('Step 1/2: Approving ERC20 spend...');
+        const approveTx = await erc20.approve(contracts.payWithPayID, parsedAmount);
+        await approveTx.wait();
+
+        if (type === 'public') {
+          // Public gift: receiver unknown — store unsigned params, sign per-claimer at request time
+          const pendingData = {
+            amount: parsedAmount.toString(),
+            asset: erc20Address,
+            sender: address,
+            expiresAt,
+            chainId,
+            payId,
+            verifyingContract: contracts.payIDVerifier,
+          };
+          const giftData: GiftCardData = {
+            id: Math.random().toString(36).substring(7),
+            mode,
+            type,
+            amount,
+            asset: 'ERC20',
+            receiver: '',
+            expiryMinutes,
+            expiresAt,
+            theme,
+            payload: `pending:${btoa(JSON.stringify(pendingData))}`,
+            senderAddress: address,
+          };
+          setGeneratedGift(giftData);
+          localStorage.setItem(`payid_gift_${address}`, JSON.stringify(giftData));
+          toast.success('🎁 Public gift voucher ready! Share the link so anyone can request it.');
+          return;
+        }
+
+        toast.success('Approval confirmed. Signing gift...');
+      }
 
       const proof = await generateDecisionProof({
         payId,

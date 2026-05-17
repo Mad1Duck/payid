@@ -58,12 +58,22 @@ const TARGETS = [
   path.join(REPO_ROOT, 'frontend/frontend-docs/src/constants/contracts/addresses.ts'),
 ];
 
+// Named --deployment-id directories produced by `deploy:*` scripts
+const CHAIN_DEPLOY_DIRS: Record<number, string[]> = {
+  16600: ['zerog-newton-v1'],
+  16601: ['zerog-fork-v1'],
+  16602: ['zerog-galileo-v1'],
+  16661: ['zerog-mainnet-v1'],
+  31337: ['payid-devnode', 'chain-31337'],
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function findDeploymentDir(chainId: number): string | null {
   const ignitionDeployments = path.join(__dirname, '../ignition/deployments');
   const candidates = [
     `chain-${chainId}`,
+    ...(CHAIN_DEPLOY_DIRS[chainId] ?? []),
   ];
   for (const c of candidates) {
     const full = path.join(ignitionDeployments, c);
@@ -81,12 +91,14 @@ function readDeployedAddresses(deployDir: string): Record<string, string> {
 }
 
 function buildAddressBlock(chainId: number, addresses: Record<string, string>): string {
+  const meta = CHAIN_META[chainId];
+  const label = meta ? `${meta.label} \u2014 Chain ${chainId}` : `Chain ${chainId}`;
   const lines: string[] = [];
   for (const [ignitionKey, tsKey] of Object.entries(CONTRACT_KEY_MAP)) {
     const addr = addresses[ignitionKey] ?? '0x0000000000000000000000000000000000000000';
     lines.push(`    ${tsKey}: "${addr}" as \`0x\${string}\`,`);
   }
-  return `  // Chain ${chainId}\n  ${chainId}: {\n${lines.join('\n')}\n  }`;
+  return `  // ${label}\n  ${chainId}: {\n${lines.join('\n')}\n  }`;
 }
 
 function updateAddressesFile(filePath: string, chainId: number, newBlock: string): void {
@@ -95,32 +107,52 @@ function updateAddressesFile(filePath: string, chainId: number, newBlock: string
     return;
   }
 
-  let content = fs.readFileSync(filePath, 'utf-8');
+  const raw = fs.readFileSync(filePath, 'utf-8');
+  // Normalise line endings; remember original style
+  const crlf = raw.includes('\r\n');
+  const normalized = raw.replace(/\r\n/g, '\n');
+  const lines = normalized.split('\n');
 
-  // Replace existing block for this chainId if it exists
-  const chainPattern = new RegExp(
-    `( *// .*Chain ${chainId}.*\\n)?  ${chainId}: \\{[^}]*(?:\\{[^}]*\\}[^}]*)*\\}`,
-    'g'
-  );
+  // Line-based block detection: regex over full content is unreliable because
+  // every address property ends with `as \`0x${string}\`` which contains `{` and `}`
+  // and breaks greedy [^}]* patterns.
+  const openRe = new RegExp(`^  ${chainId}:\\s*\\{\\s*$`);
+  let openIdx = -1;
+  let closeIdx = -1;
 
-  if (chainPattern.test(content)) {
-    content = content.replace(chainPattern, newBlock);
+  for (let i = 0; i < lines.length; i++) {
+    if (openRe.test(lines[i])) {
+      // Include the preceding comment line in the replacement range if present
+      openIdx = (i > 0 && /^\s*\/\//.test(lines[i - 1])) ? i - 1 : i;
+      // Closing line is exactly `  }` or `  },` at the same 2-space indent
+      for (let j = i + 1; j < lines.length; j++) {
+        if (/^  \},?$/.test(lines[j])) {
+          closeIdx = j;
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  let content: string;
+
+  if (openIdx !== -1 && closeIdx !== -1) {
+    const before = lines.slice(0, openIdx);
+    const after = lines.slice(closeIdx + 1);
+    content = [...before, newBlock + ',', ...after].join('\n');
     console.log(`  ✅ Updated chain ${chainId} block`);
   } else {
-    // Insert before closing `} as const`
-    content = content.replace(
-      /(\n} as const)/,
-      `,\n\n${newBlock}\n$1`
-    );
+    // Block not found — insert before the file's closing `} as const`
+    content = normalized.replace(/(\n} as const)/, `,\n\n${newBlock}\n$1`);
     console.log(`  ✅ Inserted chain ${chainId} block`);
   }
 
   // Update header comment
-  const now = new Date().toISOString();
-  content = content.replace(
-    /\/\/ Last synced:.*/,
-    `// Last synced: ${now}`
-  );
+  content = content.replace(/\/\/ Last synced:.*/, `// Last synced: ${new Date().toISOString()}`);
+
+  // Restore original line endings
+  if (crlf) content = content.replace(/\n/g, '\r\n');
 
   fs.writeFileSync(filePath, content, 'utf-8');
 }
@@ -129,14 +161,47 @@ function updateAddressesFile(filePath: string, chainId: number, newBlock: string
 
 async function main() {
   const args = process.argv.slice(2);
-  const networkArg = args.find(a => a.startsWith('--network'))?.split('=')[1]
-    || args[args.indexOf('--network') + 1]
-    || 'zeroGGalileo';
 
-  const chainId = NETWORK_CHAIN_MAP[networkArg];
-  if (!chainId) {
-    console.error(`❌ Unknown network: "${networkArg}". Known: ${Object.keys(NETWORK_CHAIN_MAP).join(', ')}`);
-    process.exit(1);
+  // Resolve --network <name> flag (--network=name or --network name)
+  const networkFlagIdx = args.indexOf('--network');
+  const networkFlagName =
+    args.find(a => a.startsWith('--network='))?.split('=')[1] ??
+    (networkFlagIdx !== -1 ? args[networkFlagIdx + 1] : undefined);
+
+  // First positional arg that is not a flag (e.g. raw chain ID)
+  const positional = args.find(a => !a.startsWith('-'));
+
+  let chainId: number;
+  let networkArg: string;
+
+  if (networkFlagName) {
+    // --network <name>
+    networkArg = networkFlagName;
+    const resolved = NETWORK_CHAIN_MAP[networkArg];
+    if (!resolved) {
+      console.error(`❌ Unknown network: "${networkArg}". Known: ${Object.keys(NETWORK_CHAIN_MAP).join(', ')}`);
+      process.exit(1);
+    }
+    chainId = resolved;
+  } else if (positional && /^\d+$/.test(positional)) {
+    // Raw chain ID passed as positional argument (e.g. sync:zerog-fork passes 16601)
+    chainId = Number(positional);
+    networkArg =
+      Object.keys(NETWORK_CHAIN_MAP).find(k => NETWORK_CHAIN_MAP[k] === chainId) ??
+      String(chainId);
+  } else if (positional) {
+    // Network name as positional argument
+    networkArg = positional;
+    const resolved = NETWORK_CHAIN_MAP[networkArg];
+    if (!resolved) {
+      console.error(`❌ Unknown network: "${networkArg}". Known: ${Object.keys(NETWORK_CHAIN_MAP).join(', ')}`);
+      process.exit(1);
+    }
+    chainId = resolved;
+  } else {
+    // Default
+    networkArg = 'zeroGGalileo';
+    chainId = NETWORK_CHAIN_MAP[networkArg];
   }
 
   console.log(`\n🔍 Syncing deployments for network: ${networkArg} (Chain ID: ${chainId})\n`);
