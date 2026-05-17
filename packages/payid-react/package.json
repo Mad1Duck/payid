@@ -1,6 +1,6 @@
 {
   "name": "payid-react",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "React hooks for PAY.ID — connect wallet and interact with PAY.ID smart contracts",
   "type": "module",
   "main": "./dist/index.js",
@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "ethers": "^6.16.0",
-    "payid": "workspace:*"
+    "payid": "^1.0.0"
   },
   "optionalDependencies": {
     "qrcode": "^1.5.4"
