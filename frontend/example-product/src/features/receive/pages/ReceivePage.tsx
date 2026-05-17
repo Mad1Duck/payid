@@ -1,10 +1,12 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAccount } from 'wagmi'
 import { QrCode, Copy, Share2, Wallet, ChevronRight, Check, Download, RefreshCw } from 'lucide-react'
 import PremiumButton from '@/components/v4/PremiumButton'
 import { shortAddr } from '@/features/shared'
 import { useReceivePage } from '../hooks/useReceivePage'
 
 export default function ReceivePage() {
+  const { isConnected } = useAccount()
   const {
     p, address, payId, walletAddress,
     copied, showAddress, setShowAddress,
@@ -12,6 +14,24 @@ export default function ReceivePage() {
     maxAmount, setMaxAmount, expiryMin, setExpiryMin,
     handleGenerate, handleSaveQR, handleCopy,
   } = useReceivePage()
+
+  if (!isConnected) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-md mx-auto text-center py-20"
+      >
+        <Wallet className="w-10 h-10 text-[#64748B] mx-auto mb-4" />
+        <h2 className={`text-lg font-semibold ${p.textMain} mb-1`}>
+          Connect Wallet
+        </h2>
+        <p className={`text-xs ${p.textMuted}`}>
+          Link your wallet to generate a payment QR code.
+        </p>
+      </motion.div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

@@ -8,7 +8,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { Link } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 import {
   CheckCircle2,
   Clock,
@@ -32,6 +32,8 @@ import { evalRule, type DemoCtx, type MiniRule, type MiniCond } from '@/features
 import { useRulesConsole } from '../hooks/useRulesConsole'
 
 export default function RulesConsolePage() {
+  const location = useLocation()
+  const currentPath = location.pathname
   const {
     p, chainId, nativeSymbol, address, isConnected, myRules, activeCombined, sub,
     effectiveAgentRule, preferredAgent, preferredAgentInfo,
@@ -72,6 +74,32 @@ export default function RulesConsolePage() {
       animate={{ opacity: 1, y: 0 }}
       className="max-w-5xl space-y-6"
     >
+      {/* ── Sub Navigation Tabs ── */}
+      <div className={`flex items-center gap-2 border-b ${p.cardBorder} pb-3`}>
+        <Link
+          to="/v4/app/rules"
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
+            currentPath === '/v4/app/rules'
+              ? 'bg-[#00D084]/10 text-[#00D084] border-[#00D084]/20 shadow-[0_0_12px_rgba(0,208,132,0.08)]'
+              : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent cursor-pointer'
+          }`}
+        >
+          <Cpu className="w-3.5 h-3.5" />
+          Policy Console & Enforcer
+        </Link>
+        <Link
+          to="/v4/app/rules/builder"
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
+            currentPath === '/v4/app/rules/builder'
+              ? 'bg-[#00D084]/10 text-[#00D084] border-[#00D084]/20 shadow-[0_0_12px_rgba(0,208,132,0.08)]'
+              : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent cursor-pointer'
+          }`}
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Custom Rule Builder
+        </Link>
+      </div>
+
       {/* ── Header ── */}
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-4">
@@ -242,6 +270,7 @@ export default function RulesConsolePage() {
                 <CartridgeTray
                   cartridges={trayCartridges}
                   onCartridgeClick={handleCartridgeClick}
+                  dark={p.dark}
                 />
               </div>
 

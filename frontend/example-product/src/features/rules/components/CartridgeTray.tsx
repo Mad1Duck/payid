@@ -17,12 +17,14 @@ interface CartridgeTrayProps {
   cartridges: Array<CartridgeData>
   showAdvanced?: boolean
   onCartridgeClick?: (cartridgeId: string) => void
+  dark?: boolean
 }
 
 export function CartridgeTray({
   cartridges,
   showAdvanced = false,
   onCartridgeClick,
+  dark = false,
 }: CartridgeTrayProps) {
   const { isOver, setNodeRef } = useDroppable({ id: 'tray' })
 
@@ -35,12 +37,20 @@ export function CartridgeTray({
           fontFamily: 'monospace',
           textTransform: 'uppercase',
           letterSpacing: '0.12em',
-          color: isOver ? 'rgba(244,63,94,0.85)' : 'rgba(100,116,139,0.7)',
+          color: isOver
+            ? 'rgba(244,63,94,0.9)'
+            : dark
+              ? 'rgba(148,163,184,0.8)'
+              : 'rgba(100,116,139,0.7)',
           transition: 'color 0.15s',
         }}>
           {isOver ? '↓ Drop to Eject' : 'Cartridge Tray'}
         </span>
-        <span style={{ fontSize: 9, fontFamily: 'monospace', color: 'rgba(100,116,139,0.4)' }}>
+        <span style={{
+          fontSize: 9,
+          fontFamily: 'monospace',
+          color: dark ? 'rgba(148,163,184,0.4)' : 'rgba(100,116,139,0.4)',
+        }}>
           {cartridges.length} loaded
         </span>
       </div>
@@ -51,13 +61,25 @@ export function CartridgeTray({
         style={{
           width: '100%',
           background: isOver
-            ? 'linear-gradient(180deg, #ffffff 0%, #86efac 100%)'
-            : 'linear-gradient(180deg, #d8dce0 0%, #c8ccd0 100%)',
-          borderRadius: 12,
-          border: isOver ? '1px solid rgba(244,63,94,0.5)' : '1px solid rgba(0,0,0,0.08)',
+            ? dark
+              ? '#2A0B11'
+              : 'linear-gradient(180deg, #fff5f5 0%, #fee2e2 100%)'
+            : dark
+              ? 'rgba(255,255,255,0.03)'
+              : 'rgba(255,255,255,0.7)',
+          borderRadius: 16,
+          border: isOver
+            ? '1px solid rgba(244,63,94,0.5)'
+            : dark
+              ? '1px solid rgba(255,255,255,0.1)'
+              : '1px solid rgba(0,0,0,0.05)',
           boxShadow: isOver
-            ? 'inset 0 1px 3px rgba(255,255,255,0.04), 0 4px 20px rgba(244,63,94,0.25), 0 0 0 2px rgba(244,63,94,0.12)'
-            : 'inset 0 1px 3px rgba(255,255,255,0.5), 0 4px 16px rgba(0,0,0,0.15)',
+            ? dark
+              ? 'inset 0 1px 3px rgba(255,255,255,0.01), 0 4px 20px rgba(244,63,94,0.4), 0 0 0 2px rgba(244,63,94,0.2)'
+              : 'inset 0 1px 3px rgba(255,255,255,0.4), 0 4px 20px rgba(244,63,94,0.25), 0 0 0 2px rgba(244,63,94,0.12)'
+            : dark
+              ? 'inset 0 1px 2px rgba(255,255,255,0.02), 0 4px 12px rgba(0,0,0,0.1)'
+              : 'inset 0 1px 3px rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.03)',
           padding: '12px 16px 8px',
           overflow: 'visible',
           position: 'relative',
@@ -82,7 +104,9 @@ export function CartridgeTray({
           left: 12,
           right: 12,
           height: 3,
-          background: 'linear-gradient(90deg, transparent, rgba(0,0,0,0.06) 20%, rgba(0,0,0,0.06) 80%, transparent)',
+          background: dark
+            ? 'linear-gradient(90deg, transparent, rgba(0,0,0,0.3) 20%, rgba(0,0,0,0.3) 80%, transparent)'
+            : 'linear-gradient(90deg, transparent, rgba(0,0,0,0.06) 20%, rgba(0,0,0,0.06) 80%, transparent)',
           borderRadius: '0 0 8px 8px',
         }} />
 
@@ -117,7 +141,11 @@ export function CartridgeTray({
               <span style={{
                 fontSize: 10,
                 fontFamily: 'monospace',
-                color: isOver ? 'rgba(244,63,94,0.55)' : 'rgba(90,93,96,0.35)',
+                color: isOver
+                  ? 'rgba(244,63,94,0.55)'
+                  : dark
+                    ? 'rgba(148,163,184,0.3)'
+                    : 'rgba(90,93,96,0.35)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
                 transition: 'color 0.15s',

@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Download, Search } from 'lucide-react'
+import { Download, Search, Wallet } from 'lucide-react'
 import { SkeletonCard } from '@/components/v4/Skeleton'
 import PremiumButton from '@/components/v4/PremiumButton'
 import { Avatar } from '@/features/shared/components/Avatar'
@@ -10,6 +10,24 @@ export default function HistoryPage() {
     p, isConnected, activeTab, setActiveTab, search, setSearch,
     mounted, filteredTxs, totalSent, totalReceived, relativeTime,
   } = useHistoryPage()
+
+  if (!isConnected) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-md mx-auto text-center py-20"
+      >
+        <Wallet className="w-10 h-10 text-[#64748B] mx-auto mb-4" />
+        <h2 className={`text-lg font-semibold ${p.textMain} mb-1`}>
+          Connect Wallet
+        </h2>
+        <p className={`text-xs ${p.textMuted}`}>
+          Link your wallet to view transaction history.
+        </p>
+      </motion.div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

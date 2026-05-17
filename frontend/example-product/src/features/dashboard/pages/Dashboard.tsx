@@ -115,21 +115,24 @@ export default function Dashboard() {
           </div>
 
           {/* Demo Token Banner */}
-          <div className="mt-3 p-3 rounded-xl bg-white/15 backdrop-blur-sm flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-white/25 flex items-center justify-center text-white font-bold text-xs">
+          <Link
+            to="/v4/app/agent"
+            className="mt-3 p-3 rounded-xl bg-white/15 backdrop-blur-sm flex items-center gap-3 hover:bg-white/20 transition-all cursor-pointer text-left block w-full group"
+          >
+            <div className="w-8 h-8 rounded-full bg-white/25 flex items-center justify-center text-white font-bold text-xs group-hover:scale-105 transition-transform">
               P
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-white text-sm font-medium">Demo Token</div>
               <div className="text-white/70 text-xs">
-                We&apos;ve sent you this to experience how seamless PAY.ID
-                withdrawals are. Click me to try it out!
+                Try policy-driven AI Agent withdrawals! Experience secure,
+                automated payout checks in our browser simulator. Click to test!
               </div>
             </div>
-            <button className="text-white/60 hover:text-white transition-colors">
+            <div className="text-white/60 group-hover:text-white transition-colors">
               <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+            </div>
+          </Link>
 
           <div className="mt-3 text-center">
             <span className="text-white/70 text-xs">

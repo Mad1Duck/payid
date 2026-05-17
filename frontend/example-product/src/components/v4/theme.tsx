@@ -14,7 +14,7 @@ const ThemeContext = createContext<ThemeCtx>({
   toggle: () => {},
 })
 
-const STORAGE_KEY = 'payid-v4-theme'
+const STORAGE_KEY = 'payid-v4-theme-v5'
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {

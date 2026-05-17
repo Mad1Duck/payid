@@ -188,9 +188,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               to="/"
               className="flex items-center gap-2.5 hover:opacity-90 transition-opacity cursor-pointer"
             >
-              <div className="w-7 h-7 rounded-lg bg-[#00D084]/10 flex items-center justify-center">
-                <div className="w-2.5 h-2.5 rounded-sm bg-[#00D084]" />
-              </div>
+              <PayIDLogo className="w-7 h-7 filter drop-shadow-[0_0_8px_rgba(0,208,132,0.2)]" />
               <span
                 className={`text-[15px] font-semibold tracking-tight ${p.textMain}`}
               >
@@ -517,5 +515,49 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
     </div>
+  )
+}
+
+export function PayIDLogo({ className = 'w-6 h-6' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient x1="0%" y1="0%" x2="100%" y2="100%" id="payidLogoGrad">
+          <stop stopColor="#00D084" offset="0%" />
+          <stop stopColor="#00A36C" offset="100%" />
+        </linearGradient>
+      </defs>
+      <g stroke="none" fill="none">
+        {/* Shield Background Glow */}
+        <circle cx="256" cy="256" r="240" fill="#00D084" fillOpacity="0.05" />
+        
+        {/* Modern Shield Path */}
+        <path
+          d="M256,40 L416,104 L416,248 C416,356 348,432 256,472 C164,432 96,356 96,248 L96,104 L256,40 Z" 
+          stroke="url(#payidLogoGrad)"
+          strokeWidth="28"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="#0B0F1A"
+          fillOpacity="0.9"
+        />
+              
+        {/* Locked Padlock Icon in the center */}
+        {/* Shackle */}
+        <path
+          d="M192,208 L192,176 C192,140.7 220.7,112 256,112 C291.3,112 320,140.7 320,176 L320,208" 
+          stroke="#FFFFFF"
+          strokeWidth="24"
+          strokeLinecap="round"
+        />
+              
+        {/* Lock Body */}
+        <rect x="176" y="208" width="160" height="120" rx="20" fill="url(#payidLogoGrad)" />
+        
+        {/* Keyhole */}
+        <path d="M256,250 L256,280" stroke="#0B0F1A" strokeWidth="12" strokeLinecap="round" />
+        <circle cx="256" cy="246" r="10" fill="#0B0F1A" />
+      </g>
+    </svg>
   )
 }

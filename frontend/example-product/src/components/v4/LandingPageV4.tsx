@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { useV4Palette } from './theme'
+import { PayIDLogo } from './AppLayout'
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 20 },
@@ -249,9 +250,7 @@ export default function LandingPageV4() {
       <header className="relative z-50 border-b border-white/[0.04] bg-[#0b0f1a]/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#00D084]/15 flex items-center justify-center border border-[#00D084]/30">
-              <Shield className="w-4 h-4 text-[#00D084]" />
-            </div>
+            <PayIDLogo className="w-8 h-8 filter drop-shadow-[0_0_8px_rgba(0,208,132,0.2)]" />
             <span className="text-[17px] font-extrabold tracking-tight">PAY.ID</span>
           </div>
           <div className="flex items-center gap-6">
@@ -519,9 +518,7 @@ export default function LandingPageV4() {
       <footer className="relative z-10 border-t border-white/[0.04] bg-black/20 py-8 px-6 text-left">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-md bg-[#00D084]/15 flex items-center justify-center border border-[#00D084]/30">
-              <Shield className="w-3 h-3 text-[#00D084]" />
-            </div>
+            <PayIDLogo className="w-6 h-6 filter drop-shadow-[0_0_6px_rgba(0,208,132,0.15)]" />
             <span className="text-xs font-bold tracking-tight">PAY.ID</span>
           </div>
           <p className="text-[10px] text-gray-500 leading-relaxed font-mono">
