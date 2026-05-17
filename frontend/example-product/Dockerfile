@@ -5,28 +5,18 @@ FROM oven/bun:1.3.13 AS builder
 
 WORKDIR /app
 
-# ── 1. Copy package files first (layer cache) ──
-COPY bun.lock ./
-COPY package.json ./
-COPY packages/sdk-core/package.json ./packages/sdk-core/
-COPY packages/payid-react/package.json ./packages/payid-react/
-COPY packages/contracts/package.json ./packages/contracts/
-COPY frontend/example-product/package.json ./frontend/example-product/
+# ── 1. Copy full source ──
+COPY . .
 
 # ── 2. Install ALL workspace deps ──
 RUN bun install
 
-# ── 3. Copy full source ──
-COPY . .
-
-# ── 4. Re-install to pick up any workspace links ──
-RUN bun install
-
-# ── 5. Build workspace packages (sdk-core first, then payid-react) ──
+# ── 3. Patch tsup configs to fix DTS resolution, then build ──
+RUN sed -i 's/dts: true,/dts: { resolve: true },/' packages/sdk-core/tsup.config.ts
 RUN cd packages/sdk-core && bun run build
 RUN cd packages/payid-react && bun run build
 
-# ── 6. Build the frontend ──
+# ── 4. Build the frontend ──
 WORKDIR /app/frontend/example-product
 RUN bunx vite build
 
