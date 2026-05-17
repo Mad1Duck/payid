@@ -53,7 +53,7 @@ import { PayIDProvider } from 'payid-react'
 import App from './App'
 import type { Chain } from 'viem'
 
-// 0G Galileo Testnet (chain 16602) — recommended for testing
+// 0G Galileo Testnet (chain 16602)
 const zeroGGalileo = {
   id: 16602,
   name: '0G Galileo Testnet',
@@ -75,19 +75,23 @@ const wagmiConfig = createConfig({
 
 const queryClient = new QueryClient()
 
-// Contract addresses for your deployed network
-// Get these from the Contract Addresses page or deploy your own
+// ✅ 0G Galileo Testnet — Contract Addresses (Chain 16602)
+// Explorer: https://chainscan-galileo.0g.ai
 const CONTRACT_ADDRESSES = {
   [zeroGGalileo.id]: {
-    ruleAuthority:       '0x...',
-    ruleItemERC721:      '0x...',
-    combinedRuleStorage: '0x...',
-    payIDVerifier:       '0x...',
-    payWithPayID:        '0x...',
-    vindexRegistry:      '0x...',
-    aiAgentRegistry:     '0x...',
-    aiAgentRuleManager:  '0x...',
-    attestationVerifier: '0x...',
+    ruleAuthority:       '0x3d2F9441c589a24A524c36892268f35C6467bFF6',
+    ruleItemERC721:      '0xc22fE6CbeE7fA5A35DAf40B30D91d5D3bFfa2fD8',
+    combinedRuleStorage: '0x486a6d305742B0b5847770BF421114161440E79b',
+    payIDVerifier:       '0xE2FfE1037b996B8F66dE7cba0398A411850Ecd91',
+    payWithPayID:        '0x04eEAF2dc4Ee22E7362a60dd652E1DF450697dbb',
+    vindexRegistry:      '0x3F6ba46650f78AcAeebf906306987994555a8CCb',
+    aiAgentRegistry:     '0x76E829f48BD5e3c5380f5c77Fe1a3EFBD9AC5a44',
+    aiAgentRuleManager:  '0xd5eA6ABe9727061c18fa65Fcd75bd7dAc7E7e7f5',
+    attestationVerifier: '0x524130A6974B3075eb6DB32afA89AE4315bf7b2d',
+    agentPayID:          '0xC031901680128b1419E6D00Fd7e29c734cE2f311',
+    mockAgentRegistry:   '0xFFA2c4bB8075dA83c45698B7489AdC9Cee2f8045',
+    payWithPayIDBatch:   '0xC24618Bc5E3E46398FB2845DA71496505AD30e86',
+    recurringPayments:   '0x60d010483B9B9f263923f73ebd7F7F7bA6c0E91b',
   },
 }
 
@@ -246,8 +250,24 @@ export function MerchantSetup() {
 }
 ```
 
-:::tip Upload Rules to IPFS First
-Before calling `createRule`, upload your rule JSON to IPFS (e.g. via [Pinata](https://pinata.cloud)) and use the `ipfs://CID` as the `uri`. See [Create Rule NFT →](./examples/create-nft-rule) for the full script.
+:::tip Store Rules on 0G Storage (Recommended) or IPFS
+PAY.ID supports two storage backends for rule metadata:
+
+**Option A — 0G Storage** (recommended on 0G Galileo Testnet):
+```ts
+import { uploadToZGStorage } from '@/lib/zgStorage'
+// Upload returns a root hash — use as uri: `0g://<rootHash>`
+const result = await uploadToZGStorage(JSON.stringify(MY_RULE), signer)
+const uri = `0g://${result.rootHash}`
+```
+
+**Option B — IPFS via Pinata** (traditional):
+```bash
+# Upload rule JSON to Pinata at https://app.pinata.cloud
+# Use the returned CID as: uri = 'ipfs://YOUR_CID'
+```
+
+See [0G Storage Guide →](./integration/0g-storage) or [Create Rule NFT →](./examples/create-nft-rule) for the full script.
 :::
 
 That's it for the React path! → **[Full React Integration →](./integration/react-integration)** for all 20+ hooks.
@@ -277,11 +297,10 @@ const provider = new ethers.JsonRpcProvider(process.env.RPC_URL)
 const signer   = new ethers.Wallet(process.env.PRIVATE_KEY!, provider)
 
 const payid = createPayIDServer({
-  signer,                  // server wallet — signs Decision Proofs
-  // trustedIssuers: new Set(['0x...'])  // add if using Context V2
+  signer,
+  // Storage config for fetching rules from 0G Storage
+  zgStorageIndexer: 'https://indexer-storage-testnet-turbo.0g.ai',
 })
-
-// No await ready() needed — server mode is always ready
 ```
 
 ### Step 3 — Evaluate and Generate Proof
