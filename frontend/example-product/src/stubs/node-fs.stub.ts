@@ -31,6 +31,5 @@ export const statSync = fsMock.statSync;
 export const existsSync = fsMock.existsSync;
 export const createWriteStream = fsMock.createWriteStream;
 export const createReadStream = fsMock.createReadStream;
-export { };
 
 export default fsMock;
