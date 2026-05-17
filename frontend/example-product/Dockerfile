@@ -12,7 +12,7 @@ COPY . .
 RUN bun install
 
 # ── 3. Build workspace packages with esbuild directly (bypass tsup's buggy resolution) ──
-RUN cd packages/sdk-core && npx esbuild src/index.ts --bundle --platform=neutral --format=esm --outfile=dist/index.js \
+RUN cd packages/sdk-core && bunx esbuild src/index.ts --bundle --platform=neutral --format=esm --outfile=dist/index.js \
     --external:ethers --external:@0gfoundation/0g-storage-ts-sdk --external:wasi \
     --loader:.wasm=copy
 RUN cd packages/payid-react && bun run build
