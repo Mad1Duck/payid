@@ -35,6 +35,7 @@ function OwnerPolicyView({ s }: { s: AgentPayIDState }) {
         <p className={`text-xs font-semibold ${p.textMuted}`}>SET AGENT POLICY</p>
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#8B5CF6]/10 text-[#8B5CF6] font-medium">Admin</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#00D084]/10 text-[#00D084] font-medium">Only Owner</span>
           {s.showRuleSection ? (
             <ChevronUp className={`w-3.5 h-3.5 ${p.textMuted} group-hover:text-[#8B5CF6] transition-colors`} />
           ) : (
@@ -163,7 +164,10 @@ function NewRuleView({ s }: { s: AgentPayIDState }) {
                 s.setSelectedTemplate(i)
                 s.setRuleNameInput(t.name)
                 s.setRuleDescInput(t.desc)
-                if (t.json) s.setRuleJsonInput(JSON.stringify(t.json, null, 2))
+                if (t.json) {
+                  const jsonStr = JSON.stringify(t.json, null, 2)
+                  s.setRuleJsonInput(jsonStr.replace(/0xOWNER_ADDRESS/g, s.address ?? '0x0000000000000000000000000000000000000000'))
+                }
                 s.setJsonError('')
               }}
               className={`px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all ${
@@ -237,11 +241,11 @@ function NewRuleView({ s }: { s: AgentPayIDState }) {
       {s.showCreateSuccess && (
         <div className="flex items-center gap-2 text-[10px] text-[#00D084]">
           <CheckCircle2 className="w-3 h-3" />
-          <span>Rule created! Go to <a href="/v3/rules/console" className="underline">Rules Console</a> to activate & combine.</span>
+          <span>Rule created! Go to <a href="/v4/rules/console" className="underline">Rules Console</a> to activate & combine.</span>
         </div>
       )}
       <p className={`text-[10px] ${p.textMuted}`}>
-        Prefer a guided UI? <a href="/v3/rule-builder" className="text-[#8B5CF6] hover:underline">Open Rule Builder</a> for step-by-step rule creation.
+        Prefer a guided UI? <a href="/v4/rule-builder" className="text-[#8B5CF6] hover:underline">Open Rule Builder</a> for step-by-step rule creation.
       </p>
 
       <div className="pt-2 border-t" style={{ borderColor: p.dark ? '#ffffff10' : '#00000010' }}>

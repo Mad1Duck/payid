@@ -1,4 +1,4 @@
-import { keccak256, toBytes } from 'viem'
+import { keccak256, toBytes } from 'viem';
 
 export const PRESET_RULES = [
   {
@@ -16,7 +16,12 @@ export const PRESET_RULES = [
     hash: keccak256(toBytes('no_restrictions')),
     detail: 'All transactions are allowed. No policy enforcement is applied.',
   },
-]
+  {
+    label: 'Only Owner',
+    hash: keccak256(toBytes('only_owner')),
+    detail: 'Only the rule owner (tx.sender) can execute transactions.',
+  },
+];
 
 export const PRESET_TEMPLATES = [
   {
@@ -65,11 +70,23 @@ export const PRESET_TEMPLATES = [
     },
   },
   {
+    name: 'Only Owner',
+    desc: 'Restrict to rule owner address',
+    json: {
+      version: '1.0',
+      logic: 'AND',
+      rules: [
+        { type: 'simple', field: 'tx.amount', operator: '<=', value: 500000000 },
+        { type: 'simple', field: 'tx.sender', operator: '==', value: '0xOWNER_ADDRESS' },
+      ],
+    },
+  },
+  {
     name: 'Custom',
     desc: 'Write your own JSON',
     json: null,
   },
-]
+];
 
 export const BASE_SYSTEM_PROMPT = `You are an AI payment agent integrated with PAY.ID — a programmable payment policy system on 0G Newton blockchain.
 
@@ -88,4 +105,4 @@ When a user asks you to make a payment, respond with:
   "policy": "which policy applies"
 }
 
-Be concise, decisive, and always reference the PAY.ID policy context. You operate on 0G Newton Testnet.`
+Be concise, decisive, and always reference the PAY.ID policy context. You operate on 0G Newton Testnet.`;

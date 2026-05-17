@@ -228,7 +228,27 @@ export function useAgentPayID(): AgentPayIDState {
   const { data: subPrice } = useSubscriptionPrice();
 
   const { createRule, isPending: isCreatingRule } = useCreateRule();
-  const [ruleJsonInput, setRuleJsonInput] = useState(`{\n  "version": "1.0",\n  "logic": "AND",\n  "rules": [\n    {\n      "type": "simple",\n      "field": "tx.amount",\n      "operator": "<=",\n      "value": 500000000\n    }\n  ]\n}`);
+  const [ruleJsonInput, setRuleJsonInput] = useState(() => {
+    const owner = address ?? '0x0000000000000000000000000000000000000000';
+    return JSON.stringify({
+      version: "1.0",
+      logic: "AND",
+      rules: [
+        {
+          type: "simple",
+          field: "tx.amount",
+          operator: "<=",
+          value: 500000000
+        },
+        {
+          type: "simple",
+          field: "tx.sender",
+          operator: "==",
+          value: owner
+        }
+      ]
+    }, null, 2);
+  });
   const [ruleNameInput, setRuleNameInput] = useState('');
   const [ruleDescInput, setRuleDescInput] = useState('');
   const [showRuleSection, setShowRuleSection] = useState(false);
