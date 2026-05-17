@@ -28,6 +28,8 @@
     "@tanstack/react-query-devtools": "^5.84.2",
     "@tanstack/react-router": "^1.132.0",
     "@tanstack/react-router-devtools": "^1.132.0",
+    "@wagmi/connectors": "7.2.1",
+    "@wagmi/core": "^3.4.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -45,7 +47,6 @@
     "tw-animate-css": "^1.3.6",
     "viem": "^2.46.3",
     "wagmi": "^3.5.0",
-    "@wagmi/connectors": "7.2.1",
     "zod": "^4.1.11"
   },
   "overrides": {
