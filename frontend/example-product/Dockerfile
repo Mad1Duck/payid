@@ -1,6 +1,7 @@
 FROM oven/bun:1.3.13 AS builder
 WORKDIR /app
 COPY . .
+RUN rm -f bun.lock
 RUN bun install
 RUN cd /app/frontend/example-product && bun install
 WORKDIR /app/frontend/example-product
