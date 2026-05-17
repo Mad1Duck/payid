@@ -11,19 +11,10 @@ COPY . .
 # ── 2. Install ALL workspace deps ──
 RUN bun install
 
-# ── 3. Build workspace packages (sdk-core single entry to fix cross-entry esbuild resolution) ──
-RUN cat > packages/sdk-core/tsup.config.ts <<'EOF'
-import { defineConfig } from "tsup";
-export default defineConfig({
-  entry: ["src/index.ts"],
-  format: ["esm"],
-  dts: false,
-  clean: true,
-  outDir: "dist",
-  loader: { ".wasm": "copy" }
-});
-EOF
-RUN cd packages/sdk-core && bun run build
+# ── 3. Build workspace packages with esbuild directly (bypass tsup's buggy resolution) ──
+RUN cd packages/sdk-core && npx esbuild src/index.ts --bundle --platform=neutral --format=esm --outfile=dist/index.js \
+    --external:ethers --external:@0gfoundation/0g-storage-ts-sdk --external:wasi \
+    --loader:.wasm=copy
 RUN cd packages/payid-react && bun run build
 
 # ── 4. Build the frontend ──
