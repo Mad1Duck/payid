@@ -14,7 +14,7 @@ COPY packages/contracts/package.json ./packages/contracts/
 COPY frontend/example-product/package.json ./frontend/example-product/
 
 # ── 2. Install ALL workspace deps ──
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # ── 3. Copy full source ──
 COPY . .
