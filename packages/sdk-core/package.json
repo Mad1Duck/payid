@@ -1,6 +1,6 @@
 {
   "name": "payid",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",
@@ -8,31 +8,45 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./sessionPolicy": {
       "types": "./dist/sessionPolicy/index.d.ts",
-      "import": "./dist/sessionPolicy/index.js"
+      "import": "./dist/sessionPolicy/index.js",
+      "require": "./dist/sessionPolicy/index.js",
+      "default": "./dist/sessionPolicy/index.js"
     },
     "./rule": {
       "types": "./dist/rule/index.d.ts",
-      "import": "./dist/rule/index.js"
+      "import": "./dist/rule/index.js",
+      "require": "./dist/rule/index.js",
+      "default": "./dist/rule/index.js"
     },
     "./issuer": {
       "types": "./dist/issuer/index.d.ts",
-      "import": "./dist/issuer/index.js"
+      "import": "./dist/issuer/index.js",
+      "require": "./dist/issuer/index.js",
+      "default": "./dist/issuer/index.js"
     },
     "./context": {
       "types": "./dist/context/index.d.ts",
-      "import": "./dist/context/index.js"
+      "import": "./dist/context/index.js",
+      "require": "./dist/context/index.js",
+      "default": "./dist/context/index.js"
     },
     "./client": {
       "types": "./dist/core/client/index.d.ts",
-      "import": "./dist/core/client/index.js"
+      "import": "./dist/core/client/index.js",
+      "require": "./dist/core/client/index.js",
+      "default": "./dist/core/client/index.js"
     },
     "./server": {
       "types": "./dist/core/server/index.d.ts",
-      "import": "./dist/core/server/index.js"
+      "import": "./dist/core/server/index.js",
+      "require": "./dist/core/server/index.js",
+      "default": "./dist/core/server/index.js"
     }
   },
   "files": [
