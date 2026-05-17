@@ -1,6 +1,6 @@
 import { Bot, ShieldCheck } from 'lucide-react'
 import { zeroHash } from 'viem'
-import { useV4Palette } from '../theme'
+import { useV4Palette } from '@/components/v4/theme'
 import { shortHash, shortAddr } from '@/features/agent/utils/format'
 import type { AgentPayIDState } from './useAgentPayID'
 

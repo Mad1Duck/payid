@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Bot, ChevronDown, ChevronUp, ExternalLink, Loader2, ShieldCheck } from 'lucide-react'
-import { useV4Palette } from '../theme'
+import { useV4Palette } from '@/components/v4/theme'
 import { shortHash, shortAddr } from '@/features/agent/utils/format'
 import { detectStorageProvider, resolveStorageURI } from '@/lib/storage'
 import { downloadFromZGStorage } from '@/lib/zgStorage'

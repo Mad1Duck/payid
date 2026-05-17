@@ -1,5 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
-import { useV4Palette } from '../theme'
+import { useV4Palette } from '@/components/v4/theme'
 
 interface Props {
   hasApiKey: boolean

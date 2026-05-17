@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Brain, Bot, Loader2, Send } from 'lucide-react'
-import { useV4Palette } from '../theme'
+import { useV4Palette } from '@/components/v4/theme'
 import { Bubble } from '@/features/agent/components/Bubble'
 import type { AgentPayIDState } from './useAgentPayID'
 import { AI_MODEL } from '@/features/agent/data/constants'

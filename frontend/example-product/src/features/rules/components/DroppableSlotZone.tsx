@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useDroppable } from '@dnd-kit/core'
-import { DraggableCartridge } from '@/components/v4/console/DraggableCartridge'
-import type { CartridgeType } from '@/components/v4/console/RuleCartridge'
+import { DraggableCartridge } from './DraggableCartridge'
+import type { CartridgeType } from './RuleCartridge'
 
 export interface SlotData {
   id: string

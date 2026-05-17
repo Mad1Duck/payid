@@ -10,7 +10,7 @@ import {
   usePreferredAgent,
 } from 'payid-react'
 import { Bot, Cpu, Crown, Loader2, Plug, User } from 'lucide-react'
-import { useV4Palette } from './theme'
+import { useV4Palette } from '@/components/v4/theme'
 import { shortAddr } from '@/features/shared/utils/address'
 import { AgentCard, SubscribeModal, RegisterAgentForm } from '@/features/agent'
 

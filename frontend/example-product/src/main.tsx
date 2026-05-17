@@ -13,26 +13,24 @@ import { injected, metaMask } from 'wagmi/connectors'
 import { PayIDProvider } from 'payid-react'
 import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider.tsx'
 
-// V4 hackathon futuristic UI
+// V4 hackathon futuristic UI — pages now live in features/
 import {
   LandingPageV4,
-  AdminPage as V4AdminPage,
-  AgentPayIDPage as V4AgentPayIDPage,
-  UserAIAgentsPage as V4UserAIAgentsPage,
-  AdvancedTools as V4AdvancedTools,
   AppLayout as V4AppLayout,
-  DAOPayroll as V4DAOPayroll,
-  Dashboard as V4Dashboard,
-  HistoryPage as V4HistoryPage,
-  PolicyMarketplace as V4PolicyMarketplace,
-  ProofVisualizer as V4ProofVisualizer,
-  ReceivePage as V4ReceivePage,
-  RulesConsolePage as V4RulesConsolePage,
-  RulesPage as V4RulesPage,
-  SendFlow as V4SendFlow,
-  SettingsPage as V4SettingsPage,
   ThemeProvider as V4ThemeProvider,
 } from './components/v4'
+import { AdvancedTools as V4AdvancedTools } from '@/features/tools'
+import { AdminPage as V4AdminPage } from '@/features/admin'
+import { AgentPayIDPage as V4AgentPayIDPage, UserAIAgentsPage as V4UserAIAgentsPage } from '@/features/agent'
+import { Dashboard as V4Dashboard } from '@/features/dashboard'
+import { DAOPayroll as V4DAOPayroll } from '@/features/dao-payroll'
+import { HistoryPage as V4HistoryPage } from '@/features/history'
+import { PolicyMarketplace as V4PolicyMarketplace } from '@/features/marketplace'
+import { ProofVisualizer as V4ProofVisualizer } from '@/features/proof-visualizer'
+import { ReceivePage as V4ReceivePage } from '@/features/receive'
+import { RulesPage as V4RulesPage, RulesConsolePage as V4RulesConsolePage } from '@/features/rules'
+import { SendFlow as V4SendFlow } from '@/features/send'
+import { SettingsPage as V4SettingsPage } from '@/features/settings'
 
 import { addresses } from './constants/contracts'
 import { Toaster } from './components/ui/sonner'

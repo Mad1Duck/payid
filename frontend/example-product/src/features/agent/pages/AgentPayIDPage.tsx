@@ -1,13 +1,11 @@
-import {
-  AgentHeader,
-  AgentStatusAlerts,
-  AgentInfoBar,
-  AgentSelector,
-  AgentPolicyPanel,
-  AgentChatPanel,
-  AgentDecisionPanel,
-  useAgentPayID,
-} from './agent'
+import AgentHeader from '../components/AgentHeader'
+import AgentStatusAlerts from '../components/AgentStatusAlerts'
+import AgentInfoBar from '../components/AgentInfoBar'
+import AgentSelector from '../components/AgentSelector'
+import AgentPolicyPanel from '../components/AgentPolicyPanel'
+import AgentChatPanel from '../components/AgentChatPanel'
+import AgentDecisionPanel from '../components/AgentDecisionPanel'
+import { useAgentPayID } from '../hooks/useAgentPayID'
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AgentPayIDPage() {

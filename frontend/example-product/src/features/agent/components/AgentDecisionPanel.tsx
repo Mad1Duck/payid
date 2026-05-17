@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { CheckCircle2, ExternalLink, Link2, Loader2, RotateCcw, ShieldCheck, XCircle } from 'lucide-react'
-import { useV4Palette } from '../theme'
+import { useV4Palette } from '@/components/v4/theme'
 import { Console } from '@/features/agent/components/Console'
 import { shortHash } from '@/features/agent/utils/format'
 import { EXPLORER_URLS } from '@/features/agent/data/constants'

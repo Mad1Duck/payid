@@ -1,1 +1,0 @@
-export { useRulesConsole } from './useRulesConsole'
