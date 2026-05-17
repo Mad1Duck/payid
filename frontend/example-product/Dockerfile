@@ -8,10 +8,14 @@ WORKDIR /app
 # ── 1. Copy full source ──
 COPY . .
 
-# ── 2. Install deps (payid & payid-react from npm, not workspace) ──
+# ── 2. Install deps (workspace) ──
 RUN bun install
 
-# ── 3. Build the frontend ──
+# ── 3. Build workspace packages (with fixed tsup configs) ──
+RUN cd packages/sdk-core && bun run build
+RUN cd packages/payid-react && bun run build
+
+# ── 4. Build the frontend ──
 WORKDIR /app/frontend/example-product
 RUN bunx vite build
 
