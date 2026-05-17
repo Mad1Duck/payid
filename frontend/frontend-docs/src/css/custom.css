@@ -93,6 +93,10 @@
   --border: 220 20% 20%;
   --input: 220 20% 20%;
   --ring: 210 50% 60%;
+
+  /* Docusaurus Integration: Unify background with v4 brand theme */
+  --ifm-background-color: #0b0f1a !important;
+  --ifm-navbar-background-color: #0b0f1a !important;
 }
 
 /* 5. Base Styles */
