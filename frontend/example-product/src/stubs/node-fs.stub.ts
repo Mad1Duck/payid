@@ -3,8 +3,8 @@
 // Node.js-only code paths (ZgFile.fromFilePath, appendFileSync, etc.).
 // We never invoke those paths in the browser — only MemData is used.
 const notAvailable = (name: string) => () => {
-  throw new Error(`${name} is not available in the browser`)
-}
+  throw new Error(`${name} is not available in the browser`);
+};
 
 const fsMock = {
   promises: {
@@ -21,15 +21,16 @@ const fsMock = {
   existsSync: () => false,
   createWriteStream: notAvailable('fs.createWriteStream'),
   createReadStream: notAvailable('fs.createReadStream'),
-}
+};
 
-export const promises = fsMock.promises
-export const readFileSync = fsMock.readFileSync
-export const writeFileSync = fsMock.writeFileSync
-export const appendFileSync = fsMock.appendFileSync
-export const statSync = fsMock.statSync
-export const existsSync = fsMock.existsSync
-export const createWriteStream = fsMock.createWriteStream
-export const createReadStream = fsMock.createReadStream
+export const promises = fsMock.promises;
+export const readFileSync = fsMock.readFileSync;
+export const writeFileSync = fsMock.writeFileSync;
+export const appendFileSync = fsMock.appendFileSync;
+export const statSync = fsMock.statSync;
+export const existsSync = fsMock.existsSync;
+export const createWriteStream = fsMock.createWriteStream;
+export const createReadStream = fsMock.createReadStream;
+export { };
 
-export default fsMock
+export default fsMock;
