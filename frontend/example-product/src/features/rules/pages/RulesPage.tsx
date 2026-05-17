@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion'
-import { useWriteContract } from 'wagmi'
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import {
   Check,
   ChevronDown,
@@ -29,10 +29,26 @@ import { toast } from 'sonner';
 import { uriToHttp } from '../utils/storage';
 import { ruleItemERC721Abi } from '@/constants/contracts/RuleItemERC721';
 
-function RuleCardItem({ rule, p, contracts }: any) {
+function RuleCardItem({ rule, p, contracts, refetchMyRules, refetchSub }: any) {
   const [meta, setMeta] = useState<any>(null);
   const [loadingMeta, setLoadingMeta] = useState(true);
-  const { writeContract } = useWriteContract();
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (isSuccess) {
+      toast.success('Rule deactivated!', { description: 'Slot is now free.' });
+      refetchMyRules?.();
+      refetchSub?.();
+    }
+  }, [isSuccess]);
+
+  useEffect(() => {
+    if (error) {
+      const msg = (error as { shortMessage?: string; }).shortMessage ?? 'Transaction failed';
+      toast.error('Deactivation failed', { description: msg });
+    }
+  }, [error]);
 
   useEffect(() => {
     if (!rule.uri) return;
@@ -194,10 +210,16 @@ function RuleCardItem({ rule, p, contracts }: any) {
                   });
                 }
               }}
-              className="flex items-center gap-1 text-[10px] font-medium text-red-500 hover:text-red-400 hover:underline"
+              disabled={isPending || isConfirming}
+              className="flex items-center gap-1 text-[10px] font-medium text-red-500 hover:text-red-400 hover:underline disabled:opacity-50"
               title="Deactivate to free slot"
             >
-              <Trash2 className="w-3 h-3" /> Deactivate
+              {isPending || isConfirming ? (
+                <Loader2 className="w-3 h-3 animate-spin text-red-500" />
+              ) : (
+                <Trash2 className="w-3 h-3" />
+              )}
+              {isPending ? 'Confirming...' : isConfirming ? 'Deactivating...' : 'Deactivate'}
             </button>
           )}
         </div>
@@ -286,10 +308,18 @@ const NO_ARG = new Set([
 ])
 
 
+const UNAVAILABLE_TEMPLATES = new Set([
+  'KYC Required',
+  'Low Risk Only',
+  'Indonesia Only',
+  'USD Minimum',
+  'Daily Budget',
+])
+
 export default function RulesPage() {
   const {
     isConnected, nativeSymbol, p, contracts, ethUsdPrice,
-    myRules, activeCombined, sub, activeCount,
+    myRules, activeCombined, sub, activeCount, refetchMyRules, refetchSub,
     conds, setConds, format, setFormat, logic, setLogic, ruleName, setRuleName,
     ruleComment, setRuleComment, denyMsg, setDenyMsg, simpleMode, setSimpleMode,
     selectedTemplate, setSelectedTemplate, openPipes, setOpenPipes, showJson, setShowJson,
@@ -476,38 +506,75 @@ export default function RulesPage() {
             >
               {TEMPLATES.map((t) => {
                 const isSelected = selectedTemplate === t.label
+                const isUnavailable = UNAVAILABLE_TEMPLATES.has(t.label)
+
                 return (
-                  <button
-                    key={t.label}
-                    onClick={() => {
-                      setSelectedTemplate(t.label)
-                      setConds(t.conds.map((c) => ({ ...c })))
-                      setFormat(t.fmt)
-                      setRuleName(t.label.toLowerCase().replace(/ /g, '_'))
-                      setOpenPipes(new Set())
-                    }}
-                    className={`flex flex-col items-start gap-1.5 rounded-xl border text-left transition-all ${
-                      simpleMode ? 'p-4' : 'px-2 py-3 items-center text-center'
-                    } ${
-                      isSelected
-                        ? 'border-[#00D084]/50 bg-[#00D084]/5'
-                        : `${p.cardBorder} ${p.textMain} hover:border-[#00D084]/30 hover:bg-[#00D084]/3`
-                    }`}
-                  >
-                    <span className={simpleMode ? 'text-3xl' : 'text-xl'}>
-                      {t.icon}
-                    </span>
-                    <span
-                      className={`font-semibold ${simpleMode ? 'text-sm' : 'text-[11px]'}`}
+                  <div key={t.label} className="relative">
+                    <button
+                      disabled={isUnavailable}
+                      onClick={() => {
+                        setSelectedTemplate(t.label)
+                        setConds(t.conds.map((c) => ({ ...c })))
+                        setFormat(t.fmt)
+                        setRuleName(t.label.toLowerCase().replace(/ /g, '_'))
+                        setOpenPipes(new Set())
+                      }}
+                      className={`w-full h-full flex flex-col items-start gap-1.5 rounded-xl border text-left transition-all ${
+                        simpleMode ? 'p-4' : 'px-2 py-3 items-center text-center'
+                      } ${
+                        isSelected
+                          ? 'border-[#00D084]/50 bg-[#00D084]/5'
+                          : `${p.cardBorder} ${p.textMain} ${
+                              isUnavailable
+                                ? 'bg-black/5 dark:bg-white/5 border-dashed border-gray-500/30'
+                                : 'hover:border-[#00D084]/30 hover:bg-[#00D084]/3'
+                            }`
+                      }`}
+                      style={{
+                        filter: 'none',
+                      }}
                     >
-                      {t.label}
-                    </span>
-                    {simpleMode && (
-                      <span className="text-[11px] opacity-70 leading-relaxed">
-                        {t.desc}
+                      <span className={simpleMode ? 'text-3xl' : 'text-xl'}>
+                        {t.icon}
                       </span>
+                      <span
+                        className={`font-semibold ${simpleMode ? 'text-sm' : 'text-[11px]'} ${isUnavailable ? 'pr-12' : ''}`}
+                      >
+                        {t.label}
+                      </span>
+                      {simpleMode && (
+                        <span className="text-[11px] opacity-70 leading-relaxed">
+                          {t.desc}
+                        </span>
+                      )}
+                    </button>
+
+                    {isUnavailable && (
+                      <>
+                        {/* Fully transparent overlay to capture clicks and trigger toast */}
+                        <div
+                          className="absolute inset-0 bg-transparent cursor-not-allowed z-10"
+                          title="Not available because oracle data is being prepared"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toast.info('Oracle Preparing', {
+                              description:
+                                'This template is currently unavailable because on-chain oracle data feeds are still being prepared.',
+                            })
+                          }}
+                        />
+                        {/* Sleek top-right badge */}
+                        <div
+                          className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#F59E0B]/15 border border-[#F59E0B]/35 select-none pointer-events-none z-20"
+                        >
+                          <Shield className="w-2.5 h-2.5 text-[#F59E0B] animate-pulse" />
+                          <span className="text-[8px] font-bold text-[#F59E0B] tracking-wider uppercase">
+                            Preparing
+                          </span>
+                        </div>
+                      </>
                     )}
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -1180,6 +1247,22 @@ export default function RulesPage() {
                       return `Block transactions with risk score above ${c.value}`
                     if (c.field === 'oracle.country' && c.op === '==')
                       return `Only allow payments from ${c.value.toUpperCase()}`
+                    if (c.field === 'oracle.txValueUsd' && c.op === '>=') {
+                      const usd = Number(c.value) / 1e8;
+                      return `Block any payment below ${usd.toLocaleString()} USD value`;
+                    }
+                    if (c.field === 'tx.sender' && c.op === '==')
+                      return `Only allow payments sent from ${c.value}`;
+                    if (c.field === 'tx.chainId' && c.op === '==')
+                      return `Only allow payments on chain ID ${c.value}`;
+                    if (c.field === 'intent.type' && c.op === '==')
+                      return `Only allow payments initiated via QR code`;
+                    if (c.field === 'state.spentToday' && c.op === '<=') {
+                      const usdc = Number(c.value) / 1_000_000;
+                      return `Block payments if daily spending exceeds ${usdc.toLocaleString()} USDC`;
+                    }
+                    if (c.field === 'payId.owner' && c.op === '==')
+                      return `Only allow payments to PayID owner ${c.value}`;
                     return summary
                   })()
                 : summary}
@@ -1469,7 +1552,7 @@ export default function RulesPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {myRules.map((rule) => (
-                <RuleCardItem key={rule.ruleId.toString()} rule={rule} p={p} contracts={contracts} />
+                <RuleCardItem key={rule.ruleId.toString()} rule={rule} p={p} contracts={contracts} refetchMyRules={refetchMyRules} refetchSub={refetchSub} />
               ))}
             </div>
           )}

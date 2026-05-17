@@ -37,6 +37,7 @@ export interface RuleBuilderState {
   activeCount: number;
   refetchMyRules: () => void;
   refetchSub: () => void;
+  refetchActiveCombined: () => void;
 
   conds: Cond[];
   setConds: React.Dispatch<React.SetStateAction<Cond[]>>;
@@ -114,7 +115,7 @@ export function useRuleBuilder(): RuleBuilderState {
   }, []);
 
   const { data: myRules = [], refetch: refetchMyRules } = useMyRules();
-  const { data: activeCombined } = useActiveCombinedRule(address);
+  const { data: activeCombined, refetch: refetchActiveCombined } = useActiveCombinedRule(address);
   const { data: sub, refetch: refetchSub } = useSubscription(address);
   const { contracts } = usePayIDContext();
   const p = useV4Palette();
@@ -139,7 +140,12 @@ export function useRuleBuilder(): RuleBuilderState {
   const { copied, copy } = useClipboard();
   const [deployStage, setDeployStage] = useState<DeployStage>('idle');
   const [deployMsg, setDeployMsg] = useState('');
-  const { createRule, isSuccess: created, error: createErr } = useCreateRule();
+  const {
+    createRule,
+    isConfirming: createConfirming,
+    isSuccess: created,
+    error: createErr,
+  } = useCreateRule();
 
   const [nftName, setNftName] = useState('PAY.ID Rule NFT');
   const [nftDesc, setNftDesc] = useState('PAY.ID programmable payment policy');
@@ -221,8 +227,8 @@ export function useRuleBuilder(): RuleBuilderState {
   const summary = useMemo(() => {
     const parts = conds.filter((c) => c.field && c.op).map(plain);
     if (!parts.length) return 'Add at least one condition';
-    if (format === 'simple') return `BLOCK if: ${parts[0]}`;
-    return `BLOCK if: ${parts.join(` ${logic} `)}`;
+    if (format === 'simple') return `ALLOW if: ${parts[0]}`;
+    return `ALLOW if: ${parts.join(` ${logic} `)}`;
   }, [conds, format, logic]);
 
   const updateCond = useCallback(
@@ -285,7 +291,7 @@ export function useRuleBuilder(): RuleBuilderState {
         const [_imgRes, jsonRes] = await Promise.all([upload0G(imgBytes), upload0G(jsonBytes)]);
         tokenUri = jsonRes.url;
       } else {
-        const { cid: imgCid, url: imgUrl } = await pinImage(imgToPin, `rule-${ruleName}.png`);
+        const { cid: imgCid } = await pinImage(imgToPin, `rule-${ruleName}.png`);
         imageURL = `ipfs://${imgCid}`;
 
         const metadata = {
@@ -302,7 +308,7 @@ export function useRuleBuilder(): RuleBuilderState {
           ruleHash,
           standard: 'payid.rule.v1',
         };
-        const { cid: jsonCid, url: jsonUrl } = await pinJson(metadata, `rule-${ruleName}.json`);
+        const { cid: jsonCid } = await pinJson(metadata, `rule-${ruleName}.json`);
         tokenUri = `ipfs://${jsonCid}`;
       }
 
@@ -335,13 +341,20 @@ export function useRuleBuilder(): RuleBuilderState {
   }, [createErr, deployStage]);
 
   useEffect(() => {
+    if (createConfirming && deployStage === 'creating') {
+      setDeployMsg('Waiting for transaction to be confirmed on-chain…');
+    }
+  }, [createConfirming, deployStage]);
+
+  useEffect(() => {
     if (activated) {
       toast.success('Rule activated!', { description: 'NFT license minted. Policy is now enforced.' });
       setActivateStatus('done');
       setActivateMsg('✓ Rule activated! NFT license minted.');
       refetchMyRules();
+      refetchActiveCombined();
     }
-  }, [activated, refetchMyRules]);
+  }, [activated, refetchMyRules, refetchActiveCombined]);
 
   useEffect(() => {
     if (activateErr) {
@@ -374,6 +387,7 @@ export function useRuleBuilder(): RuleBuilderState {
     activeCount,
     refetchMyRules,
     refetchSub,
+    refetchActiveCombined,
 
     conds,
     setConds,

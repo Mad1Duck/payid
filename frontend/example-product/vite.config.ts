@@ -11,12 +11,13 @@ export default defineConfig({
     viteReact(),
     tailwindcss(),
     nodePolyfills({
-      include: ['crypto', 'buffer', 'stream', 'util', 'path'],
+      include: ['crypto', 'buffer', 'stream', 'util', 'path', 'process'],
       globals: { Buffer: true, process: true, global: true },
     }),
   ],
   resolve: {
     alias: [
+      { find: 'vite-plugin-node-polyfills/shims/process', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: 'node:fs/promises', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: 'node:fs', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: /^fs\/promises$/, replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },

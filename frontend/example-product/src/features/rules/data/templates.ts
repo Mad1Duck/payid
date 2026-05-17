@@ -113,7 +113,7 @@ export const TEMPLATES: Array<Template> = [
         field: 'oracle.txValueUsd',
         transform: '',
         transformArg: '',
-        op: '<=',
+        op: '>=',
         value: '4500000000',
       },
     ],

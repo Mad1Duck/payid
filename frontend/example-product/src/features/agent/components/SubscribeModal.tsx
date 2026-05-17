@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAccount } from 'wagmi'
 import { formatEther } from 'viem'
@@ -29,17 +30,17 @@ export function SubscribeModal({ agent, onClose }: SubscribeModalProps) {
   const p = useV4Palette()
   const { address } = useAccount()
   const { data: price } = useAgentSubscriptionPrice()
-  const { data: isSubscribed } = useIsSubscribedToAgent(
+  const { data: isSubscribed, refetch: refetchIsSubscribed } = useIsSubscribedToAgent(
     address,
     agent.owner as `0x${string}`,
   )
-  const { data: subInfo } = useAgentSubscription(
+  const { data: subInfo, refetch: refetchSubInfo } = useAgentSubscription(
     address,
     agent.owner as `0x${string}`,
   )
-  const { subscribeToAgent, isPending, isSuccess } = useSubscribeToAgent()
-  const { setPreferredAgent } = useSetPreferredAgent()
-  const { data: preferredAgent } = usePreferredAgent(address)
+  const { subscribeToAgent, isPending: subPending, isConfirming: subConfirming, isSuccess: subSuccess } = useSubscribeToAgent()
+  const { setPreferredAgent, isPending: prefPending, isConfirming: prefConfirming, isSuccess: prefSuccess } = useSetPreferredAgent()
+  const { data: preferredAgent, refetch: refetchPreferred } = usePreferredAgent(address)
 
   const isPreferred = preferredAgent?.toLowerCase() === agent.owner.toLowerCase()
 
@@ -55,11 +56,28 @@ export function SubscribeModal({ agent, onClose }: SubscribeModalProps) {
     setPreferredAgent(agent.owner as `0x${string}`)
   }
 
-  if (isSuccess) {
-    toast.success('Subscribed!', {
-      description: `You are now subscribed to ${agent.name}`,
-    })
-  }
+  // React strictly to transaction success to avoid infinite render toasts and stale state
+  useEffect(() => {
+    if (subSuccess) {
+      toast.success('Subscribed!', {
+        description: `You are now subscribed to ${agent.name}`,
+      })
+      refetchIsSubscribed()
+      refetchSubInfo()
+    }
+  }, [subSuccess, agent.name, refetchIsSubscribed, refetchSubInfo])
+
+  useEffect(() => {
+    if (prefSuccess) {
+      toast.success('Preferred agent updated!', {
+        description: `${agent.name} is now your preferred agent.`,
+      })
+      refetchPreferred()
+    }
+  }, [prefSuccess, agent.name, refetchPreferred])
+
+  const subLoading = subPending || subConfirming
+  const prefLoading = prefPending || prefConfirming
 
   return (
     <motion.div
@@ -100,23 +118,28 @@ export function SubscribeModal({ agent, onClose }: SubscribeModalProps) {
       <div className="flex gap-2">
         <button
           onClick={handleSubscribe}
-          disabled={isPending}
+          disabled={subLoading || prefLoading}
           className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#00D084] text-white font-medium text-sm hover:bg-[#00D084]/90 transition-colors disabled:opacity-50"
         >
-          {isPending ? (
+          {subLoading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <CircleDollarSign className="w-4 h-4" />
           )}
-          {isSubscribed ? 'Extend Subscription' : 'Subscribe'}
+          {subPending ? 'Confirming...' : subConfirming ? 'Subscribing...' : isSubscribed ? 'Extend Subscription' : 'Subscribe'}
         </button>
         {isSubscribed && !isPreferred && (
           <button
             onClick={handleSetPreferred}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#00D084]/30 text-[#00D084] font-medium text-sm hover:bg-[#00D084]/10 transition-colors"
+            disabled={subLoading || prefLoading}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[#00D084]/30 text-[#00D084] font-medium text-sm hover:bg-[#00D084]/10 transition-colors disabled:opacity-50"
           >
-            <Zap className="w-4 h-4" />
-            Set Preferred
+            {prefLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Zap className="w-4 h-4" />
+            )}
+            {prefPending ? 'Confirming...' : prefConfirming ? 'Updating...' : 'Set Preferred'}
           </button>
         )}
         {isPreferred && (

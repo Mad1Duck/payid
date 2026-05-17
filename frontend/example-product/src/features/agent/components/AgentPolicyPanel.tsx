@@ -316,9 +316,7 @@ function NewRuleView({ s }: { s: AgentPayIDState }) {
 function ReadOnlyPolicyView({ s }: { s: AgentPayIDState }) {
   const p = useV4Palette()
   
-  const activeRule = s.agentRuleInfo?.active && s.rulesLoaded 
-    ? s.onChainRules.find(r => r.hash.toLowerCase() === s.agentRuleInfo!.ruleSetHash.toLowerCase())
-    : null;
+  const activeRuleJson = s.agentRuleJson;
 
   return (
     <>
@@ -343,7 +341,7 @@ function ReadOnlyPolicyView({ s }: { s: AgentPayIDState }) {
             This AI agent enforces an on-chain policy. All payment requests will be evaluated against this rule set before approval.
           </p>
           
-          {activeRule?.ruleJson && (
+          {activeRuleJson && (
             <div className="mt-3">
               <p className={`text-[10px] font-semibold uppercase tracking-wide ${p.textMuted} mb-1.5`}>Rule Logic Metadata</p>
               <div 
@@ -351,7 +349,7 @@ function ReadOnlyPolicyView({ s }: { s: AgentPayIDState }) {
                 style={{ background: p.dark ? '#00000040' : '#f8fafc', border: `1px solid ${p.dark ? '#ffffff10' : '#00000010'}` }}
               >
                 <pre className="text-[9px] font-mono leading-relaxed" style={{ color: p.textMain }}>
-                  {JSON.stringify(activeRule.ruleJson, null, 2)}
+                  {JSON.stringify(activeRuleJson, null, 2)}
                 </pre>
               </div>
             </div>

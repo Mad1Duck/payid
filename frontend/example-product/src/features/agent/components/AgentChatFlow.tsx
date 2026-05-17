@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { User, BrainCircuit, Database, FileCheck, CheckCircle2, Bot, ShieldAlert } from 'lucide-react'
+import { User, BrainCircuit, Database, CheckCircle2, Bot, ShieldAlert } from 'lucide-react'
 import { useV4Palette } from '@/components/v4/theme'
 import type { AgentPayIDState } from '../hooks/useAgentPayID'
 
@@ -13,7 +13,6 @@ export default function AgentChatFlow({ s }: Props) {
   // chatFlowStep maps: 0=Idle, 1=User Msg, 2=IPFS, 3=AI, 4=WASM, 5=Final
   const currentStep = s.chatFlowStep || 0;
   
-  const hasMessages = s.messages.length > 0;
   const hasDecision = !!s.decision;
   const isApproved = s.decision?.decision === 'APPROVE';
 
@@ -128,6 +127,40 @@ export default function AgentChatFlow({ s }: Props) {
           })}
         </div>
       </div>
+
+      {s.agentRuleJson && (
+        <div 
+          className="mt-6 pt-4 border-t space-y-3" 
+          style={{ borderColor: p.dark ? '#ffffff10' : '#00000010' }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00D084] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00D084]"></span>
+              </span>
+              <p className={`text-[10px] font-bold uppercase tracking-wider ${p.textMuted}`}>
+                Active Guardrail Policy ({s.agentRuleInfo?.ruleSetHash ? `0x${s.agentRuleInfo.ruleSetHash.substring(2, 8)}...` : 'Active'})
+              </p>
+            </div>
+            <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#00D084]/10 text-[#00D084] font-medium border border-[#00D084]/20">
+              Deterministic WASM Enforced
+            </span>
+          </div>
+
+          <div 
+            className="p-3 rounded-xl overflow-x-auto max-h-[160px] border font-mono text-[10px] leading-relaxed transition-all duration-200"
+            style={{ 
+              background: p.dark ? '#080d08' : '#f8fafc', 
+              borderColor: p.dark ? 'rgba(0, 208, 132, 0.2)' : 'rgba(0, 208, 132, 0.1)',
+              color: p.dark ? '#A7F3D0' : '#065F46',
+              boxShadow: p.dark ? 'inset 0 0 12px rgba(0, 208, 132, 0.05)' : 'none'
+            }}
+          >
+            <pre>{JSON.stringify(s.agentRuleJson, null, 2)}</pre>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

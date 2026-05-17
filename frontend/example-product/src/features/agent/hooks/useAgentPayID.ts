@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   useAccount,
   useChainId,
@@ -6,8 +6,10 @@ import {
   usePublicClient,
   useReadContract,
   useWriteContract,
+  useSendTransaction,
 } from 'wagmi';
 import { keccak256, toBytes, zeroAddress } from 'viem';
+import { toast } from 'sonner';
 import {
   useRegisterAdminAIAgent,
   useSetAgentCombinedRule,
@@ -17,6 +19,7 @@ import {
   useSubscription,
   useCreateRule,
   useMyRuleSets,
+  useAllCombinedRules,
   useSubscribe,
   useSubscriptionPrice,
   useActiveCombinedRule,
@@ -36,7 +39,7 @@ import { downloadFromZGStorage } from '@/lib/zgStorage';
 import { genImage } from '@/features/rules/utils/image';
 import { pinImage, pinJson } from '@/features/rules/utils/storage';
 import { SUPPORTED_CHAIN_IDS, AI_BASE, AI_KEY, AI_MODEL } from '@/features/agent/data/constants';
-import { PRESET_RULES, PRESET_TEMPLATES, BASE_SYSTEM_PROMPT } from '@/features/agent/data/presets';
+import { PRESET_RULES, BASE_SYSTEM_PROMPT } from '@/features/agent/data/presets';
 import { shortHash, shortAddr, tsNow } from '@/features/agent/utils/format';
 import { parseDecision } from '@/features/agent/utils/parse';
 import type { ChatMsg, AiDecision, OnChainRule, OnChainPhase, LogLine } from '@/features/agent/types';
@@ -65,6 +68,7 @@ export interface AgentPayIDState {
   agentRuleInfo: { active: boolean; ruleSetHash: string; } | undefined;
   activeRuleHash: string | undefined;
   currentRuleHash: string | undefined;
+  agentRuleJson: Record<string, unknown> | null;
 
   // Chat
   messages: ChatMsg[];
@@ -157,6 +161,7 @@ export function useAgentPayID(): AgentPayIDState {
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
+  const { sendTransactionAsync } = useSendTransaction();
 
   // Chat state
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -174,7 +179,7 @@ export function useAgentPayID(): AgentPayIDState {
   const [txHashes, setTxHashes] = useState<string[]>([]);
 
   // AI Agent hooks
-  const { data: adminAgents } = useAllAdminAIAgents({ onlyActive: true });
+  const { data: adminAgents, refetch: refetchAdminAgents } = useAllAdminAIAgents({ onlyActive: true });
   const [selectedAgent, setSelectedAgent] = useState<AdminAgent | null>(null);
 
   useEffect(() => {
@@ -188,9 +193,26 @@ export function useAgentPayID(): AgentPayIDState {
   const isAdmin = !!address && registryAdmin?.toLowerCase() === address.toLowerCase();
   const { data: connectorClient } = useConnectorClient();
 
-  const { data: agentRuleInfo } = useAgentCombinedRule(selectedAgent?.agentWallet as `0x${string}` | undefined);
-  const { registerAgent, isPending: isRegisteringAgent, isSuccess: isRegisterSuccess } = useRegisterAdminAIAgent();
-  const { setAgentCombinedRule, isPending: isSettingRule } = useSetAgentCombinedRule();
+  const { data: agentRuleInfo, refetch: refetchAgentRuleInfo } = useAgentCombinedRule(selectedAgent?.agentWallet as `0x${string}` | undefined);
+  
+  const {
+    registerAgent,
+    isPending: isRegisteringPending,
+    isConfirming: isRegisteringConfirming,
+    isSuccess: isRegisterSuccess,
+    error: registerError,
+  } = useRegisterAdminAIAgent();
+
+  const {
+    setAgentCombinedRule,
+    isPending: isSettingRulePending,
+    isConfirming: isSettingRuleConfirming,
+    isSuccess: isSettingRuleSuccess,
+    error: settingRuleError,
+  } = useSetAgentCombinedRule();
+
+  const isRegisteringAgent = isRegisteringPending || isRegisteringConfirming;
+  const isSettingRule = isSettingRulePending || isSettingRuleConfirming;
 
   const [showAgentRegister, setShowAgentRegister] = useState(false);
   const [regAgentWallet, setRegAgentWallet] = useState(address ?? '');
@@ -210,8 +232,13 @@ export function useAgentPayID(): AgentPayIDState {
   const [loadedMetadata, setLoadedMetadata] = useState<string | null>(null);
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
 
+  // Synchronize AI Agent registration
   useEffect(() => {
     if (isRegisterSuccess) {
+      toast.success('AI Agent registered successfully!', {
+        description: 'Your AI agent has been added to the registry.',
+      });
+      refetchAdminAgents();
       setShowAgentRegister(false);
       setRegAgentWallet(address ?? '');
       setRegDisplayName('');
@@ -219,19 +246,71 @@ export function useAgentPayID(): AgentPayIDState {
       setRegModel('qwen/qwen-2.5-7b-instruct');
       setRegEndpoint('https://compute-network-6.integratenetwork.work/v1/proxy');
     }
-  }, [isRegisterSuccess, address]);
+  }, [isRegisterSuccess, address, refetchAdminAgents]);
+
+  useEffect(() => {
+    if (registerError) {
+      const msg = (registerError as { shortMessage?: string; }).shortMessage ?? 'Transaction failed';
+      toast.error('Registration failed', { description: msg });
+    }
+  }, [registerError]);
+
+  // Synchronize setting agent policy / rule
+  useEffect(() => {
+    if (isSettingRuleSuccess) {
+      toast.success('Agent policy published successfully!', {
+        description: 'The selected rule has been linked to your AI Agent.',
+      });
+      refetchAgentRuleInfo();
+    }
+  }, [isSettingRuleSuccess, refetchAgentRuleInfo]);
+
+  useEffect(() => {
+    if (settingRuleError) {
+      const msg = (settingRuleError as { shortMessage?: string; }).shortMessage ?? 'Transaction failed';
+      toast.error('Publish policy failed', { description: msg });
+    }
+  }, [settingRuleError]);
 
   const { data: subInfo } = useSubscription(address);
   const slotsUsed = subInfo?.logicalRuleCount ?? 0;
   const slotsMax = subInfo?.maxSlots ?? 1;
 
-  const { data: myRuleSets } = useMyRuleSets();
+  const { data: myRuleSets, refetch: refetchMyRuleSets } = useMyRuleSets();
   const { data: myActiveRule } = useActiveCombinedRule(address);
+  const { data: allCombinedRules } = useAllCombinedRules({ onlyActive: true });
 
   const { subscribe, isPending: isSubscribing } = useSubscribe();
   const { data: subPrice } = useSubscriptionPrice();
 
-  const { createRule, isPending: isCreatingRule } = useCreateRule();
+  const {
+    createRule,
+    isPending: isCreatingRulePending,
+    isConfirming: isCreatingRuleConfirming,
+    isSuccess: isCreatingRuleSuccess,
+    error: createRuleError,
+  } = useCreateRule();
+
+  const isCreatingRule = isCreatingRulePending || isCreatingRuleConfirming;
+
+  // Synchronize rule NFT creation in console
+  useEffect(() => {
+    if (isCreatingRuleSuccess) {
+      toast.success('Rule NFT created successfully!', {
+        description: 'Refreshing your rule sets list...',
+      });
+      refetchMyRuleSets();
+      setShowCreateSuccess(true);
+      setTimeout(() => setShowCreateSuccess(false), 4000);
+    }
+  }, [isCreatingRuleSuccess, refetchMyRuleSets]);
+
+  useEffect(() => {
+    if (createRuleError) {
+      const msg = (createRuleError as { shortMessage?: string; }).shortMessage ?? 'Transaction failed';
+      toast.error('Rule creation failed', { description: msg });
+    }
+  }, [createRuleError]);
   const [ruleJsonInput, setRuleJsonInput] = useState(() => {
     const owner = address ?? '0x0000000000000000000000000000000000000000';
     return JSON.stringify({
@@ -334,12 +413,12 @@ export function useAgentPayID(): AgentPayIDState {
                 const json = JSON.parse(raw);
                 name = json.name;
                 description = json.description;
-                ruleJson = json;
+                ruleJson = json.rule ?? json;
               }
             } catch { /* no metadata */ }
           }
 
-          results.push({ ruleId, hash, uri, name, description, ruleJson, active });
+          results.push({ ruleId, tokenId, hash, uri, name, description, ruleJson, active });
         } catch { /* skip */ }
       }));
 
@@ -366,16 +445,54 @@ export function useAgentPayID(): AgentPayIDState {
     }
   }, [selectedAgent, agentRuleInfo]);
 
+  const agentRuleJson = useMemo((): Record<string, unknown> | null => {
+    if (!agentRuleInfo?.active || !agentRuleInfo.ruleSetHash || !rulesLoaded) return null;
+
+    // 1. Coba cari langsung di onChainRules (jika hash-nya adalah single rule NFT)
+    const activeRule = onChainRules.find(
+      (r) => r.hash.toLowerCase() === agentRuleInfo.ruleSetHash.toLowerCase()
+    );
+    if (activeRule?.ruleJson) {
+      return activeRule.ruleJson;
+    }
+
+    // 2. Coba cari di allCombinedRules (jika hash-nya adalah Combined Rule Set)
+    const ruleSet = allCombinedRules?.find(
+      (rs) => rs.hash.toLowerCase() === agentRuleInfo.ruleSetHash.toLowerCase()
+    );
+    if (ruleSet && ruleSet.ruleRefs && ruleSet.ruleRefs.length > 0) {
+      const subRules: any[] = [];
+      for (const ref of ruleSet.ruleRefs) {
+        // Cari matching rule berdasarkan tokenId
+        const match = onChainRules.find(
+          (r) => r.tokenId !== undefined && r.tokenId === ref.tokenId
+        );
+        if (match?.ruleJson?.rules && Array.isArray(match.ruleJson.rules)) {
+          subRules.push(...match.ruleJson.rules);
+        } else if (match?.ruleJson) {
+          subRules.push(match.ruleJson);
+        }
+      }
+
+      if (subRules.length > 0) {
+        return {
+          version: '1',
+          logic: 'AND',
+          rules: subRules,
+        };
+      }
+    }
+
+    return null;
+  }, [agentRuleInfo, rulesLoaded, onChainRules, allCombinedRules]);
+
   const buildSystemPrompt = useCallback(() => {
     const agentName = selectedAgent?.displayName ?? 'Agent';
     const agentSection = `\n\nYou are currently representing AI Agent: "${agentName}".`;
     
     let ruleJsonStr = 'No specific rules loaded.';
-    if (agentRuleInfo?.active && agentRuleInfo.ruleSetHash && rulesLoaded) {
-      const activeRule = onChainRules.find(r => r.hash.toLowerCase() === agentRuleInfo.ruleSetHash.toLowerCase());
-      if (activeRule?.ruleJson) {
-        ruleJsonStr = JSON.stringify(activeRule.ruleJson, null, 2);
-      }
+    if (agentRuleJson) {
+      ruleJsonStr = JSON.stringify(agentRuleJson, null, 2);
     }
 
     const policySection = agentRuleInfo?.active
@@ -390,7 +507,7 @@ export function useAgentPayID(): AgentPayIDState {
       `Tell the user that the agent owner needs to set a policy first.`;
       
     return BASE_SYSTEM_PROMPT + agentSection + policySection;
-  }, [selectedAgent, agentRuleInfo, rulesLoaded, onChainRules, ruleIdx, selectedTemplate, address]);
+  }, [selectedAgent, agentRuleInfo, agentRuleJson, address]);
 
   const { data: currentRuleHash } = useReadContract({
     address: agentPayIDAddr,
@@ -453,13 +570,7 @@ export function useAgentPayID(): AgentPayIDState {
           setChatFlowStep(4);
           await new Promise((r) => setTimeout(r, 800));
 
-          let ruleJson: Record<string, unknown> | null = null;
-          if (agentRuleInfo?.active && agentRuleInfo.ruleSetHash && rulesLoaded) {
-            const activeRule = onChainRules.find(r => r.hash.toLowerCase() === agentRuleInfo.ruleSetHash.toLowerCase());
-            if (activeRule?.ruleJson) {
-              ruleJson = activeRule.ruleJson;
-            }
-          }
+          const ruleJson = agentRuleJson;
 
           if (ruleJson) {
             try {
@@ -467,7 +578,9 @@ export function useAgentPayID(): AgentPayIDState {
               const client = createPayIDClient();
               await client.ready();
 
-              const amountRaw = Math.floor((parsed?.amount ?? 0) * 1_000_000).toString();
+              const amountRaw = (parsed?.amount !== undefined)
+                ? (parsed.amount >= 100_000 ? Math.floor(parsed.amount).toString() : Math.floor(parsed.amount * 1_000_000).toString())
+                : '0';
               const context = {
                 tx: {
                   sender: address ?? '0x0000000000000000000000000000000000000000',
@@ -485,40 +598,110 @@ export function useAgentPayID(): AgentPayIDState {
               const wasmDecision = result.decision === 'ALLOW' ? 'APPROVE' : 'REJECT';
               
               let ruleDesc = 'Custom Rule';
-              if (ruleJson.id) ruleDesc = ruleJson.id as string;
+              if (ruleJson.rules && Array.isArray(ruleJson.rules)) {
+                ruleDesc = ruleJson.rules.map(r => {
+                  const id = r.id || 'Rule';
+                  if (id === 'rule_001' || id === 'only_owner') return `${id} (Only Owner)`;
+                  if (id === 'spending_limit') return `${id} (Spending Limit)`;
+                  return id;
+                }).join(' & ');
+              } else if (ruleJson.id) {
+                const id = ruleJson.id as string;
+                if (id === 'rule_001' || id === 'only_owner') ruleDesc = `${id} (Only Owner)`;
+                else if (id === 'spending_limit') ruleDesc = `${id} (Spending Limit)`;
+                else ruleDesc = id;
+              }
+
+              const formatLogVal = (field: string, val: any): string => {
+                if (val === undefined || val === null) return '';
+                const sVal = String(val);
+                if (/^[0-9.eE+]+$/.test(sVal) && (sVal.includes('e') || sVal.includes('E') || sVal.length > 15)) {
+                  try {
+                    const num = Number(sVal);
+                    if (!isNaN(num)) {
+                      const hex = '0x' + BigInt(Math.trunc(num)).toString(16);
+                      if (address && address.toLowerCase().substring(0, 10) === hex.substring(0, 10)) {
+                        return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+                      }
+                      return `${hex.substring(0, 6)}...${hex.substring(hex.length - 4)}`;
+                    }
+                  } catch {}
+                }
+                if (typeof val === 'string' && val.startsWith('0x') && val.length === 42) {
+                  return `${val.substring(0, 6)}...${val.substring(val.length - 4)}`;
+                }
+                if (field === 'tx.amount' && !isNaN(Number(sVal))) {
+                  const amountNum = Number(sVal);
+                  const formattedAmount = (amountNum / 1000000).toLocaleString('en-US', { maximumFractionDigits: 6 });
+                  return `${formattedAmount} USDC`;
+                }
+                return sVal;
+              };
+
               let ruleCondition = '';
-              if (ruleJson.if) {
+              if (ruleJson.rules && Array.isArray(ruleJson.rules)) {
+                const conds: string[] = [];
+                for (const r of ruleJson.rules) {
+                  if (r.if) {
+                    const c = r.if as any;
+                    if (c.field && c.op && c.value !== undefined) {
+                      conds.push(`${c.field} ${c.op} ${formatLogVal(c.field, c.value)}`);
+                    } else if (c.conditions) {
+                      conds.push(`${r.id || 'Rule'}: complex`);
+                    }
+                  } else if (r.field && r.op && r.value !== undefined) {
+                    conds.push(`${r.field} ${r.op} ${formatLogVal(r.field, r.value)}`);
+                  }
+                }
+                ruleCondition = conds.join(' AND ');
+              } else if (ruleJson.if) {
                 const c = ruleJson.if as any;
                 if (c.field && c.op && c.value !== undefined) {
-                  ruleCondition = `${c.field} ${c.op} ${c.value}`;
+                  ruleCondition = `${c.field} ${c.op} ${formatLogVal(c.field, c.value)}`;
                 } else if (c.conditions) {
                   ruleCondition = `Complex logic with ${c.conditions.length} conditions`;
                 }
               }
 
-              if (wasmDecision === 'REJECT') {
-                finalDecision = { decision: 'REJECT', reason: result.reason ?? 'Blocked by policy', amount: 0, receiver: '' };
-                finalReply = `*Interaction Blocked*\n\n` + reply + `\n\n---\n**🔍 PAY.ID Evaluation Flow**\n` +
-                  `1️⃣ **AI Inference**\n   ↳ ${parsed ? `Decision: ${parsed.decision}` : 'Conversational response'}\n` +
-                  `2️⃣ **Load On-Chain Policy**\n   ↳ Rule ID: \`${ruleDesc}\`\n   ↳ Logic: \`${ruleCondition}\`\n` +
-                  `3️⃣ **WASM Rule Engine Execution**\n   ↳ Context: Sender = ${address ?? 'unknown'}\n   ↳ Result: REJECT\n   ↳ Reason: ${result.reason}\n` +
-                  `4️⃣ **Final Enforcement**\n   ↳ Action: ⛔ Blocked by PAY.ID Policy`;
+              const isAllowed = wasmDecision === 'APPROVE' && (parsed ? parsed.decision === 'APPROVE' : false);
+
+              if (!isAllowed) {
+                finalDecision = { 
+                  decision: 'REJECT', 
+                  reason: parsed?.decision === 'REJECT' ? (parsed.reason ?? 'AI Refused') : (result.reason ?? 'Blocked by policy'), 
+                  amount: 0, 
+                  receiver: '' 
+                };
+
+                const aiDecisionStr = parsed ? parsed.decision : 'Conversational Response';
+                const aiReasonStr = parsed?.reason ? parsed.reason : 'N/A';
+                const wasmStatusStr = wasmDecision === 'REJECT' ? 'TRANSACTION BLOCKED' : 'POLICY COMPLIANT';
+                const wasmReasonStr = result.reason ?? 'OK';
+                const enforcerActionStr = parsed?.decision === 'REJECT' 
+                  ? 'Blocked by AI Agent' 
+                  : 'Blocked by PAY.ID WASM Policy';
+
+                finalReply = `*Interaction Blocked*\n\n` + reply + `\n\n---\n**PAY.ID POLICY ENFORCEMENT REPORT**\n` +
+                  `1. AI Intent Parsing\n   ↳ Decision: ${aiDecisionStr} (Reason: ${aiReasonStr})\n` +
+                  `2. On-Chain Guardrails Loaded\n   ↳ Active Rule(s): \`${ruleDesc}\`\n   ↳ Math Logic: \`${ruleCondition}\`\n` +
+                  `3. WASM Sandbox Execution\n   ↳ Checked Sender: \`${address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : 'unknown'}\`\n   ↳ Sandbox Result: ${wasmStatusStr}\n   ↳ Security Verdict: "${wasmReasonStr}"\n` +
+                  `4. Final Verdict\n   ↳ Enforcer Action: ${enforcerActionStr}`;
               } else {
                 if (parsed) {
                   finalDecision = { ...parsed, decision: wasmDecision, reason: result.reason ?? '' };
                   const matchStatus = wasmDecision === parsed.decision ? 'Match' : 'Corrected by PAY.ID';
-                  finalReply = reply + `\n\n---\n**🔍 PAY.ID Evaluation Flow**\n` +
-                    `1️⃣ **AI Inference**\n   ↳ Decision: ${parsed.decision} (Amount: ${parsed.amount || 0})\n` +
-                    `2️⃣ **Load On-Chain Policy**\n   ↳ Rule ID: \`${ruleDesc}\`\n   ↳ Logic: \`${ruleCondition}\`\n` +
-                    `3️⃣ **WASM Rule Engine Execution**\n   ↳ Context: Amount = ${parsed.amount || 0}, Receiver = ${parsed.receiver || 'N/A'}\n   ↳ Result: ${wasmDecision}\n   ↳ Reason: ${result.reason || 'OK'}\n` +
-                    `4️⃣ **Final Enforcement**\n   ↳ Status: ${matchStatus}\n   ↳ Action: ✅ Transaction Allowed`;
+                  finalReply = reply + `\n\n---\n**PAY.ID POLICY ENFORCEMENT REPORT**\n` +
+                    `1. AI Intent Parsing\n   ↳ Decision: APPROVE (Amount: ${formatLogVal('tx.amount', amountRaw) || '0 USDC'})\n` +
+                    `2. On-Chain Guardrails Loaded\n   ↳ Active Rule(s): \`${ruleDesc}\`\n   ↳ Math Logic: \`${ruleCondition}\`\n` +
+                    `3. WASM Sandbox Execution\n   ↳ Checked Sender: \`${address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : 'unknown'}\`\n   ↳ Sandbox Result: POLICY COMPLIANT\n` +
+                    `4. Final Verdict\n   ↳ Status: \`${matchStatus}\`\n   ↳ Enforcer Action: Transaction Allowed`;
                 } else {
                   finalDecision = null;
-                  finalReply = reply + `\n\n---\n**🔍 PAY.ID Evaluation Flow**\n` +
-                    `1️⃣ **AI Inference**\n   ↳ Conversational response\n` +
-                    `2️⃣ **Load On-Chain Policy**\n   ↳ Rule ID: \`${ruleDesc}\`\n   ↳ Logic: \`${ruleCondition}\`\n` +
-                    `3️⃣ **WASM Rule Engine Execution**\n   ↳ Context: Sender = ${address ?? 'unknown'}\n   ↳ Result: APPROVE\n` +
-                    `4️⃣ **Final Enforcement**\n   ↳ Action: ✅ Interaction Allowed`;
+                  finalReply = reply + `\n\n---\n**PAY.ID POLICY ENFORCEMENT REPORT**\n` +
+                    `1. AI Intent Parsing\n   ↳ Decision: Conversational Message (No payment intent detected)\n` +
+                    `2. On-Chain Guardrails Loaded\n   ↳ Active Rule(s): \`${ruleDesc}\`\n   ↳ Math Logic: \`${ruleCondition}\`\n` +
+                    `3. WASM Sandbox Execution\n   ↳ Checked Sender: \`${address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : 'unknown'}\`\n   ↳ Sandbox Result: GENERAL INTERACTION ALLOWED\n` +
+                    `4. Final Verdict\n   ↳ Enforcer Action: Interaction Allowed`;
                 }
               }
             } catch (err) {
@@ -606,7 +789,31 @@ export function useAgentPayID(): AgentPayIDState {
 
       await new Promise((r) => setTimeout(r, 1000));
       addLog(`[VERIFY] Payment payload matches on-chain policy`, 'ok');
-      addLog(`[SETTLE] Payment transaction executed successfully`, 'ok');
+
+      if (decision?.decision === 'APPROVE') {
+        const recipient = (decision.receiver && decision.receiver.startsWith('0x') && decision.receiver.length === 42)
+          ? decision.receiver
+          : '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+
+        const amt = decision.amount ?? 0;
+        const displayAmount = amt >= 100_000 ? amt / 1000000 : amt;
+        addLog(`[SETTLE] Initiating MetaMask to transfer ${displayAmount} tokens to ${shortAddr(recipient)}…`);
+
+        const testValue = BigInt(Math.floor(Math.min(displayAmount, 5) * 1e15));
+
+        const txSettle = await sendTransactionAsync({
+          to: recipient as `0x${string}`,
+          value: testValue,
+          chainId: activeChainId,
+        });
+
+        setTxHashes((h) => [...h, txSettle]);
+        await publicClient.waitForTransactionReceipt({ hash: txSettle });
+        addLog(`[SETTLE] Payment transaction settled successfully`, 'ok');
+      } else {
+        addLog(`[SETTLE] Payment transaction executed successfully`, 'ok');
+      }
+
       setOnChainPhase('done');
     } catch (e: unknown) {
       setOnChainPhase('error');
@@ -615,7 +822,7 @@ export function useAgentPayID(): AgentPayIDState {
         'err',
       );
     }
-  }, [isConnected, address, publicClient, tokenId, onChainPhase, onChainRules, ruleIdx, decision, addLog, writeContractAsync, mockRegistryAddr, agentPayIDAddr, activeChainId]);
+  }, [isConnected, address, publicClient, tokenId, onChainPhase, onChainRules, ruleIdx, decision, addLog, writeContractAsync, sendTransactionAsync, mockRegistryAddr, agentPayIDAddr, activeChainId]);
 
   const resetAll = useCallback(() => {
     setDecision(null);
@@ -746,8 +953,6 @@ export function useAgentPayID(): AgentPayIDState {
       console.log('[handleCreateRule] calling createRule with uri:', metadataUri);
       setJsonError('');
       createRule({ ruleHash: hash, uri: metadataUri });
-      setShowCreateSuccess(true);
-      setTimeout(() => setShowCreateSuccess(false), 3000);
     } catch {
       setJsonError('Invalid JSON syntax');
     }
@@ -776,6 +981,7 @@ export function useAgentPayID(): AgentPayIDState {
     agentRuleInfo,
     activeRuleHash,
     currentRuleHash,
+    agentRuleJson,
 
     messages,
     input,

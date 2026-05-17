@@ -312,3 +312,70 @@
     animation: pulse-soft 1.5s ease-in-out infinite;
   }
 }
+
+/* Sonner Toast Theme Variables */
+:root, [data-v4-theme="light"] {
+  --toast-bg: #ffffff;
+  --toast-text: #0f172a;
+  --toast-border: rgba(0, 0, 0, 0.08);
+  --toast-title: #0f172a;
+  --toast-description: #475569;
+}
+
+[data-v4-theme="dark"] {
+  --toast-bg: #121824;
+  --toast-text: #f8fafc;
+  --toast-border: rgba(255, 255, 255, 0.08);
+  --toast-title: #ffffff;
+  --toast-description: #94a3b8;
+}
+
+/* Perfect Overrides for Sonner Toasts */
+[data-sonner-toast] {
+  background: var(--toast-bg) !important;
+  border: 1px solid var(--toast-border) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+}
+
+[data-sonner-toast] [data-title] {
+  color: var(--toast-title) !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+}
+
+[data-sonner-toast] [data-description] {
+  color: var(--toast-description) !important;
+  font-size: 12px !important;
+  margin-top: 4px !important;
+}
+
+/* Ensure rich colors text is not colored to retain readability */
+[data-sonner-toast][data-rich-colors="true"] {
+  background: var(--toast-bg) !important;
+  border: 1px solid var(--toast-border) !important;
+}
+
+[data-sonner-toast][data-rich-colors="true"] [data-title] {
+  color: var(--toast-title) !important;
+}
+
+[data-sonner-toast][data-rich-colors="true"] [data-description] {
+  color: var(--toast-description) !important;
+}
+
+/* Color indicators for rich colors toast left borders or subtle side badges */
+[data-sonner-toast][data-type="success"] {
+  border-left: 3px solid #10b981 !important;
+}
+[data-sonner-toast][data-type="error"] {
+  border-left: 3px solid #ef4444 !important;
+}
+[data-sonner-toast][data-type="warning"] {
+  border-left: 3px solid #f59e0b !important;
+}
+[data-sonner-toast][data-type="info"] {
+  border-left: 3px solid #3b82f6 !important;
+}
+

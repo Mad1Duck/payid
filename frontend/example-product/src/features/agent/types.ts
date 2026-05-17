@@ -12,6 +12,7 @@ export interface AiDecision {
 
 export interface OnChainRule {
   ruleId: bigint
+  tokenId?: bigint
   hash: string
   uri: string
   name?: string
