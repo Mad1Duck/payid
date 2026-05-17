@@ -8,18 +8,10 @@ WORKDIR /app
 # ── 1. Copy full source ──
 COPY . .
 
-# ── 2. Install ALL workspace deps ──
+# ── 2. Install deps (payid & payid-react from npm, not workspace) ──
 RUN bun install
 
-# ── 3. Debug: verify issuer directory exists ──
-RUN ls packages/sdk-core/src/
-
-# ── 4. Build workspace packages with tsup (from source, no DTS to avoid resolution issues) ──
-RUN cd packages/sdk-core && bunx tsup src/index.ts src/rule/index.ts src/sessionPolicy/index.ts src/context/index.ts src/issuer/index.ts src/core/client/index.ts src/core/server/index.ts \
-    --format esm --outDir dist --dts false --external ethers --external @0gfoundation/0g-storage-ts-sdk --external wasi
-RUN cd packages/payid-react && bun run build
-
-# ── 5. Build the frontend ──
+# ── 3. Build the frontend ──
 WORKDIR /app/frontend/example-product
 RUN bunx vite build
 
