@@ -9,10 +9,10 @@
 # Node modules (installed in container)
 **/node_modules/
 
-# Build outputs
-**/dist/
-!packages/*/dist/
-!frontend/*/dist/
+# Build outputs — explicit exclusions only (workspace package dist files are kept)
+/dist/
+frontend/example-product/dist/
+frontend/frontend-docs/build/
 **/*.tsbuildinfo
 
 # Docker files (not needed inside container)
