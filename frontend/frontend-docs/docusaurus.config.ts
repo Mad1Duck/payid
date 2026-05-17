@@ -91,6 +91,12 @@ const config: Config = {
           position: 'left',
         },
         {
+          href: 'https://app.payid.nawasena-labs.com/',
+          label: 'App',
+          position: 'left',
+          target: '_blank',
+        },
+        {
           type: 'localeDropdown',
           position: 'right',
         },

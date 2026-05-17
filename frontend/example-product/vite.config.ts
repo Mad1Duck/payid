@@ -60,5 +60,9 @@ export default defineConfig({
     cors: true,
   },
 
+  preview: {
+    allowedHosts: ['app.payid.nawasena-labs.com'],
+  },
+
   assetsInclude: ['**/*.wasm'],
 });
