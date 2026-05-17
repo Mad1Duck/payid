@@ -425,7 +425,7 @@ export default function SendFlow() {
               backDisabled={flowIsPending}
               ruleEvaluations={
                 targetPolicy?.ruleRefs && targetPolicy.ruleRefs.length > 0
-                  ? targetPolicy.ruleRefs.map((ref, idx) => {
+                  ? targetPolicy.ruleRefs.map((ref) => {
                       const isDenied = flowStatus === 'denied';
                       const isEvaluating = ['fetching-rule', 'evaluating', 'proving'].includes(flowStatus);
                       const ruleName = `Rule NFT ${shortenAddr(ref.ruleNFT)} #${String(ref.tokenId)}`;

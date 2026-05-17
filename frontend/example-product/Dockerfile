@@ -11,9 +11,9 @@ COPY . .
 # ── 2. Install deps (workspace) ──
 RUN bun install
 
-# ── 3. Build workspace packages (Buffer removed from source, no externalizations) ──
-RUN cd packages/sdk-core && bun run build
-RUN cd packages/payid-react && bun run build
+# # ── 3. Build workspace packages (Buffer removed from source, no externalizations) ──
+# RUN cd packages/sdk-core && bun run build
+# RUN cd packages/payid-react && bun run build
 
 # ── 4. Build the frontend ──
 WORKDIR /app/frontend/example-product
