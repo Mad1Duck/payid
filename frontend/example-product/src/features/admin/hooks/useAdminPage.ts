@@ -118,6 +118,18 @@ export function useAdminPage() {
     abi: payIDVerifierAbi,
     functionName: 'isInitialized',
   });
+  const { data: adminRole } = useReadContract({
+    address: contracts.payIDVerifier,
+    abi: payIDVerifierAbi,
+    functionName: 'DEFAULT_ADMIN_ROLE',
+  });
+  const { data: isAdmin } = useReadContract({
+    address: contracts.payIDVerifier,
+    abi: payIDVerifierAbi,
+    functionName: 'hasRole',
+    args: adminRole ? [adminRole, address as `0x${string}`] : undefined,
+    query: { enabled: !!adminRole && !!address },
+  });
   const { data: pwpInit } = useReadContract({
     address: contracts.payWithPayID,
     abi: payWithPayIDAbi,
@@ -337,6 +349,7 @@ export function useAdminPage() {
     minStake, setMinStake,
     consensusThreshold, setConsensusThreshold,
     verifierInit, pwpInit, attVerInit,
+    isAdmin,
     isTrustedAuthority, isTrustedAttester, isTrustedSchema,
     isPaused, maxSlot, subCents, oracleAddrRead, priceData, treasuryBal,
     vMinStake, vConsensus,

@@ -36,6 +36,7 @@ export default function AdminPage() {
     minStake, setMinStake,
     consensusThreshold, setConsensusThreshold,
     verifierInit, pwpInit, attVerInit,
+    isAdmin,
     isTrustedAuthority, isTrustedAttester, isTrustedSchema,
     isPaused, maxSlot, subCents, oracleAddrRead, priceData, treasuryBal,
     vMinStake, vConsensus,
@@ -55,6 +56,20 @@ export default function AdminPage() {
         <p className={`${p.textMain} font-medium`}>Wallet not connected</p>
         <p className={`text-sm ${p.textMuted} mt-1`}>
           Connect an admin wallet to access protocol settings
+        </p>
+      </div>
+    )
+
+  if (!isAdmin)
+    return (
+      <div
+        className={`p-8 rounded-2xl text-center border ${p.cardBorder} mt-6`}
+        style={{ background: p.cardBg }}
+      >
+        <Shield className="w-10 h-10 text-red-500 mx-auto mb-3" />
+        <p className={`${p.textMain} font-medium`}>Access Denied</p>
+        <p className={`text-sm ${p.textMuted} mt-1`}>
+          Your wallet does not have admin privileges.
         </p>
       </div>
     )

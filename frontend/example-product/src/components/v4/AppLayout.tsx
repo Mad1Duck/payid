@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link, useLocation, useRouterState } from '@tanstack/react-router'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -25,11 +25,15 @@ import {
   useConnect,
   useDisconnect,
   useSwitchChain,
+  useReadContract,
 } from 'wagmi'
 import { useV4Palette } from './theme'
 import DynamicIsland from './DynamicIsland'
 import type { ReactNode } from 'react'
 import { shortAddr } from '@/features/shared/utils/address'
+import { payIDVerifierAbi } from '@/constants/contracts'
+import { usePayIDContext } from 'payid-react'
+import { toast } from 'sonner'
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { address, isConnected } = useAccount()
@@ -43,6 +47,62 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const currentPath = location.pathname
   const p = useV4Palette()
   const isNavigating = useRouterState({ select: (s) => s.status === 'pending' })
+  const { contracts } = usePayIDContext()
+
+  /* ── Multi-wallet EIP-1193 detection ── */
+  const detectedWallets = useMemo(() => {
+    if (typeof window === 'undefined') return []
+    const eth = (window as any).ethereum
+    if (!eth) return []
+    const providers = eth.providers ? [...eth.providers] : [eth]
+    const wallets = [
+      { id: 'metaMask', name: 'MetaMask', flag: 'isMetaMask' },
+      { id: 'rabby', name: 'Rabby', flag: 'isRabby' },
+      { id: 'trust', name: 'Trust Wallet', flag: 'isTrustWallet' },
+      { id: 'coinbase', name: 'Coinbase Wallet', flag: 'isCoinbaseWallet' },
+      { id: 'brave', name: 'Brave Wallet', flag: 'isBraveWallet' },
+      { id: 'okx', name: 'OKX Wallet', flag: 'isOkxWallet' },
+      { id: 'bitget', name: 'Bitget Wallet', flag: 'isBitgetWallet' },
+    ]
+    return wallets
+      .map((w) => {
+        const provider = providers.find((p: any) => p && p[w.flag])
+        return { ...w, detected: !!provider, provider }
+      })
+      .sort((a, b) => (b.detected ? 1 : 0) - (a.detected ? 1 : 0))
+  }, [])
+
+  const handleWalletConnect = async (wallet: (typeof detectedWallets)[number]) => {
+    if (!wallet.detected || !wallet.provider) {
+      toast.error(`${wallet.name} not detected`, {
+        description: 'Please install or unlock the wallet extension.',
+      })
+      return
+    }
+    try {
+      await wallet.provider.request({ method: 'eth_requestAccounts' })
+      setTimeout(() => window.location.reload(), 300)
+    } catch (err: any) {
+      if (err?.code === 4001) {
+        toast.error('Connection rejected', { description: 'You rejected the connection request.' })
+      } else {
+        toast.error('Connection failed', { description: err?.message ?? 'Unknown error' })
+      }
+    }
+  }
+
+  const { data: adminRole } = useReadContract({
+    address: contracts.payIDVerifier,
+    abi: payIDVerifierAbi,
+    functionName: 'DEFAULT_ADMIN_ROLE',
+  })
+  const { data: isAdmin } = useReadContract({
+    address: contracts.payIDVerifier,
+    abi: payIDVerifierAbi,
+    functionName: 'hasRole',
+    args: adminRole ? [adminRole, address as `0x${string}`] : undefined,
+    query: { enabled: !!adminRole && !!address },
+  })
 
   const navItems = [
     { to: '/v4/app/dashboard', icon: LayoutDashboard, label: 'Overview' },
@@ -56,7 +116,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     { to: '/v4/app/proof', icon: Zap, label: 'Proof' },
     // { to: '/v4/app/tools', icon: Wrench, label: 'Tools' },
     // { to: '/v4/app/payroll', icon: Users, label: 'Payroll' },
-    { to: '/v4/app/admin', icon: Lock, label: 'Admin' },
+    ...(isAdmin ? [{ to: '/v4/app/admin', icon: Lock, label: 'Admin' }] : []),
     { to: '/v4/app/settings', icon: Settings, label: 'Settings' },
   ]
 
@@ -255,11 +315,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <div className="relative">
               <button
                 disabled={connectPending}
-                onClick={() =>
-                  connectors.length === 1
-                    ? connect({ connector: connectors[0] })
-                    : setShowConnectMenu((v) => !v)
-                }
+                onClick={() => setShowConnectMenu((v) => !v)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00D084]/10 text-[#00D084] text-xs font-medium hover:bg-[#00D084]/15 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {connectPending ? (
@@ -268,9 +324,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   <Wallet className="w-3.5 h-3.5" />
                 )}
                 {connectPending ? 'Connecting…' : 'Connect'}
-                {connectors.length > 1 && !connectPending && (
-                  <ChevronDown className="w-3 h-3" />
-                )}
+                <ChevronDown className="w-3 h-3" />
               </button>
               <AnimatePresence>
                 {showConnectMenu && (
@@ -284,26 +338,36 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -6, scale: 0.97 }}
                       transition={{ duration: 0.12 }}
-                      className={`absolute top-full right-0 mt-2 w-48 rounded-xl border z-50 overflow-hidden shadow-xl ${p.dark ? 'bg-[#131825] border-white/10' : 'bg-white border-black/10'}`}
+                      className={`absolute top-full right-0 mt-2 w-56 rounded-xl border z-50 overflow-hidden shadow-xl ${p.dark ? 'bg-[#131825] border-white/10' : 'bg-white border-black/10'}`}
                     >
                       <div
                         className={`px-3 py-2 text-[10px] font-medium uppercase tracking-wider ${p.textMuted} border-b ${p.cardBorder}`}
                       >
                         Select Wallet
                       </div>
-                      {connectors.map((c) => (
+                      {detectedWallets.map((w) => (
                         <button
-                          key={c.id}
+                          key={w.id}
                           onClick={() => {
-                            connect({ connector: c })
+                            handleWalletConnect(w)
                             setShowConnectMenu(false)
                           }}
                           className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium transition-colors ${p.textMain} ${p.cardHover}`}
                         >
-                          <Wallet className={`w-3.5 h-3.5 ${p.textMuted}`} />
-                          {c.name}
+                          <Wallet className={`w-3.5 h-3.5 ${w.detected ? 'text-[#00D084]' : p.textMuted}`} />
+                          {w.name}
+                          {w.detected ? (
+                            <span className="ml-auto text-[10px] text-[#00D084]">Detected</span>
+                          ) : (
+                            <span className="ml-auto text-[10px] text-[#64748B]">Not installed</span>
+                          )}
                         </button>
                       ))}
+                      {detectedWallets.length === 0 && (
+                        <div className={`px-4 py-3 text-xs ${p.textMuted}`}>
+                          No wallets detected. Install a browser wallet extension.
+                        </div>
+                      )}
                     </motion.div>
                   </>
                 )}

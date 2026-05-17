@@ -1,0 +1,49 @@
+# ═══════════════════════════════════════════════════════════════
+# Root .dockerignore — applies when building from monorepo root
+# ═══════════════════════════════════════════════════════════════
+
+# Git
+.git/
+.gitignore
+
+# Node modules (installed in container)
+**/node_modules/
+
+# Build outputs
+**/dist/
+**/*.tsbuildinfo
+
+# Docker files (not needed inside container)
+**/Dockerfile
+**/docker-compose.yml
+**/.dockerignore
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Testing
+coverage/
+**/*.test.ts
+**/*.test.tsx
+
+# Documentation (not needed for frontend build)
+docs/
+frontend/frontend-docs/
+
+# Examples (not needed for build)
+examples/
+
+# Contract artifacts (built in container if needed)
+packages/contracts/artifacts/
+packages/contracts/cache/
+packages/contracts/typechain/
+packages/contracts/ignition/deployments/
+
+# Package manager caches
+.pnpm-store/

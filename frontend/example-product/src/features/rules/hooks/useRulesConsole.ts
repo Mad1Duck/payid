@@ -144,6 +144,34 @@ export function useRulesConsole() {
     { id: 'slot_c', label: 'SLOT C', cartridge: undefined },
   ]);
 
+  /* ── Reset all local state on chain change ── */
+  useEffect(() => {
+    setHighlightedSlot(null);
+    setActiveCartridgeId(null);
+    setDirection('none');
+    setVersion('1');
+    setRegisterStage('idle');
+    setTxLog([]);
+    setDemoAmount('100');
+    setDemoReceiver('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb');
+    setDemoTxValueUsd('4500000000');
+    setDemoKycLevel('1');
+    setDemoCountry('id');
+    setDemoRiskScore('30');
+    setDemoDailyLimit('50000000');
+    setDemoSpentToday('0');
+    setDemoResult('idle');
+    setDemoReason('');
+    setShowDemo(false);
+    setSlots([
+      { id: 'slot_a', label: 'SLOT A', cartridge: undefined },
+      { id: 'slot_b', label: 'SLOT B', cartridge: undefined },
+      { id: 'slot_c', label: 'SLOT C', cartridge: undefined },
+    ]);
+    setNftImages({});
+    setRuleDetails({});
+  }, [chainId]);
+
   const trayCartridges = availableCartridges.filter((c) => !slots.some((s) => s.cartridge?.id === c.id));
   const selectedSlots = slots.filter((s) => s.cartridge);
   const canRegister = selectedSlots.length > 0 && isConnected && !isRegistering && !isConfirming;

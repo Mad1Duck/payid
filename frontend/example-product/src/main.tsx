@@ -9,7 +9,7 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { WagmiProvider, createConfig, http } from 'wagmi'
-import { injected, metaMask } from 'wagmi/connectors'
+import { injected } from 'wagmi/connectors'
 import { PayIDProvider } from 'payid-react'
 import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider.tsx'
 
@@ -92,7 +92,7 @@ export const devNode = {
 
 const wagmiConfig = createConfig({
   chains: [devNode, zeroGTestnet, zeroGFork, zeroGGalileo],
-  connectors: [injected(), metaMask()],
+  connectors: [injected({ shimDisconnect: true })],
   transports: {
     [devNode.id]: http(),
     [zeroGTestnet.id]: http(),
