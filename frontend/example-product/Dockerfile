@@ -11,8 +11,18 @@ COPY . .
 # ── 2. Install ALL workspace deps ──
 RUN bun install
 
-# ── 3. Build workspace packages (skip dts for sdk-core to avoid cross-entry resolution bug) ──
-RUN sed -i 's/dts: true,/dts: false,/' packages/sdk-core/tsup.config.ts
+# ── 3. Build workspace packages (sdk-core single entry to fix cross-entry esbuild resolution) ──
+RUN cat > packages/sdk-core/tsup.config.ts <<'EOF'
+import { defineConfig } from "tsup";
+export default defineConfig({
+  entry: ["src/index.ts"],
+  format: ["esm"],
+  dts: false,
+  clean: true,
+  outDir: "dist",
+  loader: { ".wasm": "copy" }
+});
+EOF
 RUN cd packages/sdk-core && bun run build
 RUN cd packages/payid-react && bun run build
 
