@@ -22,7 +22,7 @@ import { useDashboard } from '../hooks/useDashboard'
 export default function Dashboard() {
   const {
     address, isConnected, balanceLoading, balanceValue,
-    nativeSymbol, nativeName, txMounted,
+    txMounted,
     p, copied, cacheStats, cacheReady,
     activeTab, setActiveTab,
     score, isBlacklisted, isTrusted, repLoading,

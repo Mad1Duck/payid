@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { Brain, Bot, Loader2, Send } from 'lucide-react'
 import { useV4Palette } from '@/components/v4/theme'
 import { Bubble } from '@/features/agent/components/Bubble'
-import type { AgentPayIDState } from './useAgentPayID'
+import type { AgentPayIDState } from '../hooks/useAgentPayID'
 import { AI_MODEL } from '@/features/agent/data/constants'
 
 interface Props {
@@ -31,7 +31,7 @@ export default function AgentChatPanel({ s }: Props) {
         {s.messages.length === 0 && !s.selectedAgent && (
           <div className={`text-center text-xs ${p.textMuted} pt-10`}>Select an AI agent above to start chatting.</div>
         )}
-        {s.messages.map((m, i) => (
+        {s.messages.map((m: any, i: number) => (
           <Bubble key={i} msg={m} />
         ))}
         {s.aiLoading && (

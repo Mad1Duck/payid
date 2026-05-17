@@ -21,7 +21,6 @@ import { formatPriceWithUSD } from '@/features/rules/utils/pricing'
 import { genImage } from '@/features/rules/utils/image'
 import { buildFieldExpr, makeBlank } from '@/features/rules/utils/ruleEngine'
 import { TEMPLATES } from '@/features/rules/data/templates'
-import type { Cond, RuleFormat } from '@/features/rules/types'
 import { useRuleBuilder } from '../hooks/useRuleBuilder'
 import { getPinataJWT, RuleImage } from '@/features/rules';
 import { toast } from 'sonner';
@@ -108,7 +107,7 @@ const NO_ARG = new Set([
 
 export default function RulesPage() {
   const {
-    address, isConnected, chainId, nativeSymbol, p, contracts, ethUsdPrice,
+    isConnected, nativeSymbol, p, contracts, ethUsdPrice,
     myRules, activeCombined, sub, activeCount,
     conds, setConds, format, setFormat, logic, setLogic, ruleName, setRuleName,
     ruleComment, setRuleComment, denyMsg, setDenyMsg, simpleMode, setSimpleMode,
@@ -117,7 +116,7 @@ export default function RulesPage() {
     nftName, setNftName, nftDesc, setNftDesc, imgDataUrl, setImgDataUrl, fileRef,
     activateId, setActivateId, activateRule, activating, activatingPending, activatingConfirming, activateStatus, setActivateStatus,
     activateMsg, setActivateMsg,
-    subscribe, subPending, subConfirming, subOk, subError, subPrice, isSupportedChain, is0G,
+    subscribe, subPending, subConfirming, subPrice, is0G,
     ruleJson, ruleHash, summary,
     updateCond, handleFileChange, handleDeploy,
   } = useRuleBuilder()

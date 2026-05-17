@@ -4,7 +4,7 @@ import { useV4Palette } from '@/components/v4/theme'
 import { Console } from '@/features/agent/components/Console'
 import { shortHash } from '@/features/agent/utils/format'
 import { EXPLORER_URLS } from '@/features/agent/data/constants'
-import type { AgentPayIDState } from './useAgentPayID'
+import type { AgentPayIDState } from '../hooks/useAgentPayID'
 
 interface Props {
   s: AgentPayIDState
@@ -71,7 +71,7 @@ export default function AgentDecisionPanel({ s }: Props) {
                   <CheckCircle2 className="w-4 h-4" /> Policy linked on-chain
                 </div>
                 <div className="flex gap-3 flex-wrap">
-                  {s.txHashes.map((h, i) => (
+                  {s.txHashes.map((h: any, i: number) => (
                     <a
                       key={h}
                       href={`${EXPLORER_URLS[s.activeChainId]}/tx/${h}`}

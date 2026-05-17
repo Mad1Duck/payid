@@ -1,11 +1,10 @@
-import { useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Hash, Link2, Loader2, ShieldCheck, Sparkles } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Hash, Link2, Loader2, ShieldCheck, Sparkles } from 'lucide-react'
 import { zeroHash } from 'viem'
 import { useV4Palette } from '@/components/v4/theme'
 import { shortHash } from '@/features/agent/utils/format'
 import { PRESET_RULES, PRESET_TEMPLATES } from '@/features/agent/data/presets'
-import type { AgentPayIDState } from './useAgentPayID'
+import type { AgentPayIDState } from '../hooks/useAgentPayID'
 
 interface Props {
   s: AgentPayIDState
@@ -33,7 +32,7 @@ function OwnerPolicyView({ s }: { s: AgentPayIDState }) {
   const p = useV4Palette()
   return (
     <>
-      <button onClick={() => s.setShowRuleSection((v) => !v)} className="w-full flex items-center justify-between mb-2 group">
+      <button onClick={() => s.setShowRuleSection(!s.showRuleSection)} className="w-full flex items-center justify-between mb-2 group">
         <p className={`text-xs font-semibold ${p.textMuted}`}>SET AGENT POLICY</p>
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#8B5CF6]/10 text-[#8B5CF6] font-medium">Admin</span>
@@ -112,7 +111,7 @@ function ExistingRuleView({ s }: { s: AgentPayIDState }) {
         Select a combined rule you have already registered. This links it to the current agent without creating a new one.
       </p>
       <div className="flex gap-2 flex-wrap">
-        {s.myRuleSets?.map((rs, i) => (
+        {s.myRuleSets?.map((rs: any, i: number) => (
           <button
             key={i}
             onClick={() => s.setSelectedExistingRule(rs)}
@@ -250,7 +249,7 @@ function NewRuleView({ s }: { s: AgentPayIDState }) {
         <p className={`text-[10px] font-semibold uppercase tracking-wide ${p.textMuted} mb-2`}>Or select existing rule</p>
         <div className="flex gap-2 flex-wrap">
           {s.rulesLoaded && s.onChainRules.length > 0 ? (
-            s.onChainRules.map((r, i) => (
+            s.onChainRules.map((r: any, i: number) => (
               <button
                 key={`onchain-${i}`}
                 onClick={() => s.setRuleIdx(i)}

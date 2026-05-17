@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { ParticleField, StorageHexGrid, SignatureAnimation, BlockChainLink } from '@/features/shared'
 import { useProofVisualizer } from '../hooks/useProofVisualizer'
-import type { Stage, StageInfo } from '../hooks/useProofVisualizer'
+import type { StageInfo } from '../hooks/useProofVisualizer'
 
 const STAGES: StageInfo[] = [
   { key: 'context', title: 'Build Context', subtitle: 'tx + payId + env + oracle', icon: 'Layers', color: '#0EA5E9' },

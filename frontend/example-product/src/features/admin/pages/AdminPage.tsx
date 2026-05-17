@@ -20,8 +20,8 @@ import { useAdminPage } from '@/features/admin'
 /* ═══════════════════════════════════════════════════════════════ */
 export default function AdminPage() {
   const {
-    address, isConnected, p, contracts, txBusy, txError, hash,
-    attestationVerifierAddr, vindexRegistryAddr,
+    address, isConnected, p, txBusy, txError, hash,
+    attestationVerifierAddr,
     initRuleAuthorityAddr, setInitRuleAuthorityAddr,
     initAttestVerifierAddr, setInitAttestVerifierAddr,
     initPWPVerifierAddr, setInitPWPVerifierAddr,
@@ -38,7 +38,7 @@ export default function AdminPage() {
     verifierInit, pwpInit, attVerInit,
     isAdmin,
     isTrustedAuthority, isTrustedAttester, isTrustedSchema,
-    isPaused, maxSlot, subCents, oracleAddrRead, priceData, treasuryBal,
+    isPaused, maxSlot, subCents, oracleAddrRead, treasuryBal,
     vMinStake, vConsensus,
     ethPrice, priceInEth,
     initVerifier, initPWP, setAuthority, setSchema, setAttester, setPrice, setOracle, togglePause, withdraw, withdrawAll, setStake, setConsensus,

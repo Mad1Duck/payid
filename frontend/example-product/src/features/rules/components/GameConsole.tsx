@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion'
-import { DroppableSlotZone, type SlotData } from '@/features/rules'
+import { DroppableSlotZone } from '@/features/rules/components/DroppableSlotZone'
+import type { SlotData } from '@/features/rules/components/DroppableSlotZone'
 
 interface GameConsoleProps {
   slots: Array<SlotData>

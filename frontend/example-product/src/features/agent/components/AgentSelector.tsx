@@ -1,12 +1,10 @@
 import { useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Bot, ChevronDown, ChevronUp, ExternalLink, Loader2, ShieldCheck } from 'lucide-react'
+import { Bot, ExternalLink, Loader2, ShieldCheck } from 'lucide-react'
 import { useV4Palette } from '@/components/v4/theme'
 import { shortHash, shortAddr } from '@/features/agent/utils/format'
 import { detectStorageProvider, resolveStorageURI } from '@/lib/storage'
-import { downloadFromZGStorage } from '@/lib/zgStorage'
 import type { AdminAgent } from 'payid-react'
-import type { AgentPayIDState } from './useAgentPayID'
+import type { AgentPayIDState } from '../hooks/useAgentPayID'
 
 interface Props {
   s: AgentPayIDState
@@ -37,7 +35,7 @@ export default function AgentSelector({ s }: Props) {
           )}
         </div>
         <button
-          onClick={() => s.setShowAgentRegister((v) => !v)}
+          onClick={() => s.setShowAgentRegister(!s.showAgentRegister)}
           disabled={s.slotsUsed >= s.slotsMax}
           className="text-[10px] px-2 py-0.5 rounded-full bg-[#8B5CF6]/10 text-[#8B5CF6] font-medium hover:bg-[#8B5CF6]/20 transition-colors disabled:opacity-40"
         >
@@ -115,7 +113,7 @@ export default function AgentSelector({ s }: Props) {
           </div>
           {s.selectedAgent.owner?.toLowerCase() === s.address?.toLowerCase() && s.activeRuleHash && s.activeRuleHash !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
             <button
-              onClick={() => s.setAgentCombinedRule(s.selectedAgent!.agentWallet, s.activeRuleHash!)}
+              onClick={() => s.setAgentCombinedRule(s.selectedAgent!.agentWallet, s.activeRuleHash! as `0x${string}`)}
               disabled={s.isSettingRule}
               className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#00D084]/30 text-[#00D084] text-xs font-medium hover:bg-[#00D084]/10 transition-colors disabled:opacity-50"
             >

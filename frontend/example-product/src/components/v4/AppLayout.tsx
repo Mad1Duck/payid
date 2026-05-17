@@ -38,7 +38,7 @@ import { toast } from 'sonner'
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { address, isConnected } = useAccount()
   const { disconnect } = useDisconnect()
-  const { connectors, connect, isPending: connectPending } = useConnect()
+  const { isPending: connectPending } = useConnect()
   const chainId = useChainId()
   const { chains, switchChain } = useSwitchChain()
   const [showConnectMenu, setShowConnectMenu] = useState(false)
