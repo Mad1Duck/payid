@@ -62,7 +62,7 @@ export default defineConfig({
     sepolia: {
       type: "http",
       chainType: "l1",
-      url: process.env.SEPOLIA_RPC_URL ?? "https://rpc.sepolia.org",
+      url: "https://rpc.sepolia.org",
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
@@ -97,21 +97,21 @@ export default defineConfig({
     polygon: {
       type: "http",
       chainId: 137,
-      url: process.env.POLYGON_RPC_URL ?? "https://polygon-rpc.com",
+      url: "https://polygon-rpc.com",
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
     base: {
       type: "http",
       chainId: 8453,
-      url: process.env.BASE_RPC_URL ?? "https://mainnet.base.org",
+      url: "https://mainnet.base.org",
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
     moonbeam: {
       type: "http",
       chainId: 1284,
-      url: process.env.MOONBEAM_RPC_URL ?? "https://rpc.api.moonbeam.network",
+      url: "https://rpc.api.moonbeam.network",
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
@@ -121,7 +121,7 @@ export default defineConfig({
     zeroGTestnet: {
       type: "http",
       chainId: 16600,
-      url: process.env.ZEROG_RPC_URL ?? "https://rpc-newton.0g.ai",
+      url: "https://rpc-newton.0g.ai",
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
@@ -129,7 +129,7 @@ export default defineConfig({
     zeroGFork: {
       type: "http",
       chainId: 16601,
-      url: process.env.ZEROG_FORK_RPC_URL ?? "http://100.73.196.95:8550",
+      url: "http://100.73.196.95:8550",
       accounts: {
         mnemonic: "test test test test test test test test test test test junk",
         count: 5,
@@ -140,21 +140,21 @@ export default defineConfig({
     zeroGGalileo: {
       type: "http",
       chainId: 16602,
-      url: process.env.ZEROG_GALILEO_RPC_URL ?? "https://evmrpc-testnet.0g.ai",
+      url: "https://evmrpc-testnet.0g.ai",
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
     zeroGMainnet: {
       type: "http",
       chainId: 16661,
-      url: process.env.ZEROG_MAINNET_RPC_URL ?? "https://evmrpc.0g.ai",
+      url: "https://evmrpc.0g.ai",
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
     moonriver: {
       type: "http",
       chainId: 1285,
-      url: process.env.MOONRIVER_RPC_URL ?? "https://rpc.api.moonriver.moonbeam.network",
+      url: "https://rpc.api.moonriver.moonbeam.network",
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
   },
