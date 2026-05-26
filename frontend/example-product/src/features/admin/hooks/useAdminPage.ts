@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract, useChainId, useChains } from 'wagmi';
 import { usePayIDContext } from 'payid-react';
 import { parseEther } from 'viem';
 import {
@@ -58,6 +58,9 @@ export function useAdminPage() {
   const { address, isConnected } = useAccount();
   const { contracts } = usePayIDContext();
   const p = useV4Palette();
+  const chainId = useChainId();
+  const chains = useChains();
+  const nativeSymbol = chains.find(c => c.id === chainId)?.nativeCurrency.symbol ?? 'ETH';
 
   const { writeContract, isPending, error, data: hash } = useWriteContract();
   const { isLoading: confirming } = useWaitForTransactionReceipt({ hash });
@@ -353,7 +356,7 @@ export function useAdminPage() {
     isTrustedAuthority, isTrustedAttester, isTrustedSchema,
     isPaused, maxSlot, subCents, oracleAddrRead, priceData, treasuryBal,
     vMinStake, vConsensus,
-    ethPrice, priceInEth,
+    ethPrice, priceInEth, nativeSymbol,
     initVerifier, initPWP, setAuthority, setSchema, setAttester, setPrice, setOracle, togglePause, withdraw, withdrawAll, setStake, setConsensus,
     CONTRACTS_LIST,
   };

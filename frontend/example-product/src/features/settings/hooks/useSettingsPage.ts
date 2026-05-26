@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAccount, useChainId } from 'wagmi';
+import { useAccount, useChainId, useChains } from 'wagmi';
 import { useV4Palette, useV4Theme } from '@/components/v4/theme';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useSubscription, useSubscribe, useSubscriptionPrice } from 'payid-react';
@@ -12,6 +12,8 @@ export function useSettingsPage() {
   const { toggle } = useV4Theme();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
+  const chains = useChains();
+  const nativeSymbol = chains.find(c => c.id === chainId)?.nativeCurrency.symbol ?? 'ETH';
   const payId =
     isConnected && address ? `${shortAddr(address)}@pay.id` : 'connect@pay.id';
   const { state, subscribe: subNotify, unsubscribe } = usePushNotifications();
@@ -57,7 +59,7 @@ export function useSettingsPage() {
       } else if (errorMsg.includes('contract') || errorMsg.includes('zero address') || errorMsg.includes('not deployed')) {
         toast.error('Subscription Failed', { description: 'Contracts not deployed on this chain.' });
       } else if (errorMsg.includes('insufficient') || errorMsg.includes('balance')) {
-        toast.error('Subscription Failed', { description: 'Insufficient ETH balance to pay for subscription.' });
+        toast.error('Subscription Failed', { description: `Insufficient ${nativeSymbol} balance to pay for subscription.` });
       } else if (errorMsg.includes('paused') || errorMsg.includes('Pausable')) {
         toast.error('Subscription Failed', { description: 'Contract is currently paused. Contact admin.' });
       } else {

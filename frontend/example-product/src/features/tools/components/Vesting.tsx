@@ -1,14 +1,18 @@
 import { useState } from 'react'
 import { Clock } from 'lucide-react'
 import { useV4Palette } from '@/components/v4/theme'
+import { useChainId, useChains } from 'wagmi'
 
 export function Vesting() {
   const p = useV4Palette()
+  const chainId = useChainId()
+  const chains = useChains()
+  const nativeSymbol = chains.find(c => c.id === chainId)?.nativeCurrency.symbol ?? 'ETH'
   const [beneficiary, setBeneficiary] = useState('')
   const [totalAmount, setTotalAmount] = useState('')
   const [cliff, setCliff] = useState('90')
   const [duration, setDuration] = useState('365')
-  const [asset, setAsset] = useState('ETH')
+  const [asset, setAsset] = useState(nativeSymbol)
   const [revocable, setRevocable] = useState(false)
 
   return (
@@ -38,7 +42,7 @@ export function Vesting() {
             onChange={(e) => setAsset(e.target.value)}
             className={`w-28 px-3 py-2.5 rounded-xl text-sm ${p.inputBg} border ${p.inputBorder} ${p.textMain} focus:outline-none focus:border-[#00D084]/40 font-mono`}
           >
-            <option>ETH</option>
+            <option>{nativeSymbol}</option>
             <option>USDC</option>
           </select>
         </div>

@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useV4Palette } from '@/components/v4/theme'
+import { useChainId, useChains } from 'wagmi'
 
 export function Escrow() {
   const p = useV4Palette()
+  const chainId = useChainId()
+  const chains = useChains()
+  const nativeSymbol = chains.find(c => c.id === chainId)?.nativeCurrency.symbol ?? 'ETH'
   const [freelancer, setFreelancer] = useState('')
-  const [asset, setAsset] = useState('ETH')
+  const [asset, setAsset] = useState(nativeSymbol)
   const [deadline, setDeadline] = useState('30')
   const [milestones, setMilestones] = useState([{ desc: '', amount: '' }])
 
@@ -34,7 +38,7 @@ export function Escrow() {
             onChange={(e) => setAsset(e.target.value)}
             className={`flex-1 px-3 py-2.5 rounded-xl text-sm ${p.inputBg} border ${p.inputBorder} ${p.textMain} focus:outline-none focus:border-[#00D084]/40 font-mono`}
           >
-            <option>ETH</option>
+            <option>{nativeSymbol}</option>
             <option>USDC</option>
           </select>
           <input

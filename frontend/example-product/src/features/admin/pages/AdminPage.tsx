@@ -40,7 +40,7 @@ export default function AdminPage() {
     isTrustedAuthority, isTrustedAttester, isTrustedSchema,
     isPaused, maxSlot, subCents, oracleAddrRead, treasuryBal,
     vMinStake, vConsensus,
-    ethPrice, priceInEth,
+    ethPrice, priceInEth, nativeSymbol,
     initVerifier, initPWP, setAuthority, setSchema, setAttester, setPrice, setOracle, togglePause, withdraw, withdrawAll, setStake, setConsensus,
     CONTRACTS_LIST,
   } = useAdminPage()
@@ -330,8 +330,8 @@ export default function AdminPage() {
         <div className="grid grid-cols-3 gap-2 mb-3">
           {[
             { label: 'Price (¢ USD)', val: subCents?.toString() ?? '—' },
-            { label: '≈ ETH', val: priceInEth },
-            { label: 'ETH/USD', val: ethPrice ? `$${ethPrice}` : '—' },
+            { label: `≈ ${nativeSymbol}`, val: priceInEth },
+            { label: `${nativeSymbol}/USD`, val: ethPrice ? `$${ethPrice}` : '—' },
           ].map((s) => (
             <div
               key={s.label}
@@ -410,7 +410,7 @@ export default function AdminPage() {
           <p className={`text-[11px] ${p.textMuted}`}>Accumulated Balance</p>
           <p className="text-2xl font-bold text-[#00D084]">
             {treasuryBal !== undefined ? formatEther(treasuryBal) : '—'}{' '}
-            <span className="text-sm">ETH</span>
+            <span className="text-sm">{nativeSymbol}</span>
           </p>
         </div>
         <Field
@@ -421,7 +421,7 @@ export default function AdminPage() {
           mono
         />
         <Field
-          label="Amount (ETH)"
+          label={`Amount (${nativeSymbol})`}
           value={withdrawAmount}
           onChange={setWithdrawAmount}
           placeholder="e.g. 0.01"
@@ -462,7 +462,7 @@ export default function AdminPage() {
           >
             <p className={`text-[10px] ${p.textMuted}`}>Min Stake</p>
             <p className={`text-sm font-bold ${p.textMain}`}>
-              {vMinStake !== undefined ? `${formatEther(vMinStake)} ETH` : '—'}
+              {vMinStake !== undefined ? `${formatEther(vMinStake)} ${nativeSymbol}` : '—'}
             </p>
           </div>
           <div
@@ -480,7 +480,7 @@ export default function AdminPage() {
           </div>
         </div>
         <Field
-          label="New Min Stake (ETH)"
+          label={`New Min Stake (${nativeSymbol})`}
           value={minStake}
           onChange={setMinStake}
           placeholder="e.g. 0.001"

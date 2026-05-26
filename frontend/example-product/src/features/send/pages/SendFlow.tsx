@@ -13,7 +13,6 @@ import {
 } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
 import { getTokenConfig } from '@/constants/tokens'
-import { cardBase } from '@/features/send/constants'
 import TransactionSimulation from '@/components/v4/TransactionSimulation'
 import PolicyScanning from '@/components/v4/PolicyScanning'
 import TargetPolicyInfo from '../components/TargetPolicyInfo'
@@ -81,8 +80,6 @@ export default function SendFlow() {
     resolvePayId, handleRunPolicy, reset, copy,
   } = useSendFlow()
 
-  const cardBorder = `absolute inset-0 rounded-2xl border pointer-events-none ${p.cardBorder}`
-  const cardBg = { background: p.cardBg }
 
   if (!isConnected) {
     return (
@@ -103,44 +100,48 @@ export default function SendFlow() {
   }
 
   return (
-    <div className="max-w-lg mx-auto">
-      {/* Step dots — minimal, human */}
-      <div className="flex items-center gap-3 mb-6">
-        {['who', 'amount', 'review'].map((s, i) => {
+    <div className="max-w-2xl mx-auto">
+      {/* Step indicator */}
+      <div className="flex items-center justify-center gap-2 mb-8">
+        {[
+          { id: 'who', label: 'Recipient' },
+          { id: 'amount', label: 'Amount' },
+          { id: 'review', label: 'Review' },
+        ].map((item, i) => {
+          const s = item.id
           const isDone =
             (step === 'amount' && i === 0) ||
-            (['review', 'evaluating', 'signing', 'success'].includes(step) &&
-              i <= 1) ||
+            (['review', 'evaluating', 'signing', 'success'].includes(step) && i <= 1) ||
             (step === 'success' && i === 2)
           const isActive =
             step === s ||
             (['evaluating', 'signing'].includes(step) && s === 'review')
           return (
-            <div key={s} className="flex items-center gap-3">
-              <div
-                className={`w-2 h-2 rounded-full transition-all ${
-                  isDone
-                    ? 'bg-[#00D084]'
-                    : isActive
-                      ? p.dark
-                        ? 'bg-white'
-                        : 'bg-[#0F172A]'
-                      : p.dark
-                        ? 'bg-white/20'
-                        : 'bg-black/20'
-                }`}
-              />
-              <span
-                className={`text-[11px] font-medium capitalize transition-colors ${
-                  isDone || isActive ? p.textMain : p.textMuted
-                }`}
-              >
-                {s}
-              </span>
-              {i < 2 && (
+            <div key={s} className="flex items-center gap-2">
+              <div className="flex flex-col items-center gap-1.5">
                 <div
-                  className={`w-8 h-px ${p.dark ? 'bg-white/10' : 'bg-black/10'}`}
-                />
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                    isDone
+                      ? 'bg-[#00D084] text-[#0B0F1A]'
+                      : isActive
+                        ? 'bg-white text-[#0B0F1A]'
+                        : p.dark
+                          ? 'bg-white/10 text-white/40'
+                          : 'bg-black/5 text-black/30'
+                  }`}
+                >
+                  {isDone ? <Check className="w-4 h-4" /> : i + 1}
+                </div>
+                <span
+                  className={`text-[10px] font-medium capitalize transition-colors ${
+                    isDone || isActive ? p.textMain : p.textMuted
+                  }`}
+                >
+                  {item.label}
+                </span>
+              </div>
+              {i < 2 && (
+                <div className={`w-12 h-px mb-4 ${isDone ? 'bg-[#00D084]/40' : p.dark ? 'bg-white/10' : 'bg-black/10'}`} />
               )}
             </div>
           )
@@ -155,27 +156,30 @@ export default function SendFlow() {
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -12 }}
-            className="space-y-4"
+            className="space-y-5"
           >
-            <div>
-              <h2 className={`text-lg font-semibold ${p.textMain}`}>Send to</h2>
-              <p className={`text-xs ${p.textMuted} mt-0.5`}>
-                Enter a PAY.ID or wallet address.
+            <div className="text-center">
+              <h2 className={`text-xl font-bold ${p.textMain}`}>Who are you sending to?</h2>
+              <p className={`text-xs ${p.textMuted} mt-1`}>
+                Enter a PAY.ID or wallet address
               </p>
             </div>
-            <div className={`${cardBase} p-5`} style={cardBg}>
-              <div className={cardBorder} />
-              <div className="relative space-y-3">
+            <div
+              className="rounded-2xl p-5 space-y-4 relative overflow-hidden"
+              style={{ background: p.glass.bg, border: p.glass.border }}
+            >
+              <div className="relative z-10 space-y-3">
+                <label className={`text-[11px] font-medium ${p.textMuted} block`}>Recipient</label>
                 <input
                   value={payId}
                   onChange={(e) => setPayId(e.target.value)}
-                  placeholder="pay.id/alice"
-                  className={`w-full px-4 py-3 rounded-xl ${p.inputBg} border ${p.inputBorder} ${p.textMain} placeholder-[#64748B] focus:outline-none focus:border-[#00D084]/40 transition-colors font-mono text-sm`}
+                  placeholder="pay.id/alice  or  0x1234..."
+                  className={`w-full px-4 py-3.5 rounded-xl border ${p.inputBorder} ${p.inputBg} ${p.textMain} placeholder-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#00D084]/30 transition-all font-mono text-sm`}
                 />
                 <button
                   onClick={resolvePayId}
                   disabled={!payId.trim()}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-bold hover:bg-[#00B86E] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   Continue <ArrowRight className="w-4 h-4" />
                 </button>
@@ -191,38 +195,28 @@ export default function SendFlow() {
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -12 }}
-            className="space-y-4"
+            className="space-y-5"
           >
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setStep('who')}
-                className={`p-2 rounded-lg ${p.cardBorder} ${p.textMuted} hover:bg-black/5 transition-colors`}
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </button>
-              <div>
-                <h2 className={`text-lg font-semibold ${p.textMain}`}>Amount</h2>
-                <p className={`text-xs ${p.textMuted} mt-0.5`}>
-                  How much do you want to send?
-                </p>
-              </div>
+            <div className="text-center">
+              <h2 className={`text-xl font-bold ${p.textMain}`}>How much?</h2>
+              <p className={`text-xs ${p.textMuted} mt-1`}>
+                Sending to <span className={`${p.textMain} font-mono font-medium`}>{resolvedName}</span>
+              </p>
             </div>
 
-            <div className={`${cardBase} p-5`} style={cardBg}>
-              <div className={cardBorder} />
-              <div className="relative space-y-4">
-                <div className="flex items-center gap-2 text-xs text-[#64748B] font-mono mb-1">
-                  <div className="w-1 h-1 rounded-full bg-[#00D084]" />
-                  To: {resolvedName}
-                </div>
+            {/* Target Policy Info */}
+            {targetPolicy && (
+              <TargetPolicyInfo policy={targetPolicy} p={p} />
+            )}
 
-                {/* Target Policy Info */}
-                {targetPolicy && (
-                  <TargetPolicyInfo policy={targetPolicy} p={p} />
-                )}
-
+            <div
+              className="rounded-2xl p-5 space-y-4 relative overflow-hidden"
+              style={{ background: p.glass.bg, border: p.glass.border }}
+            >
+              <div className="relative z-10 space-y-4">
                 <div className="flex gap-3">
                   <div className="flex-1 relative">
+                    <label className={`text-[11px] font-medium ${p.textMuted} block mb-1.5`}>Amount</label>
                     <input
                       value={amount}
                       onChange={(e) => {
@@ -231,10 +225,10 @@ export default function SendFlow() {
                       }}
                       type="number"
                       placeholder="0.00"
-                      className={`w-full px-4 py-3 rounded-xl ${p.inputBg} border ${p.inputBorder} ${p.textMain} placeholder-[#64748B] focus:outline-none focus:border-[#00D084]/40 transition-colors font-mono text-xl`}
+                      className={`w-full px-4 py-3.5 rounded-xl border ${p.inputBorder} ${p.inputBg} ${p.textMain} placeholder-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#00D084]/30 transition-all font-mono text-xl`}
                     />
                     {amount && parseFloat(amount) > 0 && (
-                      <div className={`mt-1 text-xs ${p.textMuted} font-mono`}>
+                      <div className={`mt-1.5 text-xs ${p.textMuted} font-mono`}>
                         ≈{' '}
                         {format(
                           convert(parseFloat(amount), displayCurrency),
@@ -243,24 +237,27 @@ export default function SendFlow() {
                       </div>
                     )}
                   </div>
-                  <select
-                    value={asset}
-                    onChange={(e) => setAsset(e.target.value)}
-                    className={`px-4 py-3 rounded-xl ${p.inputBg} border ${p.inputBorder} ${p.textMain} font-mono text-sm focus:outline-none focus:border-[#00D084]/40`}
-                  >
-                    <option>{nativeSymbol}</option>
-                    <option>USDC</option>
-                  </select>
+                  <div className="shrink-0">
+                    <label className={`text-[11px] font-medium ${p.textMuted} block mb-1.5`}>Token</label>
+                    <select
+                      value={asset}
+                      onChange={(e) => setAsset(e.target.value)}
+                      className={`px-4 py-3.5 rounded-xl border ${p.inputBorder} ${p.inputBg} ${p.textMain} font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#00D084]/30`}
+                    >
+                      <option>{nativeSymbol}</option>
+                      <option>USDC</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between pt-1">
                   <div className={`text-[11px] ${p.textMuted} font-mono`}>
                     Balance: {balance ? formatNumber(balanceValue, 4) : '--'}{' '}
                     {asset}
                   </div>
                   <button
                     onClick={toggle}
-                    className={`text-[11px] px-2 py-1 rounded-lg border ${p.cardBorder} ${p.textMain} hover:bg-black/5 transition-colors`}
+                    className={`text-[11px] px-3 py-1.5 rounded-lg border ${p.glass.border} ${p.textMain} hover:bg-black/5 transition-colors cursor-pointer`}
                   >
                     {displayCurrency}
                   </button>
@@ -276,13 +273,21 @@ export default function SendFlow() {
                   />
                 )}
 
-                <button
-                  onClick={() => setStep('review')}
-                  disabled={!amount || parseFloat(amount) <= 0}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                >
-                  Review <ArrowRight className="w-4 h-4" />
-                </button>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => setStep('who')}
+                    className={`px-4 py-3 rounded-xl border ${p.glass.border} ${p.textMuted} hover:${p.textMain} transition-colors cursor-pointer text-sm font-medium`}
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setStep('review')}
+                    disabled={!amount || parseFloat(amount) <= 0}
+                    className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-bold hover:bg-[#00B86E] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    Review <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -295,47 +300,36 @@ export default function SendFlow() {
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -12 }}
-            className="space-y-4"
+            className="space-y-5"
           >
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setStep('amount')}
-                className={`p-2 rounded-lg ${p.cardBorder} ${p.textMuted} hover:bg-black/5 transition-colors`}
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </button>
-              <div>
-                <h2 className={`text-lg font-semibold ${p.textMain}`}>Review</h2>
-                <p className={`text-xs ${p.textMuted} mt-0.5`}>
-                  Verify details before policy evaluation.
-                </p>
-              </div>
+            <div className="text-center">
+              <h2 className={`text-xl font-bold ${p.textMain}`}>Review & Send</h2>
+              <p className={`text-xs ${p.textMuted} mt-1`}>
+                Verify details before running policy check
+              </p>
             </div>
 
-            <div className={`${cardBase} p-5`} style={cardBg}>
-              <div className={cardBorder} />
-              <div className="relative space-y-3">
-                {[
-                  { label: 'Recipient', value: resolvedName || '' },
-                  { label: 'Amount', value: `${amount} ${asset}` },
-                  { label: 'Network', value: `${chainName} · ${chainId}` },
-                  {
-                    label: 'Est. Fee',
-                    value: `~0.0001 ${nativeSymbol} (estimate)`,
-                  },
-                ].map((row) => (
-                  <div
-                    key={row.label}
-                    className="flex justify-between items-center py-1"
-                  >
-                    <span className={`text-[13px] ${p.textMuted}`}>
-                      {row.label}
-                    </span>
-                    <span className={`text-[13px] ${p.textMain} font-mono`}>
-                      {row.value}
-                    </span>
-                  </div>
-                ))}
+            <div
+              className="rounded-2xl p-5 space-y-3 relative overflow-hidden"
+              style={{ background: p.glass.bg, border: p.glass.border }}
+            >
+              <div className="relative z-10">
+                <div className="flex justify-between items-center py-2 border-b border-white/5">
+                  <span className={`text-[13px] ${p.textMuted}`}>Recipient</span>
+                  <span className={`text-[13px] ${p.textMain} font-mono font-medium`}>{resolvedName || ''}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-white/5">
+                  <span className={`text-[13px] ${p.textMuted}`}>Amount</span>
+                  <span className={`text-[13px] ${p.textMain} font-mono font-medium`}>{`${amount} ${asset}`}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-white/5">
+                  <span className={`text-[13px] ${p.textMuted}`}>Network</span>
+                  <span className={`text-[13px] ${p.textMain} font-mono font-medium`}>{`${chainName} · ${chainId}`}</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className={`text-[13px] ${p.textMuted}`}>Est. Fee</span>
+                  <span className={`text-[13px] ${p.textMain} font-mono font-medium`}>{`~0.0001 ${nativeSymbol}`}</span>
+                </div>
               </div>
             </div>
 
@@ -343,19 +337,15 @@ export default function SendFlow() {
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`${cardBase} p-4 flex items-start gap-3`}
-                style={{ background: 'rgba(245,158,11,0.06)' }}
+                className="rounded-2xl p-4 flex items-start gap-3 relative overflow-hidden"
+                style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}
               >
-                <div
-                  className={cardBorder}
-                  style={{ borderColor: 'rgba(245,158,11,0.2)' }}
-                />
-                <AlertTriangle className="w-4 h-4 text-[#F59E0B] shrink-0 relative mt-0.5" />
-                <div className="relative">
+                <AlertTriangle className="w-4 h-4 text-[#F59E0B] shrink-0 mt-0.5" />
+                <div>
                   <div className="text-[13px] font-medium text-[#F59E0B]">
                     Warning: Policy May Reject This
                   </div>
-                  <div className={`text-[11px] ${p.textMuted}`}>
+                  <div className={`text-[11px] ${p.textMuted} mt-0.5`}>
                     {preflightWarning}
                   </div>
                 </div>
@@ -366,44 +356,45 @@ export default function SendFlow() {
               <motion.div
                 initial={{ opacity: 0, x: [0, -8, 8, -8, 8, 0] }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{
-                  x: { duration: 0.4 },
-                  opacity: { duration: 0.2 },
-                }}
-                className={`${cardBase} p-4 flex items-center gap-3`}
-                style={{ background: 'rgba(239,68,68,0.06)' }}
+                transition={{ x: { duration: 0.4 }, opacity: { duration: 0.2 } }}
+                className="rounded-2xl p-4 flex items-center gap-3 relative overflow-hidden"
+                style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}
               >
-                <div
-                  className={cardBorder}
-                  style={{ borderColor: 'rgba(239,68,68,0.2)' }}
-                />
-                <X className="w-4 h-4 text-[#EF4444] shrink-0 relative" />
-                <div className="relative">
+                <X className="w-4 h-4 text-[#EF4444] shrink-0" />
+                <div>
                   <div className="text-[13px] font-medium text-[#EF4444]">
                     Policy Denied
                   </div>
-                  <div className={`text-[11px] ${p.textMuted}`}>
+                  <div className={`text-[11px] ${p.textMuted} mt-0.5`}>
                     {denyReason}
                   </div>
                 </div>
               </motion.div>
             )}
 
-            <button
-              onClick={handleRunPolicy}
-              disabled={flowIsPending}
-              className={`w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl ${p.dark ? 'bg-white/6 border border-white/8' : 'bg-black/4 border border-black/8'} ${p.textMain} text-sm font-medium ${p.cardHover} transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed`}
-            >
-              {flowIsPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Evaluating…
-                </>
-              ) : (
-                <>
-                  <Shield className="w-4 h-4 text-[#00D084]" /> Run Policy Check
-                </>
-              )}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setStep('amount')}
+                className={`px-4 py-3 rounded-xl border ${p.glass.border} ${p.textMuted} hover:${p.textMain} transition-colors cursor-pointer text-sm font-medium`}
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleRunPolicy}
+                disabled={flowIsPending}
+                className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-bold hover:bg-[#00B86E] disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                {flowIsPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Evaluating…
+                  </>
+                ) : (
+                  <>
+                    <Shield className="w-4 h-4" /> Run Policy Check
+                  </>
+                )}
+              </button>
+            </div>
           </motion.div>
         )}
 
@@ -545,9 +536,11 @@ export default function SendFlow() {
               </div>
             )}
 
-            <div className={`${cardBase} p-4`} style={cardBg}>
-              <div className={cardBorder} />
-              <div className="relative">
+            <div
+              className="rounded-2xl p-4 relative overflow-hidden"
+              style={{ background: p.glass.bg, border: p.glass.border }}
+            >
+              <div className="relative z-10">
                 <div
                   className={`text-[10px] ${p.textMuted} font-mono uppercase tracking-wider mb-1`}
                 >
@@ -639,11 +632,10 @@ export default function SendFlow() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className={`${cardBase} p-4 text-left`}
-              style={cardBg}
+              className="rounded-2xl p-4 text-left relative overflow-hidden"
+              style={{ background: p.glass.bg, border: p.glass.border }}
             >
-              <div className={cardBorder} />
-              <div className="relative flex items-center justify-between">
+              <div className="relative z-10 flex items-center justify-between">
                 <div>
                   <div
                     className={`text-[10px] ${p.textMuted} font-mono uppercase tracking-wider mb-1`}

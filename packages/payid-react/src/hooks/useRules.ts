@@ -60,10 +60,13 @@ export function useRule(ruleId: bigint | undefined): ReadHookResult<RuleDefiniti
   });
 
   const data = useMemo<RuleDefinition | undefined>(() => {
-    if (!result.data?.[0]?.result) return undefined;
+    const get0 = result.data?.[0];
+    const raw0 = Array.isArray(get0) ? get0 : get0?.result;
+    if (!raw0) return undefined;
     const [ruleHash, uri, creator, rootRuleId, version, deprecated, active] =
-      result.data[0].result as [string, string, string, bigint, number, boolean, boolean];
-    const tokenId = (result.data[1]?.result as bigint) ?? 0n;
+      raw0 as [string, string, string, bigint, number, boolean, boolean];
+    const get1 = result.data?.[1];
+    const tokenId = ((Array.isArray(get1) ? get1 : get1?.result) as bigint) ?? 0n;
     return {
       ruleId: ruleId!,
       ruleHash: ruleHash as `0x${string}`,
@@ -126,15 +129,20 @@ export function useRules(options?: { onlyActive?: boolean; creator?: `0x${string
 
     return result.data
       .map((item, i) => {
-        // FIX: getRule reverts with RULE_NOT_EXIST for invalid ids.
-        // wagmi's useReadContracts silently returns status:'failure' + result:undefined.
-        // Skip those instead of crashing or returning garbage.
-        if (item?.status === 'failure' || !item?.result) return null;
+        // FIX: wagmi useReadContracts may return either:
+        //   - wrapped: { result: T, status: 'success'|'failure' }
+        //   - direct: T (when allowFailure is false or older wagmi versions)
+        // Handle both shapes so we never silently drop valid data.
+        const raw = Array.isArray(item) ? item : item?.result;
+        const isFailed = !Array.isArray(item) && item?.status === 'failure';
+        if (isFailed || !raw) return null;
 
         const [ruleHash, uri, creator, rootRuleId, version, deprecated, active] =
-          item.result as [string, string, string, bigint, number, boolean, boolean];
+          raw as [string, string, string, bigint, number, boolean, boolean];
 
-        const tokenId = (tokenResult.data?.[i]?.result as bigint) ?? 0n;
+        const tokenItem = tokenResult.data?.[i];
+        const tokenRaw = Array.isArray(tokenItem) ? tokenItem : tokenItem?.result;
+        const tokenId = (tokenRaw as bigint) ?? 0n;
 
         return {
           ruleId: ruleIds[i]!,
@@ -212,10 +220,16 @@ export function useSubscription(address: `0x${string}` | undefined): ReadHookRes
   });
 
   const data = useMemo(() => {
-    if (result.data?.[0]?.result == null) return undefined;
-    const expiry = result.data[0].result as bigint;
-    const logicalRuleCount = Number(result.data[1]?.result ?? 0);
-    const maxSlots = Number(result.data[2]?.result ?? 1);
+    const unwrap = (idx: number) => {
+      const item = result.data?.[idx];
+      if (item == null) return null;
+      return typeof item === 'object' && 'result' in item ? item.result : item;
+    };
+    const expiryRaw = unwrap(0);
+    if (expiryRaw == null) return undefined;
+    const expiry = expiryRaw as bigint;
+    const logicalRuleCount = Number(unwrap(1) ?? 0);
+    const maxSlots = Number(unwrap(2) ?? 1);
     const now = BigInt(Math.floor(Date.now() / 1000));
     return {
       expiry,

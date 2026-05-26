@@ -7,6 +7,7 @@ export const chainMeta = {
   16661: { name: "zeroGMainnet", label: "0G Mainnet", isTestnet: false as const },
   31337: { name: "devnode", label: "DevNode", isTestnet: true as const },
   31338: { name: "localFork", label: "Local Fork", isTestnet: true as const },
+  421614: { name: "arbitrumSepolia", label: "Arbitrum Sepolia", isTestnet: true as const },
 } as const;
 
 export type ChainId = keyof typeof chainMeta;

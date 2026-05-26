@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { Plus, Minus } from 'lucide-react'
 import { useV4Palette } from '@/components/v4/theme'
+import { useChainId, useChains } from 'wagmi'
 
 export function BatchPay() {
   const p = useV4Palette()
+  const chainId = useChainId()
+  const chains = useChains()
+  const nativeSymbol = chains.find(c => c.id === chainId)?.nativeCurrency.symbol ?? 'ETH'
   const [recipients, setRecipients] = useState([{ address: '', amount: '' }])
-  const [asset, setAsset] = useState('ETH')
+  const [asset, setAsset] = useState(nativeSymbol)
 
   const addRecipient = () => setRecipients([...recipients, { address: '', amount: '' }])
   const removeRecipient = (i: number) => setRecipients(recipients.filter((_, idx) => idx !== i))
@@ -26,7 +30,7 @@ export function BatchPay() {
           onChange={(e) => setAsset(e.target.value)}
           className={`text-xs px-2 py-1 rounded-lg border ${p.cardBorder} ${p.textMain} ${p.inputBg}`}
         >
-          <option>ETH</option>
+          <option>{nativeSymbol}</option>
           <option>USDC</option>
         </select>
       </div>

@@ -156,5 +156,12 @@ export default defineConfig({
       url: "https://rpc.api.moonriver.moonbeam.network",
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
+
+    arbitrumSepolia: {
+      type: "http",
+      chainId: 421614,
+      url: "https://sepolia-rollup.arbitrum.io/rpc",
+      accounts: { mnemonic: process.env.MNEMONIC ?? "" },
+    },
   },
 });

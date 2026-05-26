@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { useV4Palette } from '@/components/v4/theme'
+import { useChainId, useChains } from 'wagmi'
 
 export function Recurring() {
   const p = useV4Palette()
+  const chainId = useChainId()
+  const chains = useChains()
+  const nativeSymbol = chains.find(c => c.id === chainId)?.nativeCurrency.symbol ?? 'ETH'
   const [receiver, setReceiver] = useState('')
   const [maxAmount, setMaxAmount] = useState('')
   const [period, setPeriod] = useState('30')
-  const [asset, setAsset] = useState('ETH')
+  const [asset, setAsset] = useState(nativeSymbol)
 
   return (
     <div className="space-y-4">
@@ -53,7 +57,7 @@ export function Recurring() {
             onChange={(e) => setAsset(e.target.value)}
             className={`w-full px-3 py-2.5 rounded-xl text-sm ${p.inputBg} border ${p.inputBorder} ${p.textMain} focus:outline-none focus:border-[#00D084]/40 font-mono`}
           >
-            <option>ETH</option>
+            <option>{nativeSymbol}</option>
             <option>USDC</option>
           </select>
         </div>

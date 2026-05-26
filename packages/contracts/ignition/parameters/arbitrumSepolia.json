@@ -1,0 +1,8 @@
+{
+  "$global": {
+    "useMockEAS": false,
+    "easAddress": "0xaEF4103A04090071165F78D45D83A0C0782c2B2",
+    "useMockOracle": false,
+    "chainlinkEthUsd": "0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165"
+  }
+}

@@ -78,9 +78,12 @@ export function useAllCombinedRules(options?: { onlyActive?: boolean; }): QueryL
     if (!result.data) return [];
     return result.data
       .map((item, i) => {
-        if (!item?.result) return null;
-        const [owner, ruleRefs, version] = item.result as [string, RuleRef[], bigint];
-        const active = (activeResult.data?.[i]?.result as boolean) ?? false;
+        const raw = Array.isArray(item) ? item : item?.result;
+        if (!raw) return null;
+        const [owner, ruleRefs, version] = raw as [string, RuleRef[], bigint];
+        const activeItem = activeResult.data?.[i];
+        const activeRaw = Array.isArray(activeItem) ? activeItem : activeItem?.result;
+        const active = (activeRaw as boolean) ?? false;
         return {
           hash: allHashes[i]!,
           owner: owner as `0x${string}`,
@@ -245,12 +248,14 @@ export function useOwnerRuleSets(owner: `0x${string}` | undefined): QueryListRes
     if (!result.data) return [];
     return result.data
       .map((item, i) => {
-        if (!item?.result) return null;
+        const raw = Array.isArray(item) ? item : item?.result;
+        if (!raw) return null;
         const [ownerAddr, version, active, registeredAt, refCount] =
-          item.result as [string, bigint, boolean, bigint, bigint];
+          raw as [string, bigint, boolean, bigint, bigint];
         let ruleRefs: RuleRef[] = [];
         try {
-          const refsData = refsResult.data?.[i]?.result;
+          const refsItem = refsResult.data?.[i];
+          const refsData = Array.isArray(refsItem) ? refsItem : refsItem?.result;
           if (refsData) {
             const [, refs] = refsData as [string, RuleRef[], bigint];
             ruleRefs = refs;

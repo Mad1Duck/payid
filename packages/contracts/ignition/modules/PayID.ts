@@ -11,7 +11,7 @@ export default buildModule("PayIDModule", (m) => {
 
   const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
-  let oracleAddress: any = m.getParameter("oracleAddress", ZERO_ADDR);
+  let oracleAddress: any = m.getParameter("chainlinkEthUsd", ZERO_ADDR);
   const useMockOracle = m.getParameter("useMockOracle", true);
 
   const useMockEAS = m.getParameter("useMockEAS", true);
@@ -34,9 +34,11 @@ export default buildModule("PayIDModule", (m) => {
 
 
   // EAS (Ethereum Attestation Service)
+  // When using a real deployed EAS (useMockEAS=false), bind via IEAS interface.
+  // When no real EAS is available on the network, deploy MockEAS for testing.
   let eas;
-  if (!useMockEAS && easAddress && easAddress.toString() !== "") {
-    eas = m.contractAt("MockEAS", easAddress);
+  if (!useMockEAS && easAddress && easAddress.toString() !== ZERO_ADDR) {
+    eas = m.contractAt("IEAS", easAddress);
   } else {
     eas = m.contract("MockEAS");
   }

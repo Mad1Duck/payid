@@ -1,6 +1,9 @@
 import { useReadContract, useChainId } from 'wagmi';
 import { TOKEN_PRICE_ORACLES, CHAINLINK_ORACLE_ABI } from '@/constants/oracles';
 
+const STABLECOINS = new Set(['USDC', 'USDT', 'DAI']);
+const STABLECOIN_PRICE = 100_000_000n; // $1.00 with 8 decimals
+
 /**
  * Hook to fetch token price from Chainlink oracle and calculate USD equivalent
  * 
@@ -19,7 +22,9 @@ export function useTokenPrice(tokenSymbol: 'USDC' | 'USDT' | 'ETH' | 'DAI' | 'WB
     },
   });
 
-  const priceInUsd = oracleData?.[1] as bigint | undefined; // 8 decimals
+  const rawPrice = oracleData?.[1] as bigint | undefined; // 8 decimals
+  const priceInUsd: bigint | undefined =
+    rawPrice ?? (STABLECOINS.has(tokenSymbol) ? STABLECOIN_PRICE : undefined);
   const updatedAt = oracleData?.[3] as number | undefined;
 
   /**
@@ -45,10 +50,13 @@ export function useTokenPrice(tokenSymbol: 'USDC' | 'USDT' | 'ETH' | 'DAI' | 'WB
     return `$${usdValue.toFixed(2)}`;
   };
 
+  const isUnavailable = !isLoading && priceInUsd === undefined;
+
   return {
     priceInUsd,
     updatedAt,
     isLoading,
+    isUnavailable,
     error,
     calculateUsdEquivalent,
     formatUsd,

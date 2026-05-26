@@ -28,8 +28,8 @@ type ChainFullMeta = {
   deployDirs: string[];   // candidate ignition deployment dir names
   envVar?: string;        // VITE_xxx_RPC_URL override (optional)
   defaultRpcUrl: string;  // fallback RPC URL
-  nativeCurrency: { name: string; symbol: string; decimals: number };
-  blockExplorer?: { name: string; url: string };
+  nativeCurrency: { name: string; symbol: string; decimals: number; };
+  blockExplorer?: { name: string; url: string; };
 };
 
 const CHAIN_FULL_META: Record<number, ChainFullMeta> = {
@@ -90,6 +90,16 @@ const CHAIN_FULL_META: Record<number, ChainFullMeta> = {
     envVar: 'VITE_LOCAL_FORK_RPC_URL',
     defaultRpcUrl: 'http://100.73.196.95:8550',
     nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+  },
+  421614: {
+    networkName: 'arbitrumSepolia',
+    label: 'Arbitrum Sepolia',
+    isTestnet: true,
+    deployDirs: ['arbitrum-sepolia-v1', 'chain-421614'],
+    envVar: 'VITE_ARBITRUM_SEPOLIA_RPC_URL',
+    defaultRpcUrl: 'https://sepolia-rollup.arbitrum.io/rpc',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    blockExplorer: { name: 'Arbiscan Sepolia', url: 'https://sepolia.arbiscan.io' },
   },
 };
 
@@ -227,7 +237,7 @@ function updateAddressesFile(filePath: string, chainId: number, newBlock: string
 // ─── Generated file: chainRegistry.ts ────────────────────────────────────────
 
 function buildChainRegistryFile(
-  extraChain?: { id: number; label: string; envVar: string; defaultRpcUrl: string; nativeCurrency: ChainFullMeta['nativeCurrency']; blockExplorer?: ChainFullMeta['blockExplorer'] }
+  extraChain?: { id: number; label: string; envVar: string; defaultRpcUrl: string; nativeCurrency: ChainFullMeta['nativeCurrency']; blockExplorer?: ChainFullMeta['blockExplorer']; }
 ): string {
   const allChains = { ...CHAIN_FULL_META };
   if (extraChain) {
@@ -290,7 +300,7 @@ function writeChainRegistry(extraChain?: Parameters<typeof buildChainRegistryFil
 // ─── Generated file: chain.ts (chainMeta) ────────────────────────────────────
 
 function buildChainMetaFile(
-  extraChain?: { id: number; label: string; networkName: string; isTestnet: boolean }
+  extraChain?: { id: number; label: string; networkName: string; isTestnet: boolean; }
 ): string {
   const allChains = { ...CHAIN_FULL_META };
   if (extraChain) {

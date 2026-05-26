@@ -21,7 +21,7 @@ import { useDashboard } from '../hooks/useDashboard'
 
 export default function Dashboard() {
   const {
-    address, isConnected, balanceLoading, balanceValue,
+    address, isConnected, balanceLoading, balanceValue, ethUsdPrice,
     txMounted,
     p, copied, cacheStats, cacheReady,
     activeTab, setActiveTab,
@@ -63,7 +63,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="text-[40px] font-bold text-white tracking-tight leading-none mb-4">
-              {formatUSD(balanceValue > 0 ? balanceValue * 3500 : 0)}
+              {formatUSD(balanceValue > 0 ? balanceValue * ethUsdPrice : 0)}
             </div>
           )}
 

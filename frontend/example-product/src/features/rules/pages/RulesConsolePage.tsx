@@ -297,7 +297,7 @@ export default function RulesConsolePage() {
                     <span className={p.textMain}>
                       {usdcPriceHook.priceInUsd
                         ? usdcPriceHook.formatUsd(usdcPriceHook.priceInUsd)
-                        : 'Loading...'}
+                        : usdcPriceHook.isUnavailable ? 'N/A' : 'Loading...'}
                     </span>
                   </div>
                   <div
@@ -308,7 +308,7 @@ export default function RulesConsolePage() {
                     <span className={p.textMain}>
                       {usdtPriceHook.priceInUsd
                         ? usdtPriceHook.formatUsd(usdtPriceHook.priceInUsd)
-                        : 'Loading...'}
+                        : usdtPriceHook.isUnavailable ? 'N/A' : 'Loading...'}
                     </span>
                   </div>
                   <div
@@ -319,7 +319,7 @@ export default function RulesConsolePage() {
                     <span className={p.textMain}>
                       {daiPriceHook.priceInUsd
                         ? daiPriceHook.formatUsd(daiPriceHook.priceInUsd)
-                        : 'Loading...'}
+                        : daiPriceHook.isUnavailable ? 'N/A' : 'Loading...'}
                     </span>
                   </div>
                   <div
@@ -330,7 +330,7 @@ export default function RulesConsolePage() {
                     <span className={p.textMain}>
                       {wbtcPriceHook.priceInUsd
                         ? wbtcPriceHook.formatUsd(wbtcPriceHook.priceInUsd)
-                        : 'Loading...'}
+                        : wbtcPriceHook.isUnavailable ? 'N/A' : 'Loading...'}
                     </span>
                   </div>
                   <div
@@ -341,7 +341,7 @@ export default function RulesConsolePage() {
                     <span className={p.textMain}>
                       {linkPriceHook.priceInUsd
                         ? linkPriceHook.formatUsd(linkPriceHook.priceInUsd)
-                        : 'Loading...'}
+                        : linkPriceHook.isUnavailable ? 'N/A' : 'Loading...'}
                     </span>
                   </div>
                   <div
@@ -352,7 +352,7 @@ export default function RulesConsolePage() {
                     <span className={p.textMain}>
                       {uniPriceHook.priceInUsd
                         ? uniPriceHook.formatUsd(uniPriceHook.priceInUsd)
-                        : 'Loading...'}
+                        : uniPriceHook.isUnavailable ? 'N/A' : 'Loading...'}
                     </span>
                   </div>
                 </div>

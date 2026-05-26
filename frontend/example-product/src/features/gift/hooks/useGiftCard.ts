@@ -227,7 +227,7 @@ export function useGiftCard() {
         ttlSeconds: expiryMinutes ? parseInt(expiryMinutes) * 60 : 3600,
       });
 
-      // ── Targeted native gift: deliver ETH immediately at creation time ─────────
+      // ── Targeted native gift: deliver native token immediately at creation time ─────────
       // payNative requires msg.value from the caller (the sender). We do it here
       // so the friend's claim URL is purely a receipt/notification — no action needed.
       if (mode === 'gift' && tokenType === 'native' && type === 'targeted') {
@@ -249,11 +249,11 @@ export function useGiftCard() {
           requiresAttestation: false,
           attestationUIDsHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
         };
-        toast.info('Step 2/2: Delivering ETH...');
+        const nativeSym = chain?.nativeCurrency?.symbol ?? 'ETH';
+        toast.info(`Step 2/2: Delivering ${nativeSym}...`);
         const tx = await payContract.payNative(decisionForTx, proof.signature, [], { value: parsedAmount });
         toast.info('Waiting for confirmation...');
         const txReceipt = await tx.wait();
-        const nativeSym = chain?.nativeCurrency?.symbol ?? 'ETH';
         const receiptPayload = `receipt:${btoa(JSON.stringify({
           txHash: txReceipt?.hash ?? tx.hash,
           receiver: targetReceiver,
@@ -271,7 +271,7 @@ export function useGiftCard() {
         };
         setGeneratedGift(giftData);
         localStorage.setItem(`payid_gift_${address}`, JSON.stringify(giftData));
-        toast.success('🎁 ETH delivered! Copy the notification link and send it to your friend.');
+        toast.success(`🎁 ${nativeSym} delivered! Copy the notification link and send it to your friend.`);
         return;
       }
 

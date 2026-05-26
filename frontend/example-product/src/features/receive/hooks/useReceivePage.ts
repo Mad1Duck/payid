@@ -16,7 +16,6 @@ export function useReceivePage() {
 
   // Independent copied states
   const [copiedPayId, setCopiedPayId] = useState(false);
-  const [copiedPayload, setCopiedPayload] = useState(false);
   const [copiedWallet, setCopiedWallet] = useState(false);
 
   const [showAddress, setShowAddress] = useState(false);
@@ -139,15 +138,6 @@ export function useReceivePage() {
     setTimeout(() => setCopiedPayId(false), 2000);
   }, [payId, payload, localPayload]);
 
-  const handleCopyPayload = useCallback(() => {
-    const activePayload = localPayload || payload;
-    if (!activePayload) return;
-    navigator.clipboard.writeText(activePayload);
-    setCopiedPayload(true);
-    toast.success('EIP-712 QR Payload copied to clipboard!');
-    setTimeout(() => setCopiedPayload(false), 2000);
-  }, [payload, localPayload]);
-
   const handleCopyWallet = useCallback(() => {
     if (!walletAddress) return;
     navigator.clipboard.writeText(walletAddress);
@@ -191,7 +181,7 @@ export function useReceivePage() {
 
   return {
     p, address, isConnected, payId, displayPayId, walletAddress,
-    copiedPayId, copiedPayload, copiedWallet,
+    copiedPayId, copiedWallet,
     showAddress, setShowAddress,
     status,
     payload: localPayload || payload,
@@ -200,6 +190,6 @@ export function useReceivePage() {
     expiresAt: localExpiresAt,
     maxAmount, setMaxAmount, expiryMin, setExpiryMin,
     handleGenerate, handleSaveQR, handleShare, reset: handleReset,
-    handleCopyPayId, handleCopyPayload, handleCopyWallet,
+    handleCopyPayId, handleCopyWallet,
   };
 }

@@ -18,94 +18,6 @@ To deploy to a new network, use the Hardhat Ignition module at `packages/contrac
 
 ---
 
-## Localhost (Hardhat — Chain ID: 31337)
-
-These are the addresses from a fresh local `npx hardhat node` + `hardhat ignition deploy` run. They match the default deployment order and will be the same on any clean local node.
-
-<!-- sync:31337:start -->
-| Contract | Address |
-|---|---|
-| `RuleAuthority` | `0xffa7CA1AEEEbBc30C874d32C7e22F052BbEa0429` |
-| `RuleItemERC721` | `0x3aAde2dCD2Df6a8cAc689EE797591b2913658659` |
-| `CombinedRuleStorage` | `0xc96304e3c037f81dA488ed9dEa1D8F2a48278a75` |
-| `PayIDVerifier` | `0x276C216D241856199A83bf27b2286659e5b877D3` |
-| `PayWithPayID` | `0x3347B4d90ebe72BeFb30444C9966B2B990aE9FcB` |
-| `AttestationVerifier` | `0xc0F115A19107322cFBf1cDBC7ea011C19EbDB4F8` |
-| `AgentPayID` | `0x1f10F3Ba7ACB61b2F50B9d6DdCf91a6f787C0E82` |
-| `VindexRegistry` | `0xE3011A37A904aB90C8881a99BD1F6E21401f1522` |
-| `MockEAS` (local only) | `0x07882Ae1ecB7429a84f1D53048d35c4bB2056877` |
-| `MockAgentRegistry` (local only) | `0xD0141E899a65C95a556fE2B27e5982A6DE7fDD7A` |
-<!-- sync:31337:end -->
-
-**Start local node:**
-
-```bash
-cd packages/contracts
-npx hardhat node
-npx hardhat ignition deploy ignition/modules/PayID.ts --network localhost
-```
-
----
-
-## Local Fork (Chain ID: 31338)
-
-A local fork for development. All mock contracts (MockEAS, MockAgentRegistry, MockOracle) are available here. Use this when you want to test against a fork of a real network without spending real tokens.
-
-<!-- sync:31338-fork:start -->
-| Contract | Address |
-|---|---|
-| `AIAgentRegistry` | `0x1eB5C49630E08e95Ba7f139BcF4B9BA171C9a8C7` |
-| `AIAgentRuleManager` | `0x5A569Ad19272Afa97103fD4DbadF33B2FcbaA175` |
-| `RuleAuthority` | `0x25A1DF485cFBb93117f12fc673D87D1cddEb845a` |
-| `RuleItemERC721` | `0xD855cE0C298537ad5b5b96060Cf90e663696bbf6` |
-| `CombinedRuleStorage` | `0xA9d0Fb5837f9c42c874e16da96094b14Af0e2784` |
-| `PayIDVerifier` | `0xF9c0bF1CFAAB883ADb95fed4cfD60133BffaB18a` |
-| `PayWithPayID` | `0xb830887eE23d3f9Ed8c27dbF7DcFe63037765475` |
-| `AttestationVerifier` | `0x6e0a5725dD4071e46356bD974E13F35DbF9ef367` |
-| `AgentPayID` | `0x696358bBb1a743052E0E87BeD78AAd9d18f0e1F4` |
-| `VindexRegistry` | `0x22b1c5C2C9251622f7eFb76E356104E5aF0e996A` |
-| `MockEAS` | `0xa31F4c0eF2935Af25370D9AE275169CCd9793DA3` |
-| `MockAgentRegistry` | `0x1f53E116c31F171e59f45f0752AEc5d1F5aA3714` |
-| `MockOracle` | `0xd038a2ee73b64f30d65802ad188f27921656f28f` |
-<!-- sync:31338-fork:end -->
-
-```bash
-cd packages/contracts
-bun run deploy:local-fork
-bun run sync:local-fork
-```
-
-**RPC:** `http://100.73.196.95:8550` (configure `LOCAL_FORK_RPC_URL` in `.env` to override)
-
----
-
-## 0G Newton Testnet — Real (Chain ID: 16600)
-
-:::warning Not Deployed Yet
-These are placeholder addresses. Deploy to this network first, then run `bun run sync:zerog-newton` to fill them in.
-:::
-
-| Contract | Address |
-|---|---|
-| `AIAgentRegistry` | `0x0000…0000` |
-| `AIAgentRuleManager` | `0x0000…0000` |
-| `RuleAuthority` | `0x0000…0000` |
-| `RuleItemERC721` | `0x0000…0000` |
-| `CombinedRuleStorage` | `0x0000…0000` |
-| `PayIDVerifier` | `0x0000…0000` |
-| `PayWithPayID` | `0x0000…0000` |
-| `AttestationVerifier` | `0x0000…0000` |
-| `AgentPayID` | `0x0000…0000` |
-| `VindexRegistry` | `0x0000…0000` |
-
-```bash
-cd packages/contracts
-bun run deploy:zerog-newton
-bun run sync:zerog-newton
-```
-
----
-
 ## 0G Galileo Testnet (Chain ID: 16602) {#0g-galileo-testnet-chain-id-16602}
 
 :::tip ✅ Deployed & Active — Recommended Starting Point
@@ -151,9 +63,52 @@ bun run sync:zerog-galileo
 
 ---
 
+## Arbitrum Sepolia (Chain ID: 421614)
+
+:::tip ✅ Deployed & Active
+All contracts are live on Arbitrum Sepolia. Uses real EAS and Chainlink ETH/USD oracle.
+:::
+
+| Contract | Address |
+|---|---|
+| `AIAgentRegistry` | `0xf5cf5cb577118e1a0993e69eb373C47A242C01D3` |
+| `AIAgentRuleManager` | `0x45024b9dB494C66f1B2E43F910664D6f4E261D6C` |
+| `AgentPayID` | `0xa0c23E005f5D627dB73024385828c5682e63F364` |
+| `AttestationVerifier` | `0x0a83AEbdEeb392328F133b056b63946a3212FB60` |
+| `CombinedRuleStorage` | `0xF674A5738D4f70006a9d3C541A0CF149E284a182` |
+| `EscrowMilestone` | `0xC3c33B616A77Ee8f63D5f65F6Ff8fc248F7b7A16` |
+| `PayIDVerifier` | `0x8FeCc22437Ab5Bc53805B2ebe8b861A2F3177737` |
+| `PayWithPayID` | `0x73c8B8f359AC2A16a8962e16842B8e7A1773024f` |
+| `PayWithPayIDBatch` | `0x7031d36feeE7022cE7563b88bAc16698c73eAF02` |
+| `RecurringPayments` | `0x432dBA247F2F61fEc5DEe1F84E3855d44e9925D6` |
+| `RuleAuthority` | `0x44a50e4B7051C7155C28271bA9eacFd71ee571a8` |
+| `RuleItemERC721` | `0xD3897D0ba0F219835b000992B21e56e8C44C7715` |
+| `TimeLockVesting` | `0xEc74D41FaDe9E100804fdda8876cA8Aeb85a0902` |
+| `VindexRegistry` | `0xa7448AEc914074e19C0bC2259E6e1FAe695aCb0f` |
+
+**Network Info:**
+
+| | |
+|---|---|
+| **RPC** | `https://sepolia-rollup.arbitrum.io/rpc` |
+| **Chain ID** | `421614` |
+| **Currency** | `ETH` |
+| **Explorer** | [sepolia.arbiscan.io](https://sepolia.arbiscan.io) |
+| **Faucet** | [faucet.triangleplatform.com/arbitrum/sepolia](https://faucet.triangleplatform.com/arbitrum/sepolia) |
+| **EAS** | `0xaEF4103A04090071165F78D45D83A0C0782c2B2` |
+| **Chainlink ETH/USD** | `0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165` |
+
+```bash
+cd packages/contracts
+bun run deploy:arbitrum-sepolia
+bun run sync:arbitrum-sepolia
+```
+
+---
+
 ## Other Networks
 
-Contracts have not been deployed to public testnets yet. Deploy using the Ignition module, fill in your `.env`, then configure `payid-react` with your addresses via `<PayIDProvider contracts={...}>`.
+Contracts have not been deployed to these networks yet. Deploy using the Ignition module, then configure `payid-react` with your addresses via `<PayIDProvider contracts={...}>`.
 
 | Network | Chain ID | Status |
 |---|---|---|
@@ -190,10 +145,8 @@ bun run deploy:polygon-amoy
 After deploying, run the sync script to copy addresses into `payid-react` and the frontend:
 
 ```bash
-bun run sync:local           # for 31337
-bun run sync:local-fork      # for 31338
-bun run sync:zerog-newton    # for 16600
-bun run sync:zerog-galileo   # for 16602
+bun run sync:zerog-galileo      # for 16602
+bun run sync:arbitrum-sepolia   # for 421614
 ```
 
 ---

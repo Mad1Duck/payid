@@ -52,7 +52,7 @@ const THEME_CONFIG = {
 }
 
 export default function GiftClaimPage() {
-  const { isConnected, address } = useAccount()
+  const { isConnected, address, chain } = useAccount()
   const { contracts } = usePayIDContext()
   const { writeContractAsync } = useWriteContract()
   const { data: connectorClient } = useConnectorClient()
@@ -62,7 +62,7 @@ export default function GiftClaimPage() {
   const [theme, setTheme] = useState<'gold' | 'purple' | 'cyber'>('gold')
   const [sender, setSender] = useState<string | null>(null)
   const [friend, setFriend] = useState<string | null>(null)
-  const [assetSymbol, setAssetSymbol] = useState<string>('ETH')
+  const [assetSymbol, setAssetSymbol] = useState<string>(chain?.nativeCurrency?.symbol ?? 'ETH')
   const [mode, setMode] = useState<'gift' | 'request'>('gift')
 
   const [policy, setPolicy] = useState<any | null>(null)
