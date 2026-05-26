@@ -47,8 +47,10 @@ import type { Chain } from 'viem'
 // then run the sync command — this file is not touched manually.
 
 // Derive active chains from deployed addresses — wagmiConfig updates automatically on sync
+const HIDDEN_CHAIN_IDS = new Set([16600, 16601]) // 0G Newton chains (not in use)
 const deployedChainIds = Object.keys(addresses).map(Number)
 const activeChains = deployedChainIds
+  .filter(id => !HIDDEN_CHAIN_IDS.has(id))
   .map(id => CHAIN_REGISTRY[id])
   .filter((c): c is Chain => !!c)
 

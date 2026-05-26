@@ -2,6 +2,32 @@
 // Last synced: 2026-05-26T09:58:13.225Z
 
 export const addresses = {
+
+  // ─── Dev / Local ──────────────────────────────────────────────────────────
+
+  // Local Fork — Chain 31338
+  31338: {
+    AIAgentRegistry: "0x276C216D241856199A83bf27b2286659e5b877D3" as `0x${string}`,
+    AIAgentRuleManager: "0xb9bEECD1A582768711dE1EE7B0A1d582D9d72a6C" as `0x${string}`,
+    AttestationVerifier: "0x3347B4d90ebe72BeFb30444C9966B2B990aE9FcB" as `0x${string}`,
+    CombinedRuleStorage: "0x3155755b79aA083bd953911C92705B7aA82a18F9" as `0x${string}`,
+    MockEAS: "0x3aAde2dCD2Df6a8cAc689EE797591b2913658659" as `0x${string}`,
+    MockOracle: "0xab16A69A5a8c12C732e0DEFF4BE56A70bb64c926" as `0x${string}`,
+    PayIDVerifier: "0xE3011A37A904aB90C8881a99BD1F6E21401f1522" as `0x${string}`,
+    PayWithPayID: "0x1f10F3Ba7ACB61b2F50B9d6DdCf91a6f787C0E82" as `0x${string}`,
+    PayWithPayIDBatch: "0x457cCf29090fe5A24c19c1bc95F492168C0EaFdb" as `0x${string}`,
+    RecurringPayments: "0x525C7063E7C20997BaaE9bDa922159152D0e8417" as `0x${string}`,
+    RuleAuthority: "0x38a024C0b412B9d1db8BC398140D00F5Af3093D4" as `0x${string}`,
+    RuleItemERC721: "0x5fc748f1FEb28d7b76fa1c6B07D8ba2d5535177c" as `0x${string}`,
+    AgentPayID: "0x8A93d247134d91e0de6f96547cB0204e5BE8e5D8" as `0x${string}`,
+    MockAgentRegistry: "0xffa7CA1AEEEbBc30C874d32C7e22F052BbEa0429" as `0x${string}`,
+    VindexRegistry: "0x2a810409872AfC346F9B5b26571Fd6eC42EA4849" as `0x${string}`,
+    EscrowMilestone: "0x5bf5b11053e734690269C6B9D438F8C9d48F528A" as `0x${string}`,
+    TimeLockVesting: "0xB82008565FdC7e44609fA118A4a681E92581e680" as `0x${string}`,
+  },
+
+  // ─── 0G Testnets ──────────────────────────────────────────────────────────
+
   // 0G Newton Testnet — Chain 16600
   16600: {
     AIAgentRegistry: "0x1eB5C49630E08e95Ba7f139BcF4B9BA171C9a8C7" as `0x${string}`,
@@ -23,7 +49,7 @@ export const addresses = {
     TimeLockVesting: "0xF45B1CdbA9AACE2e9bbE80bf376CE816bb7E73FB" as `0x${string}`,
   },
 
-  // Chain 16601
+  // 0G Newton Fork — Chain 16601
   16601: {
     AIAgentRegistry: "0xC976c932092ECcD8f328FfD85066C0c05ED54044" as `0x${string}`,
     AIAgentRuleManager: "0x24432a08869578aAf4d1eadA12e1e78f171b1a2b" as `0x${string}`,
@@ -44,7 +70,7 @@ export const addresses = {
     TimeLockVesting: "0x707531c9999AaeF9232C8FEfBA31FBa4cB78d84a" as `0x${string}`,
   },
 
-  // Chain 16602
+  // 0G Galileo Testnet — Chain 16602
   16602: {
     AIAgentRegistry: "0x6b37f32C80a55bF783e428f2e754381dE8844517" as `0x${string}`,
     AIAgentRuleManager: "0xD786AE00f36F22e80BcD605c87fE0e164Df8D9ad" as `0x${string}`,
@@ -69,26 +95,7 @@ export const addresses = {
     CombinedRuleStorage_v1: "0xeCdAa87193512BfdAA12c2103a6aa5D69f47Eef8" as `0x${string}`,
   },
 
-  // Local Fork — Chain 31338
-  31338: {
-    AIAgentRegistry: "0x276C216D241856199A83bf27b2286659e5b877D3" as `0x${string}`,
-    AIAgentRuleManager: "0xb9bEECD1A582768711dE1EE7B0A1d582D9d72a6C" as `0x${string}`,
-    AttestationVerifier: "0x3347B4d90ebe72BeFb30444C9966B2B990aE9FcB" as `0x${string}`,
-    CombinedRuleStorage: "0x3155755b79aA083bd953911C92705B7aA82a18F9" as `0x${string}`,
-    MockEAS: "0x3aAde2dCD2Df6a8cAc689EE797591b2913658659" as `0x${string}`,
-    MockOracle: "0xab16A69A5a8c12C732e0DEFF4BE56A70bb64c926" as `0x${string}`,
-    PayIDVerifier: "0xE3011A37A904aB90C8881a99BD1F6E21401f1522" as `0x${string}`,
-    PayWithPayID: "0x1f10F3Ba7ACB61b2F50B9d6DdCf91a6f787C0E82" as `0x${string}`,
-    PayWithPayIDBatch: "0x457cCf29090fe5A24c19c1bc95F492168C0EaFdb" as `0x${string}`,
-    RecurringPayments: "0x525C7063E7C20997BaaE9bDa922159152D0e8417" as `0x${string}`,
-    RuleAuthority: "0x38a024C0b412B9d1db8BC398140D00F5Af3093D4" as `0x${string}`,
-    RuleItemERC721: "0x5fc748f1FEb28d7b76fa1c6B07D8ba2d5535177c" as `0x${string}`,
-    AgentPayID: "0x8A93d247134d91e0de6f96547cB0204e5BE8e5D8" as `0x${string}`,
-    MockAgentRegistry: "0xffa7CA1AEEEbBc30C874d32C7e22F052BbEa0429" as `0x${string}`,
-    VindexRegistry: "0x2a810409872AfC346F9B5b26571Fd6eC42EA4849" as `0x${string}`,
-    EscrowMilestone: "0x5bf5b11053e734690269C6B9D438F8C9d48F528A" as `0x${string}`,
-    TimeLockVesting: "0xB82008565FdC7e44609fA118A4a681E92581e680" as `0x${string}`,
-  },
+  // ─── Public Testnets ────────────────────────────────────────────────────
 
   // Arbitrum Sepolia — Chain 421614
   421614: {

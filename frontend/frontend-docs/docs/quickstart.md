@@ -8,7 +8,7 @@ slug: /quickstart
 
 # Quick Start
 
-PAY.ID has two integration paths. Choose the one that fits your use case:
+Choose your integration path:
 
 | | Path A — React Frontend | Path B — Node.js Backend |
 |---|---|---|
@@ -17,7 +17,7 @@ PAY.ID has two integration paths. Choose the one that fits your use case:
 | **Use case** | dApps, checkout pages, marketplaces | APIs, bots, ERC-4337 bundlers |
 | **Complexity** | Simple — one hook | Moderate — handle context + signing |
 
-:::info Two Roles in PAY.ID
+:::tip Two Roles in PAY.ID
 **Receiver (Merchant)** — sets up payment rules once. **Payer (Customer)** — goes through the payment flow every time they pay.
 :::
 
@@ -42,6 +42,10 @@ bun add payid-react payid wagmi viem @tanstack/react-query ethers
 
 This setup goes in your root file (`main.tsx`, `_app.tsx`, or `layout.tsx`):
 
+:::tip Choose a testnet
+Pick one from [Contract Addresses →](./network/contracts-address). This example uses Arbitrum Sepolia.
+:::
+
 ```tsx
 // main.tsx
 import React from 'react'
@@ -53,45 +57,49 @@ import { PayIDProvider } from 'payid-react'
 import App from './App'
 import type { Chain } from 'viem'
 
-// 0G Galileo Testnet (chain 16602)
-const zeroGGalileo = {
-  id: 16602,
-  name: '0G Galileo Testnet',
-  nativeCurrency: { decimals: 18, name: 'A0GI', symbol: 'A0GI' },
+// Example: Arbitrum Sepolia (chain 421614)
+const arbitrumSepolia = {
+  id: 421614,
+  name: 'Arbitrum Sepolia',
+  nativeCurrency: { decimals: 18, name: 'Ether', symbol: 'ETH' },
   rpcUrls: {
-    default: { http: ['https://evmrpc-testnet.0g.ai'] },
-    public: { http: ['https://evmrpc-testnet.0g.ai'] },
+    default: { http: ['https://sepolia-rollup.arbitrum.io/rpc'] },
+    public: { http: ['https://sepolia-rollup.arbitrum.io/rpc'] },
   },
   blockExplorers: {
-    default: { name: '0G Galileo Explorer', url: 'https://chainscan-galileo.0g.ai' },
+    default: { name: 'Arbitrum Sepolia Explorer', url: 'https://sepolia.arbiscan.io' },
   },
 } as const satisfies Chain
 
+// Or use any other supported chain: Sepolia, Base Sepolia, Polygon Amoy, 0G Galileo, etc.
+// See: https://docs.pay.id/network/contracts-address
+
 const wagmiConfig = createConfig({
-  chains: [zeroGGalileo],
+  chains: [arbitrumSepolia],
   connectors: [injected(), metaMask()],
-  transports: { [zeroGGalileo.id]: http() },
+  transports: { [arbitrumSepolia.id]: http() },
 })
 
 const queryClient = new QueryClient()
 
-// ✅ 0G Galileo Testnet — Contract Addresses (Chain 16602)
-// Explorer: https://chainscan-galileo.0g.ai
+// Contract addresses for your chosen chain
+// Get addresses from: https://docs.pay.id/network/contracts-address
 const CONTRACT_ADDRESSES = {
-  [zeroGGalileo.id]: {
-    ruleAuthority:       '0x3d2F9441c589a24A524c36892268f35C6467bFF6',
-    ruleItemERC721:      '0xc22fE6CbeE7fA5A35DAf40B30D91d5D3bFfa2fD8',
-    combinedRuleStorage: '0x486a6d305742B0b5847770BF421114161440E79b',
-    payIDVerifier:       '0xE2FfE1037b996B8F66dE7cba0398A411850Ecd91',
-    payWithPayID:        '0x04eEAF2dc4Ee22E7362a60dd652E1DF450697dbb',
-    vindexRegistry:      '0x3F6ba46650f78AcAeebf906306987994555a8CCb',
-    aiAgentRegistry:     '0x76E829f48BD5e3c5380f5c77Fe1a3EFBD9AC5a44',
-    aiAgentRuleManager:  '0xd5eA6ABe9727061c18fa65Fcd75bd7dAc7E7e7f5',
-    attestationVerifier: '0x524130A6974B3075eb6DB32afA89AE4315bf7b2d',
-    agentPayID:          '0xC031901680128b1419E6D00Fd7e29c734cE2f311',
-    mockAgentRegistry:   '0xFFA2c4bB8075dA83c45698B7489AdC9Cee2f8045',
-    payWithPayIDBatch:   '0xC24618Bc5E3E46398FB2845DA71496505AD30e86',
-    recurringPayments:   '0x60d010483B9B9f263923f73ebd7F7F7bA6c0E91b',
+  [arbitrumSepolia.id]: {
+    ruleAuthority:       '0x44a50e4B7051C7155C28271bA9eacFd71ee571a8',
+    ruleItemERC721:      '0xD3897D0ba0F219835b000992B21e56e8C44C7715',
+    combinedRuleStorage: '0xF674A5738D4f70006a9d3C541A0CF149E284a182',
+    payIDVerifier:       '0x8FeCc22437Ab5Bc53805B2ebe8b861A2F3177737',
+    payWithPayID:        '0x73c8B8f359AC2A16a8962e16842B8e7A1773024f',
+    vindexRegistry:      '0xa7448AEc914074e19C0bC2259E6e1FAe695aCb0f',
+    // Optional contracts (include if you use these features):
+    aiAgentRegistry:     '0xf5cf5cb577118e1a0993e69eb373C47A242C01D3',
+    aiAgentRuleManager:  '0x45024b9dB494C66f1B2E43F910664D6f4E261D6C',
+    attestationVerifier: '0x0a83AEbdEeb392328F133b056b63946a3212FB60',
+    agentPayID:          '0xa0c23E005f5D627dB73024385828c5682e63F364',
+    mockAgentRegistry:   '0xBbE64FEa1a16b47a91c94272Bd6909A53b28E83C',
+    payWithPayIDBatch:   '0x7031d36feeE7022cE7563b88bAc16698c73eAF02',
+    recurringPayments:   '0x432dBA247F2F61fEc5DEe1F84E3855d44e9925D6',
   },
 }
 
@@ -139,11 +147,15 @@ export function WalletButton() {
 
 Use the `usePayIDFlow` hook. It handles everything: loading rules, evaluating, signing proof, ERC20 approval, and submitting the transaction.
 
+:::tip Use testnet token addresses
+On testnets, use mock USDC or native tokens. Check your testnet's documentation for token addresses.
+:::
+
 ```tsx
 // CheckoutButton.tsx
 import { usePayIDFlow } from 'payid-react'
 
-const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+const USDC_ADDRESS = '0x...' // Use testnet USDC address for your chain
 
 export function CheckoutButton({ merchantAddress }: { merchantAddress: `0x${string}` }) {
   const {
@@ -186,7 +198,15 @@ export function CheckoutButton({ merchantAddress }: { merchantAddress: `0x${stri
 
 ### Step 5 — Create Your Merchant Rules (Receiver)
 
+:::important One-time setup
+You only need to do this once per merchant. After setup, just update rules as needed.
+:::
+
 Before anyone can pay you, set up your payment policy using the merchant hooks:
+
+:::tip Upload rule to IPFS first
+Before creating a rule, upload your rule JSON to IPFS (or 0G Storage) to get a URI.
+:::
 
 ```tsx
 // MerchantSetup.tsx
@@ -198,7 +218,7 @@ const MY_RULE = {
   id:      'store_policy',
   logic:   'AND' as const,
   rules: [
-    { id: 'usdc_only', if: { field: 'tx.asset', op: '==', value: USDC_ADDRESS } },
+    { id: 'usdc_only', if: { field: 'tx.asset', op: '==', value: 'YOUR_USDC_ADDRESS' } },
     { id: 'min_10',    if: { field: 'tx.amount', op: '>=', value: '10000000' } },
     { id: 'max_500',   if: { field: 'tx.amount', op: '<=', value: '500000000' } },
   ],
@@ -221,7 +241,7 @@ export function MerchantSetup() {
       <button
         onClick={() => createRule({
           ruleHash: keccak256(toBytes(JSON.stringify(MY_RULE))),
-          uri:      'ipfs://YOUR_RULE_CID',  // upload to IPFS first
+          uri:      'ipfs://YOUR_RULE_CID',  // ← Upload MY_RULE to IPFS first
         })}
         disabled={creating || !subscribed}
       >
@@ -250,10 +270,16 @@ export function MerchantSetup() {
 }
 ```
 
-:::tip Store Rules on 0G Storage (Recommended) or IPFS
+:::tip Storage Options
 PAY.ID supports two storage backends for rule metadata:
 
-**Option A — 0G Storage** (recommended on 0G Galileo Testnet):
+**Option A — IPFS (Traditional):**
+```bash
+# Upload rule JSON to Pinata at https://app.pinata.cloud
+# Use the returned CID as: uri = 'ipfs://YOUR_CID'
+```
+
+**Option B — 0G Storage (Decentralized):**
 ```ts
 import { uploadToZGStorage } from '@/lib/zgStorage'
 // Upload returns a root hash — use as uri: `0g://<rootHash>`
@@ -261,13 +287,7 @@ const result = await uploadToZGStorage(JSON.stringify(MY_RULE), signer)
 const uri = `0g://${result.rootHash}`
 ```
 
-**Option B — IPFS via Pinata** (traditional):
-```bash
-# Upload rule JSON to Pinata at https://app.pinata.cloud
-# Use the returned CID as: uri = 'ipfs://YOUR_CID'
-```
-
-See [0G Storage Guide →](./integration/0g-storage) or [Create Rule NFT →](./examples/create-nft-rule) for the full script.
+See [Create Rule NFT →](./examples/create-nft-rule) for the full script.
 :::
 
 That's it for the React path! → **[Full React Integration →](./integration/react-integration)** for all 20+ hooks.
@@ -298,8 +318,8 @@ const signer   = new ethers.Wallet(process.env.PRIVATE_KEY!, provider)
 
 const payid = createPayIDServer({
   signer,
-  // Storage config for fetching rules from 0G Storage
-  zgStorageIndexer: 'https://indexer-storage-testnet-turbo.0g.ai',
+  // Optional: storage config for fetching rules
+  // zgStorageIndexer: 'https://indexer-storage-testnet-turbo.0g.ai', // for 0G Storage
 })
 ```
 
@@ -395,7 +415,7 @@ PAYER FLOW (every payment):
   3. evaluateAndProve(...)     → evaluate rules + generate signed proof
   4. approve(contract, amount) → ERC20 spending approval (if needed)
   5. payERC20(payload, sig,[]) → submit to blockchain
-  // or payNative(payload, sig,[]) for native token (ETH, MATIC, A0GI, etc.)
+  // or payNative(payload, sig,[]) for native token (ETH, MATIC, etc.)
 ```
 
 ---

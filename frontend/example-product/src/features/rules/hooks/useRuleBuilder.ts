@@ -291,8 +291,8 @@ export function useRuleBuilder(): RuleBuilderState {
         const [_imgRes, jsonRes] = await Promise.all([upload0G(imgBytes), upload0G(jsonBytes)]);
         tokenUri = jsonRes.url;
       } else {
-        const { cid: imgCid } = await pinImage(imgToPin, `rule-${ruleName}.png`);
-        imageURL = `ipfs://${imgCid}`;
+        const { url: imgUrl } = await pinImage(imgToPin, `rule-${ruleName}.png`);
+        imageURL = imgUrl;
 
         const metadata = {
           name: nftName || `PAY.ID Rule — ${ruleName}`,
@@ -308,8 +308,8 @@ export function useRuleBuilder(): RuleBuilderState {
           ruleHash,
           standard: 'payid.rule.v1',
         };
-        const { cid: jsonCid } = await pinJson(metadata, `rule-${ruleName}.json`);
-        tokenUri = `ipfs://${jsonCid}`;
+        const { url: jsonUrl } = await pinJson(metadata, `rule-${ruleName}.json`);
+        tokenUri = jsonUrl;
       }
 
       setDeployStage('creating');

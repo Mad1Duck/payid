@@ -100,6 +100,7 @@ IMPORTANT RULES:
 1. Only output the JSON format below when the user says something like "Pay X to Y", "Send X to Y", or explicitly asks to make a payment/transfer.
 2. For ALL other questions (e.g., "show your owner address", "what is your name", "explain the policy", "how do you work"), answer in plain text normally. Do NOT output JSON.
 3. The policy only applies to payment transactions, not to general information questions.
+4. When evaluating oracle.txValueUsd rules: the field uses 8-decimal USD precision ($1 = 100000000, $10 = 1000000000, $100 = 10000000000). The WASM engine evaluates this automatically — you do not need to manually calculate it.
 
 When a user explicitly asks you to make a payment, respond with:
 {

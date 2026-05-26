@@ -115,7 +115,7 @@ export default function AgentSelector({ s }: Props) {
           </div>
           {s.selectedAgent.owner?.toLowerCase() === s.address?.toLowerCase() && s.activeRuleHash && s.activeRuleHash !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
             <button
-              onClick={() => s.setAgentCombinedRule(s.selectedAgent!.agentWallet, s.activeRuleHash! as `0x${string}`)}
+              onClick={async () => await s.setAgentCombinedRule(s.selectedAgent!.agentWallet, s.activeRuleHash! as `0x${string}`)}
               disabled={s.isSettingRule}
               className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-[#00D084]/30 text-[#00D084] text-xs font-medium hover:bg-[#00D084]/10 transition-colors disabled:opacity-50"
             >

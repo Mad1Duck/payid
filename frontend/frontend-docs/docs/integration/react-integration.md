@@ -163,7 +163,7 @@ That's all you need for a fully working checkout. The rest of this page covers e
 | Hook | Returns | Description |
 |---|---|---|
 | `usePayIDFlow()` | `{ execute, status, isPending, isSuccess, decision, txHash, error, reset }` | Complete payment flow — rules + proof + submit |
-| `usePayNative()` | `{ pay, hash, isPending, isConfirming, isSuccess, error }` | Low-level native token payment (ETH, MATIC, A0GI, etc.) |
+| `usePayNative()` | `{ pay, hash, isPending, isConfirming, isSuccess, error }` | Low-level native token payment (ETH, MATIC, etc.) |
 | `usePayERC20()` | `{ pay, hash, isPending, isConfirming, isSuccess, error }` | Low-level ERC20 payment |
 
 ### QR Hooks (Merchant side)
@@ -259,7 +259,7 @@ function CheckoutButton({ merchantAddress }: { merchantAddress: `0x${string}` })
 
 ### Native Token Payment
 
-Pass `zeroAddress` as the asset for the chain's native token (ETH on Ethereum, MATIC on Polygon, A0GI on 0G, etc.):
+Pass `zeroAddress` as the asset for the chain's native token (ETH on Ethereum, MATIC on Polygon, etc.):
 
 ```tsx
 execute({
@@ -334,7 +334,8 @@ function TokenDisplay() {
 This works across all supported chains:
 - Ethereum → ETH
 - Polygon → MATIC
-- 0G Newton → A0GI
+- Arbitrum → ETH
+- 0G → A0GI
 - Lisk Sepolia → LISK
 - etc.
 

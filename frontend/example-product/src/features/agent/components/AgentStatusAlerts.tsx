@@ -30,7 +30,7 @@ export default function AgentStatusAlerts({ hasApiKey, isConnected, isWrongChain
       {isWrongChain && (
         <div className="rounded-xl p-3 bg-red-500/10 border border-red-500/20 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-          <p className="text-sm text-red-300">Switch to <strong>0G Testnet (16601 / 16602)</strong></p>
+          <p className="text-sm text-red-300">Switch to <strong>Arbitrum Sepolia (421614)</strong> or <strong>0G Testnet (16601 / 16602)</strong></p>
         </div>
       )}
     </>

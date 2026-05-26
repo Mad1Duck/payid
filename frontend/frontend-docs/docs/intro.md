@@ -8,22 +8,27 @@ slug: /
 
 # PAY.ID — Programmable Payment Policy
 
-> **One ID · Rule-based · Non-custodial · On-chain Enforced**
+> **Define rules for payments · Enforced on-chain · No server needed**
 
-PAY.ID is a programmable payment system for EVM blockchains. It lets receivers (merchants, creators, DAOs) define **Rules** that control who can pay them, how much, and under what conditions — enforced automatically on-chain without running a server.
+PAY.ID lets you control who can pay you, how much, and under what conditions — enforced automatically on-chain.
+
+**Use cases:**
+- Only accept stablecoins (USDC, USDT)
+- Set spending limits ($10–$500)
+- Require KYC verification
+- Block payments from blacklisted addresses
+- Time-based policies (business hours only)
 
 ---
 
-## The Simple Idea
+## Quick Start: What do you want to do?
 
-Imagine you're a merchant. You want to accept payments, but only under certain conditions:
-- Only stablecoins (USDC, USDT)
-- Only between $10–$500
-- Only from KYC-verified users
-
-Normally, enforcing these rules requires a backend server, a database, and custom off-chain code. **PAY.ID lets you define these rules as simple JSON and enforces them on-chain.**
-
-> **PAY.ID answers one fundamental question before every payment: "Should this transaction be allowed?"**
+| I want to... | Start here |
+|---|---|
+| **Test a payment** (pay someone) | [Simple Usage →](./simple-usage) — 5-minute test
+| **Integrate into my dApp** | [Quick Start →](./quickstart) — React or Node.js
+| **Set up payment rules** (receive payments) | [Quick Start →](./quickstart#step-5---create-your-merchant-rules-receiver) — Merchant setup
+| **Understand how it works** | [Core Concepts →](./core-concepts/overview) — Deep dive
 
 ---
 
@@ -138,34 +143,38 @@ Smart contracts verify the proof (never execute rules). This keeps contracts sim
 
 - **[🛡️ VRAN Reputation](./integration/vran-reputation)** — Decentralized trust layer. Check merchant reputation and blacklist status before paying.
 - **[🏦 Bank / QRIS Bridge](./integration/bank-qris-bridge)** — Use PAY.ID as a policy oracle for fiat payment rails (QRIS, SWIFT, SEPA).
-- **[⚙️ Configurable 0G Resolver](./api/sdk-reference)** — Override the 0G indexer URL via SDK options instead of global variables.
+- **[⚙️ Configurable Storage Resolver](./api/sdk-reference)** — Override the storage indexer URL via SDK options instead of global variables.
 
 ---
 
-## Live Testnet
+## Live Testnets
 
-PAY.ID is **currently deployed on 0G Galileo Testnet** (Chain ID: 16602). No deployment needed to get started.
+Choose a testnet to start building:
 
-| | |
-|---|---|
-| **RPC** | `https://evmrpc-testnet.0g.ai` |
-| **Explorer** | [chainscan-galileo.0g.ai](https://chainscan-galileo.0g.ai) |
-| **Faucet** | [faucet.0g.ai](https://faucet.0g.ai) — get free A0GI tokens |
-| **Contract addresses** | [See full list →](./network/contracts-address) |
+| Network | Chain ID | Currency | Faucet |
+|---|---|---|---|
+| **Arbitrum Sepolia** | 421614 | ETH | [Get ETH →](https://faucet.triangleplatform.com/arbitrum/sepolia) |
+| **0G Galileo** | 16602 | A0GI | [Get A0GI →](https://faucet.0g.ai) |
+| **Sepolia** | 11155111 | ETH | [Get ETH →](https://sepoliafaucet.com) |
+| **Base Sepolia** | 84532 | ETH | [Get ETH →](https://sepoliafaucet.com) |
+| **Polygon Amoy** | 80002 | MATIC | [Get MATIC →](https://faucet.polygon.technology) |
+
+**Contract addresses:** [See full list →](./network/contracts-address)
 
 ---
 
 ## Getting Started
 
+**New to PAY.ID?** Start here:
 | Step | Link |
 |---|---|
-| 1. Install packages & configure providers | [🔧 Installation →](./installation/setup) |
-| 2. Make your first payment | [⚡ Quick Start →](./quickstart) |
+| 1. Test a payment in 5 minutes | [� Simple Usage →](./simple-usage) |
+| 2. Integrate into your app | [⚡ Quick Start →](./quickstart) |
 | 3. Learn how rules work | [📋 Rule Basics →](./rules/rule-basics) |
-| 4. All React hooks (20+) | [⚛️ React Integration →](./integration/react-integration) |
-| 5. Backend / Node.js | [🖥️ Server Guide →](./examples/server) |
 
-**Advanced:**
-- [📖 Core Concepts →](./core-concepts/overview) — Deep dive into Rules, Context, and Proofs
-- [🏦 Bank / QRIS Bridge →](./integration/bank-qris-bridge) — Fiat payment policy integration
-- [🛡️ VRAN Reputation →](./integration/vran-reputation) — On-chain reputation & anti-scam
+**Already familiar?**
+| Goal | Link |
+|---|---|
+| All React hooks (20+) | [⚛️ React Integration →](./integration/react-integration) |
+| Backend / Node.js | [🖥️ Server Guide →](./examples/server) |
+| Core concepts deep dive | [📖 Core Concepts →](./core-concepts/overview) |

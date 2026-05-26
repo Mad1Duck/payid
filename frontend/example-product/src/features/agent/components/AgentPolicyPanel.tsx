@@ -2,7 +2,7 @@ import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Hash, Link2, Loade
 import { zeroHash } from 'viem'
 import { useV4Palette } from '@/components/v4/theme'
 import { shortHash } from '@/features/agent/utils/format'
-import { PRESET_RULES, PRESET_TEMPLATES } from '@/features/agent/data/presets'
+import { PRESET_TEMPLATES } from '@/features/agent/data/presets'
 import type { AgentPayIDState } from '../hooks/useAgentPayID'
 
 interface Props {
@@ -52,7 +52,7 @@ function OwnerPolicyView({ s }: { s: AgentPayIDState }) {
 
           {s.myActiveRule?.hash && s.myActiveRule.hash !== zeroHash && (
             <button
-              onClick={() => { if (s.myActiveRule!.hash && s.selectedAgent) s.setAgentCombinedRule(s.selectedAgent.agentWallet, s.myActiveRule!.hash) }}
+              onClick={async () => { if (s.myActiveRule!.hash && s.selectedAgent) await s.setAgentCombinedRule(s.selectedAgent.agentWallet, s.myActiveRule!.hash) }}
               disabled={s.isSettingRule}
               className="w-full mb-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#00D084]/10 border border-[#00D084]/30 text-[#00D084] text-xs font-medium hover:bg-[#00D084]/20 transition-colors disabled:opacity-50"
             >
@@ -101,14 +101,14 @@ function OwnerPolicyView({ s }: { s: AgentPayIDState }) {
           </div>
           <button
             onClick={() => {
-              if (s.selectedAgent) s.setAgentCombinedRule(s.selectedAgent.agentWallet, zeroHash as `0x${string}`)
+              if (s.selectedAgent) s.unsetAgentCombinedRule(s.selectedAgent.agentWallet)
             }}
-            disabled={s.isSettingRule}
+            disabled={s.isUnsettingRule}
             className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-all flex items-center gap-1.5 ${
               p.dark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-500 hover:bg-red-100'
             } disabled:opacity-50`}
           >
-            {s.isSettingRule ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+            {s.isUnsettingRule ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
             Unlink Policy
           </button>
         </div>
@@ -149,9 +149,9 @@ function ExistingRuleView({ s }: { s: AgentPayIDState }) {
         </div>
       )}
       <button
-        onClick={() => {
+        onClick={async () => {
           if (s.selectedExistingRule?.hash && s.selectedAgent) {
-            s.setAgentCombinedRule(s.selectedAgent.agentWallet, s.selectedExistingRule.hash)
+            await s.setAgentCombinedRule(s.selectedAgent.agentWallet, s.selectedExistingRule.hash)
           }
         }}
         disabled={s.isSettingRule || !s.selectedExistingRule}
@@ -263,51 +263,11 @@ function NewRuleView({ s }: { s: AgentPayIDState }) {
       </p>
 
       <div className="pt-2 border-t" style={{ borderColor: p.dark ? '#ffffff10' : '#00000010' }}>
-        <p className={`text-[10px] font-semibold uppercase tracking-wide ${p.textMuted} mb-2`}>Or select existing rule</p>
-        <div className="flex gap-2 flex-wrap">
-          {s.rulesLoaded && s.onChainRules.length > 0 ? (
-            s.onChainRules.map((r: any, i: number) => (
-              <button
-                key={`onchain-${i}`}
-                onClick={() => s.setRuleIdx(i)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  s.ruleIdx === i
-                    ? 'bg-[#8B5CF6]/20 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/40'
-                    : `${p.dark ? 'bg-white/6 text-slate-400 hover:bg-white/10' : 'bg-black/6 text-slate-500 hover:bg-black/10'}`
-                }`}
-              >
-                {r.name || `Rule #${r.ruleId}`}
-              </button>
-            ))
-          ) : s.rulesLoaded ? (
-            PRESET_RULES.map((r, i) => (
-              <button
-                key={`preset-${i}`}
-                onClick={() => s.setRuleIdx(i)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  s.ruleIdx === i
-                    ? 'bg-[#8B5CF6]/20 text-[#8B5CF6] ring-1 ring-[#8B5CF6]/40'
-                    : `${p.dark ? 'bg-white/6 text-slate-400 hover:bg-white/10' : 'bg-black/6 text-slate-500 hover:bg-black/10'}`
-                }`}
-              >
-                {r.label}
-              </button>
-            ))
-          ) : null}
-        </div>
-        <button
-          onClick={() => {
-            const selectedHash = (s.onChainRules.length > 0 && s.onChainRules[s.ruleIdx])
-              ? s.onChainRules[s.ruleIdx].hash
-              : PRESET_RULES[s.ruleIdx]?.hash
-            if (selectedHash && s.selectedAgent) s.setAgentCombinedRule(s.selectedAgent.agentWallet, selectedHash as `0x${string}`)
-          }}
-          disabled={s.isSettingRule || s.onChainPhase !== 'idle'}
-          className="w-full mt-2 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#8B5CF6] text-white text-xs font-medium hover:bg-[#8B5CF6]/90 transition-colors disabled:opacity-50"
-        >
-          {s.isSettingRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-          Set as Agent Policy
-        </button>
+        <p className={`text-[10px] ${p.textMuted} leading-relaxed`}>
+          After creating a rule, go to{' '}
+          <a href="/v4/app/rules" className="text-[#8B5CF6] hover:underline">Rules Console</a>{' '}
+          to activate and combine it, then use the <strong>Use Existing</strong> tab above to link it as your agent policy.
+        </p>
       </div>
     </div>
   )

@@ -6,10 +6,12 @@ sidebar_label: Contract Addresses
 
 # Network & Contract Addresses
 
-:::tip Recommended Testnet — 0G Galileo (Chain 16602)
-Contracts are **already deployed and active** on 0G Galileo Testnet. Skip straight to the [0G Galileo section ↓](#0g-galileo-testnet-chain-id-16602) to start building without deploying anything.
+:::tip Deployed Testnets
+Contracts are deployed on multiple testnets. Choose one that fits your needs:
+- **Arbitrum Sepolia (421614)** — Uses real EAS and Chainlink ETH/USD oracle
+- **0G Galileo (16602)** — Full contract deployment with all features
 
-Get testnet tokens: [faucet.0g.ai](https://faucet.0g.ai) · Explorer: [chainscan-galileo.0g.ai](https://chainscan-galileo.0g.ai)
+See the sections below for network details and contract addresses.
 :::
 
 :::info Deploying to Your Own Network
@@ -18,10 +20,10 @@ To deploy to a new network, use the Hardhat Ignition module at `packages/contrac
 
 ---
 
-## 0G Galileo Testnet (Chain ID: 16602) {#0g-galileo-testnet-chain-id-16602}
+## Arbitrum Sepolia (Chain ID: 421614)
 
-:::tip ✅ Deployed & Active — Recommended Starting Point
-All contracts are live. No deployment needed. Get free testnet tokens from the faucet and start building immediately.
+:::tip ✅ Deployed & Active
+All contracts are live on Arbitrum Sepolia. Uses real EAS and Chainlink ETH/USD oracle.
 :::
 
 | Contract | Address |
@@ -48,25 +50,20 @@ All contracts are live. No deployment needed. Get free testnet tokens from the f
 
 | | |
 |---|---|
-| **RPC** | `https://evmrpc-testnet.0g.ai` |
-| **Chain ID** | `16602` |
-| **Currency** | `A0GI` |
-| **Explorer** | [chainscan-galileo.0g.ai](https://chainscan-galileo.0g.ai) |
-| **Faucet** | [faucet.0g.ai](https://faucet.0g.ai) |
-
-```bash
-# Re-deploy if needed (addresses above already up-to-date)
-cd packages/contracts
-bun run deploy:zerog-galileo
-bun run sync:zerog-galileo
-```
+| **RPC** | `https://sepolia-rollup.arbitrum.io/rpc` |
+| **Chain ID** | `421614` |
+| **Currency** | `ETH` |
+| **Explorer** | [sepolia.arbiscan.io](https://sepolia.arbiscan.io) |
+| **Faucet** | [faucet.triangleplatform.com/arbitrum/sepolia](https://faucet.triangleplatform.com/arbitrum/sepolia) |
+| **EAS** | `0xaEF4103A04090071165F78D45D83A0C0782c2B2` |
+| **Chainlink ETH/USD** | `0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165` |
 
 ---
 
-## Arbitrum Sepolia (Chain ID: 421614)
+## 0G Galileo Testnet (Chain ID: 16602)
 
 :::tip ✅ Deployed & Active
-All contracts are live on Arbitrum Sepolia. Uses real EAS and Chainlink ETH/USD oracle.
+All contracts are live on 0G Galileo Testnet.
 :::
 
 | Contract | Address |
@@ -90,25 +87,17 @@ All contracts are live on Arbitrum Sepolia. Uses real EAS and Chainlink ETH/USD 
 
 | | |
 |---|---|
-| **RPC** | `https://sepolia-rollup.arbitrum.io/rpc` |
-| **Chain ID** | `421614` |
-| **Currency** | `ETH` |
-| **Explorer** | [sepolia.arbiscan.io](https://sepolia.arbiscan.io) |
-| **Faucet** | [faucet.triangleplatform.com/arbitrum/sepolia](https://faucet.triangleplatform.com/arbitrum/sepolia) |
-| **EAS** | `0xaEF4103A04090071165F78D45D83A0C0782c2B2` |
-| **Chainlink ETH/USD** | `0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165` |
-
-```bash
-cd packages/contracts
-bun run deploy:arbitrum-sepolia
-bun run sync:arbitrum-sepolia
-```
+| **RPC** | `https://evmrpc-testnet.0g.ai` |
+| **Chain ID** | `16602` |
+| **Currency** | `A0GI` |
+| **Explorer** | [chainscan-galileo.0g.ai](https://chainscan-galileo.0g.ai) |
+| **Faucet** | [faucet.0g.ai](https://faucet.0g.ai) |
 
 ---
 
 ## Other Networks
 
-Contracts have not been deployed to these networks yet. Deploy using the Ignition module, then configure `payid-react` with your addresses via `<PayIDProvider contracts={...}>`.
+Contracts have not been deployed to these networks yet. To deploy to a new network, use the Hardhat Ignition module at `packages/contracts/ignition/modules/PayID.ts`, then configure `payid-react` with your addresses via `<PayIDProvider contracts={...}>`.
 
 | Network | Chain ID | Status |
 |---|---|---|
@@ -116,38 +105,6 @@ Contracts have not been deployed to these networks yet. Deploy using the Ignitio
 | Monad Testnet | 10143 | Not deployed |
 | Moonbase Alpha | 1287 | Not deployed |
 | Polygon Amoy | 80002 | Not deployed |
-
----
-
-## Deploying Contracts
-
-```bash
-cd packages/contracts
-
-# Local Hardhat node (Chain 31337)
-bun run deploy:local
-
-# Local Fork (Chain 31338)
-bun run deploy:local-fork
-
-# 0G Newton Testnet (Chain 16600)
-bun run deploy:zerog-newton
-
-# 0G Galileo Testnet (Chain 16602) ← recommended
-bun run deploy:zerog-galileo
-
-# Other testnets
-bun run deploy:lisk-sepolia
-bun run deploy:monad
-bun run deploy:polygon-amoy
-```
-
-After deploying, run the sync script to copy addresses into `payid-react` and the frontend:
-
-```bash
-bun run sync:zerog-galileo      # for 16602
-bun run sync:arbitrum-sepolia   # for 421614
-```
 
 ---
 

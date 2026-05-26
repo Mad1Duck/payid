@@ -29,7 +29,7 @@ function PayButton({ receiver }: { receiver: `0x${string}` }) {
     <button
       onClick={() => execute({
         receiver,
-        asset: zeroAddress,  // Native token (ETH, MATIC, A0GI, etc.)
+        asset: zeroAddress,  // Native token (ETH, MATIC, etc.)
         amount: parseUnits('0.01', 18),
         payId: 'pay.id/merchant',
       })}
@@ -49,8 +49,12 @@ function PayButton({ receiver }: { receiver: `0x${string}` }) {
 
 Same flow, just change the asset address — easy peasy!
 
+:::tip Use testnet token addresses
+On testnets, use mock USDC or native tokens. Check your testnet's documentation for token addresses.
+:::
+
 ```tsx
-const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+const USDC_ADDRESS = '0x...' // Your testnet USDC address
 
 <button
   onClick={() => execute({
@@ -102,16 +106,17 @@ function TokenDisplay() {
 }
 ```
 
-Supported chains:
+Supported chains include:
 - Ethereum → ETH
 - Polygon → MATIC
-- 0G Newton Testnet (Real) → A0GI (Chain 16600)
-- 0G Newton Testnet (Fork) → A0GI (Chain 16601)
-- 0G Galileo Testnet → A0GI (Chain 16602) ⭐ **Recommended**
+- Arbitrum → ETH
+- Sepolia → ETH
+- Base Sepolia → ETH
+- Polygon Amoy → MATIC
+- 0G Newton Testnet → A0GI (Chain 16600)
+- 0G Galileo Testnet → A0GI (Chain 16602)
 - Lisk Sepolia → LISK
 - Monad Testnet → MON
-- Base Sepolia → ETH
-- Sepolia → ETH
 - Moonbase Alpha → DEV
 
 ---
@@ -143,12 +148,18 @@ function MerchantStatus({ address }: { address: `0x${string}` }) {
 
 Let customers scan a QR code to pay you:
 
+:::tip Install QR code library
+You'll need a QR code library like `qrcode.react` or `qrcode`.
+:::
+
 ```tsx
 import { usePayIDQR } from 'payid-react'
 import { parseUnits } from 'viem'
+// import QRCode from 'qrcode.react' // or your preferred QR library
 
 function MerchantQR() {
   const { generate, payload, isPending } = usePayIDQR()
+  const USDC_ADDRESS = '0x...' // Your testnet USDC address
 
   return (
     <div>
@@ -197,6 +208,10 @@ function MerchantPolicy({ address }: { address: `0x${string}` }) {
 
 For backend scripts, bots, or servers:
 
+:::tip Set up environment variables
+You'll need RPC_URL, PRIVATE_KEY, and contract addresses in your .env file.
+:::
+
 ```ts
 import { createPayIDServer } from 'payid/server'
 import { ethers } from 'ethers'
@@ -212,21 +227,21 @@ const { result, proof } = await payid.evaluateAndProve({
       receiver: merchantAddress,
       asset: usdcAddress,
       amount: '50000000',
-      chainId: 1,
+      chainId: 1, // Your testnet chain ID
     },
     env: { timestamp: Math.floor(Date.now() / 1000) },
   },
   authorityRule: { version: '1', logic: 'AND', rules: ruleConfigs },
-  payId: 'pay.id/merchant',
-  payer: payerAddress,
-  receiver: merchantAddress,
-  asset: usdcAddress,
-  amount: 50_000_000n,
+  payId:             'pay.id/merchant',
+  payer:             payerAddress,
+  receiver:          merchantAddress,
+  asset:             usdcAddress,
+  amount:            50_000_000n,
   verifyingContract: process.env.PAYID_VERIFIER!,
-  ruleAuthority: process.env.COMBINED_RULE_STORAGE!,
-  chainId: 1,
-  blockTimestamp: Math.floor(Date.now() / 1000),
-  ttlSeconds: 300,
+  ruleAuthority:     process.env.COMBINED_RULE_STORAGE!,
+  chainId:           1, // Your testnet chain ID
+  blockTimestamp:    Math.floor(Date.now() / 1000),
+  ttlSeconds:        300,
 })
 
 if (result.decision === 'REJECT') {

@@ -12,7 +12,6 @@ import { keccak256, toBytes, zeroAddress } from 'viem';
 import { toast } from 'sonner';
 import {
   useRegisterAdminAIAgent,
-  useSetAgentCombinedRule,
   useAgentCombinedRule,
   useAllAdminAIAgents,
   useRegistryAdmin,
@@ -126,6 +125,8 @@ export interface AgentPayIDState {
   myActiveRule: CombinedRule | undefined;
   setAgentCombinedRule: (wallet: `0x${string}`, hash: `0x${string}`) => void;
   isSettingRule: boolean;
+  unsetAgentCombinedRule: (wallet: `0x${string}`) => void;
+  isUnsettingRule: boolean;
 
   // Embedded rule creation
   ruleJsonInput: string;
@@ -194,7 +195,7 @@ export function useAgentPayID(): AgentPayIDState {
   const { data: connectorClient } = useConnectorClient();
 
   const { data: agentRuleInfo, refetch: refetchAgentRuleInfo } = useAgentCombinedRule(selectedAgent?.agentWallet as `0x${string}` | undefined);
-  
+
   const {
     registerAgent,
     isPending: isRegisteringPending,
@@ -203,16 +204,19 @@ export function useAgentPayID(): AgentPayIDState {
     error: registerError,
   } = useRegisterAdminAIAgent();
 
-  const {
-    setAgentCombinedRule,
-    isPending: isSettingRulePending,
-    isConfirming: isSettingRuleConfirming,
-    isSuccess: isSettingRuleSuccess,
-    error: settingRuleError,
-  } = useSetAgentCombinedRule();
+
 
   const isRegisteringAgent = isRegisteringPending || isRegisteringConfirming;
-  const isSettingRule = isSettingRulePending || isSettingRuleConfirming;
+  const [isSettingRule, setIsSettingRule] = useState(false);
+  const [isUnsettingRule, setIsUnsettingRule] = useState(false);
+
+  const isWrongChain = isConnected && !!chainId && !SUPPORTED_CHAIN_IDS.includes(chainId);
+  const activeChainId = chainId && SUPPORTED_CHAIN_IDS.includes(chainId) ? chainId : 421614;
+  const chainAddresses = (addresses as any)[activeChainId];
+  const agentPayIDAddr = chainAddresses?.AgentPayID;
+  const mockRegistryAddr = chainAddresses?.MockAgentRegistry;
+  const combinedRuleStorageAddr = chainAddresses?.CombinedRuleStorage;
+  const ruleItemAddr = chainAddresses?.RuleItemERC721;
 
   const [showAgentRegister, setShowAgentRegister] = useState(false);
   const [regAgentWallet, setRegAgentWallet] = useState(address ?? '');
@@ -255,22 +259,7 @@ export function useAgentPayID(): AgentPayIDState {
     }
   }, [registerError]);
 
-  // Synchronize setting agent policy / rule
-  useEffect(() => {
-    if (isSettingRuleSuccess) {
-      toast.success('Agent policy published successfully!', {
-        description: 'The selected rule has been linked to your AI Agent.',
-      });
-      refetchAgentRuleInfo();
-    }
-  }, [isSettingRuleSuccess, refetchAgentRuleInfo]);
 
-  useEffect(() => {
-    if (settingRuleError) {
-      const msg = (settingRuleError as { shortMessage?: string; }).shortMessage ?? 'Transaction failed';
-      toast.error('Publish policy failed', { description: msg });
-    }
-  }, [settingRuleError]);
 
   const { data: subInfo } = useSubscription(address);
   const slotsUsed = subInfo?.logicalRuleCount ?? 0;
@@ -340,14 +329,6 @@ export function useAgentPayID(): AgentPayIDState {
   const [selectedTemplate, setSelectedTemplate] = useState(-1);
   const [jsonError, setJsonError] = useState('');
   const [showCreateSuccess, setShowCreateSuccess] = useState(false);
-
-  const isWrongChain = isConnected && !!chainId && !SUPPORTED_CHAIN_IDS.includes(chainId);
-  const activeChainId = chainId && SUPPORTED_CHAIN_IDS.includes(chainId) ? chainId : 16601;
-  const chainAddresses = (addresses as any)[activeChainId];
-  const agentPayIDAddr = chainAddresses?.AgentPayID;
-  const mockRegistryAddr = chainAddresses?.MockAgentRegistry;
-  const combinedRuleStorageAddr = chainAddresses?.CombinedRuleStorage;
-  const ruleItemAddr = chainAddresses?.RuleItemERC721;
 
   const { data: activeRuleHash } = useReadContract({
     address: combinedRuleStorageAddr,
@@ -489,10 +470,25 @@ export function useAgentPayID(): AgentPayIDState {
   const buildSystemPrompt = useCallback(() => {
     const agentName = selectedAgent?.displayName ?? 'Agent';
     const agentSection = `\n\nYou are currently representing AI Agent: "${agentName}".`;
-    
+
     let ruleJsonStr = 'No specific rules loaded.';
     if (agentRuleJson) {
-      ruleJsonStr = JSON.stringify(agentRuleJson, null, 2);
+      // Annotate oracle.txValueUsd values with human-readable USD so the AI can evaluate correctly.
+      // Scale: $1 = 100_000_000 (8-decimal precision). Replace raw values with "$X.XX USD" comments.
+      let annotated = JSON.stringify(agentRuleJson, null, 2);
+      annotated = annotated.replace(
+        /("value"\s*:\s*)(\d{7,})/g,
+        (match, prefix, rawVal) => {
+          const num = Number(rawVal);
+          // Heuristic: if the field context is oracle.txValueUsd, convert
+          if (num >= 1_000_000) {
+            const usd = (num / 1e8).toFixed(2);
+            return `${prefix}${rawVal} /* = $${usd} USD */`;
+          }
+          return match;
+        }
+      );
+      ruleJsonStr = annotated;
     }
 
     const policySection = agentRuleInfo?.active
@@ -500,12 +496,15 @@ export function useAgentPayID(): AgentPayIDState {
       `Policy Hash: ${agentRuleInfo.ruleSetHash}\n` +
       `Status: ACTIVE\n` +
       `Policy Logic:\n${ruleJsonStr}\n\n` +
+      `IMPORTANT — oracle.txValueUsd field uses 8-decimal USD precision: $1 = 100000000, $10 = 1000000000, $100 = 10000000000.\n` +
+      `The inline /* = $X.XX USD */ comments show the human-readable equivalent. Use those USD values when evaluating oracle.txValueUsd rules.\n` +
+      `The WASM sandbox will verify the final oracle check — your job is to evaluate intent and non-oracle rules.\n\n` +
       `Current User (Sender) Address: ${address ?? 'Not connected'}\n\n` +
       `You MUST evaluate the user's request against this policy logic. ` +
       `If the request (or the user's address) violates the policy, you MUST respond with "REJECT" and provide the exact reason based on the policy logic.`
       : `\n\nNo active policy linked to this agent. ` +
       `Tell the user that the agent owner needs to set a policy first.`;
-      
+
     return BASE_SYSTEM_PROMPT + agentSection + policySection;
   }, [selectedAgent, agentRuleInfo, agentRuleJson, address]);
 
@@ -581,6 +580,11 @@ export function useAgentPayID(): AgentPayIDState {
               const amountRaw = (parsed?.amount !== undefined)
                 ? (parsed.amount >= 100_000 ? Math.floor(parsed.amount).toString() : Math.floor(parsed.amount * 1_000_000).toString())
                 : '0';
+
+              // txValueUsd: USDC 6-decimal units × 100 → 8-decimal USD scale ($1 = 100_000_000)
+              // Matches rule builder template values (e.g. $1 min = value:100000000)
+              const txValueUsd = (BigInt(amountRaw) * 100n).toString();
+
               const context = {
                 tx: {
                   sender: address ?? '0x0000000000000000000000000000000000000000',
@@ -592,11 +596,18 @@ export function useAgentPayID(): AgentPayIDState {
                 env: {
                   timestamp: Math.floor(Date.now() / 1000),
                 },
+                oracle: {
+                  txValueUsd,
+                  txValueUsdFormatted: `$${(Number(txValueUsd) / 1e8).toFixed(2)}`,
+                },
               };
 
               const result = await client.evaluate(context, ruleJson as any);
-              const wasmDecision = result.decision === 'ALLOW' ? 'APPROVE' : 'REJECT';
-              
+              // WASM is the sole policy authority — its decision is final regardless of AI's text output.
+              // AI parses intent and generates responses; WASM enforces the actual policy math.
+              const effectiveDecision = result.decision === 'ALLOW' ? 'APPROVE' : 'REJECT';
+              const effectiveReason = result.reason ?? '';
+
               let ruleDesc = 'Custom Rule';
               if (ruleJson.rules && Array.isArray(ruleJson.rules)) {
                 ruleDesc = ruleJson.rules.map(r => {
@@ -625,7 +636,7 @@ export function useAgentPayID(): AgentPayIDState {
                       }
                       return `${hex.substring(0, 6)}...${hex.substring(hex.length - 4)}`;
                     }
-                  } catch {}
+                  } catch { }
                 }
                 if (typeof val === 'string' && val.startsWith('0x') && val.length === 42) {
                   return `${val.substring(0, 6)}...${val.substring(val.length - 4)}`;
@@ -663,23 +674,29 @@ export function useAgentPayID(): AgentPayIDState {
                 }
               }
 
-              const isAllowed = wasmDecision === 'APPROVE' && (parsed ? parsed.decision === 'APPROVE' : false);
+              // WASM is the sole policy authority.
+              // AI APPROVE + WASM APPROVE → allow
+              // AI REJECT  + WASM APPROVE → allow  (WASM overrides AI decimal/scale misreading)
+              // AI APPROVE + WASM REJECT  → block  (WASM catches prompt injection the AI missed)
+              // AI REJECT  + WASM REJECT  → block
+              const aiApproved = parsed ? parsed.decision === 'APPROVE' : false;
+              const isAllowed = effectiveDecision === 'APPROVE';
 
               if (!isAllowed) {
-                finalDecision = { 
-                  decision: 'REJECT', 
-                  reason: parsed?.decision === 'REJECT' ? (parsed.reason ?? 'AI Refused') : (result.reason ?? 'Blocked by policy'), 
-                  amount: 0, 
-                  receiver: '' 
+                finalDecision = {
+                  decision: 'REJECT',
+                  reason: effectiveDecision === 'REJECT' ? (effectiveReason || 'Blocked by policy') : (parsed?.reason ?? 'AI Refused'),
+                  amount: 0,
+                  receiver: ''
                 };
 
                 const aiDecisionStr = parsed ? parsed.decision : 'Conversational Response';
                 const aiReasonStr = parsed?.reason ? parsed.reason : 'N/A';
-                const wasmStatusStr = wasmDecision === 'REJECT' ? 'TRANSACTION BLOCKED' : 'POLICY COMPLIANT';
-                const wasmReasonStr = result.reason ?? 'OK';
-                const enforcerActionStr = parsed?.decision === 'REJECT' 
-                  ? 'Blocked by AI Agent' 
-                  : 'Blocked by PAY.ID WASM Policy';
+                const wasmStatusStr = effectiveDecision === 'REJECT' ? 'TRANSACTION BLOCKED' : 'POLICY COMPLIANT';
+                const wasmReasonStr = effectiveReason || 'OK';
+                const enforcerActionStr = effectiveDecision === 'REJECT'
+                  ? 'Blocked by PAY.ID WASM Policy'
+                  : 'Blocked by AI Agent';
 
                 finalReply = `*Interaction Blocked*\n\n` + reply + `\n\n---\n**PAY.ID POLICY ENFORCEMENT REPORT**\n` +
                   `1. AI Intent Parsing\n   ↳ Decision: ${aiDecisionStr} (Reason: ${aiReasonStr})\n` +
@@ -688,10 +705,14 @@ export function useAgentPayID(): AgentPayIDState {
                   `4. Final Verdict\n   ↳ Enforcer Action: ${enforcerActionStr}`;
               } else {
                 if (parsed) {
-                  finalDecision = { ...parsed, decision: wasmDecision, reason: result.reason ?? '' };
-                  const matchStatus = wasmDecision === parsed.decision ? 'Match' : 'Corrected by PAY.ID';
-                  finalReply = reply + `\n\n---\n**PAY.ID POLICY ENFORCEMENT REPORT**\n` +
-                    `1. AI Intent Parsing\n   ↳ Decision: APPROVE (Amount: ${formatLogVal('tx.amount', amountRaw) || '0 USDC'})\n` +
+                  finalDecision = { ...parsed, decision: 'APPROVE', reason: effectiveReason };
+                  const matchStatus = aiApproved ? 'Match' : 'Policy Engine Overrode AI Rejection';
+                  // When WASM overrides AI rejection, show a clear approval message instead of AI's confusing REJECT text
+                  const displayReply = aiApproved
+                    ? reply
+                    : `Payment of ${formatLogVal('tx.amount', amountRaw) || '0 USDC'} is **approved** by policy. The payment meets all required conditions.`;
+                  finalReply = displayReply + `\n\n---\n**PAY.ID POLICY ENFORCEMENT REPORT**\n` +
+                    `1. AI Intent Parsing\n   ↳ Decision: ${parsed.decision} (Amount: ${formatLogVal('tx.amount', amountRaw) || '0 USDC'})\n` +
                     `2. On-Chain Guardrails Loaded\n   ↳ Active Rule(s): \`${ruleDesc}\`\n   ↳ Math Logic: \`${ruleCondition}\`\n` +
                     `3. WASM Sandbox Execution\n   ↳ Checked Sender: \`${address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : 'unknown'}\`\n   ↳ Sandbox Result: POLICY COMPLIANT\n` +
                     `4. Final Verdict\n   ↳ Status: \`${matchStatus}\`\n   ↳ Enforcer Action: Transaction Allowed`;
@@ -882,14 +903,120 @@ export function useAgentPayID(): AgentPayIDState {
       }
     }
 
-    registerAgent({
-      agentWallet: regAgentWallet.trim() as `0x${string}`,
-      displayName: regDisplayName.trim(),
-      metadataHash,
-      encryptedURI,
-      publicEndpoint: regEndpoint.trim(),
-    });
-  }, [regAgentWallet, regDisplayName, regEndpoint, regModel, regSystemPrompt, storageProvider, connectorClient, registerAgent]);
+    try {
+      // Estimate fees with 2× buffer to avoid baseFee spike revert on Arbitrum
+      const feeData = await publicClient!.estimateFeesPerGas();
+      const maxFeePerGas = feeData.maxFeePerGas
+        ? feeData.maxFeePerGas * 2n
+        : undefined;
+      const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? undefined;
+
+      const txHash = await writeContractAsync({
+        address: chainAddresses?.AIAgentRegistry as `0x${string}`,
+        abi: [{
+          name: 'registerAdminAgent',
+          type: 'function',
+          stateMutability: 'nonpayable',
+          inputs: [
+            { name: 'agentWallet', type: 'address' },
+            { name: 'displayName', type: 'string' },
+            { name: 'metadataHash', type: 'bytes32' },
+            { name: 'encryptedURI', type: 'string' },
+            { name: 'publicEndpoint', type: 'string' },
+          ],
+          outputs: [],
+        }] as const,
+        functionName: 'registerAdminAgent',
+        args: [
+          regAgentWallet.trim() as `0x${string}`,
+          regDisplayName.trim(),
+          metadataHash,
+          encryptedURI,
+          regEndpoint.trim(),
+        ],
+        ...(maxFeePerGas ? { maxFeePerGas, maxPriorityFeePerGas } : {}),
+      });
+      await publicClient!.waitForTransactionReceipt({ hash: txHash });
+      toast.success('AI Agent registered successfully!', {
+        description: 'Your AI agent has been added to the registry.',
+      });
+      refetchAdminAgents();
+      setShowAgentRegister(false);
+      setRegAgentWallet(address ?? '');
+      setRegDisplayName('');
+      setRegSystemPrompt('');
+      setRegModel('qwen/qwen-2.5-7b-instruct');
+      setRegEndpoint('https://compute-network-6.integratenetwork.work/v1/proxy');
+    } catch (err: any) {
+      const msg = err?.shortMessage ?? err?.message ?? 'Registration failed';
+      toast.error('Registration failed', { description: msg });
+    }
+  }, [regAgentWallet, regDisplayName, regEndpoint, regModel, regSystemPrompt, storageProvider, connectorClient, chainAddresses, publicClient, writeContractAsync, address, refetchAdminAgents]);
+
+  const handleSetAgentPolicy = useCallback(async (agentWallet: `0x${string}`, ruleSetHash: `0x${string}`) => {
+    if (!publicClient || !chainAddresses?.AIAgentRuleManager) return;
+    setIsSettingRule(true);
+    try {
+      const feeData = await publicClient.estimateFeesPerGas();
+      const maxFeePerGas = feeData.maxFeePerGas ? feeData.maxFeePerGas * 2n : undefined;
+      const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? undefined;
+      const txHash = await writeContractAsync({
+        address: chainAddresses.AIAgentRuleManager as `0x${string}`,
+        abi: [{
+          name: 'setAgentCombinedRule',
+          type: 'function',
+          stateMutability: 'nonpayable',
+          inputs: [
+            { name: 'agentWallet', type: 'address' },
+            { name: 'ruleSetHash', type: 'bytes32' },
+          ],
+          outputs: [],
+        }] as const,
+        functionName: 'setAgentCombinedRule',
+        args: [agentWallet, ruleSetHash],
+        ...(maxFeePerGas ? { maxFeePerGas, maxPriorityFeePerGas } : {}),
+      });
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+      toast.success('Agent policy published successfully!');
+      refetchAgentRuleInfo();
+    } catch (err: any) {
+      const msg = err?.shortMessage ?? err?.message ?? 'Set policy failed';
+      toast.error('Publish policy failed', { description: msg });
+    } finally {
+      setIsSettingRule(false);
+    }
+  }, [publicClient, chainAddresses, writeContractAsync, refetchAgentRuleInfo]);
+
+  const handleUnsetAgentPolicy = useCallback(async (agentWallet: `0x${string}`) => {
+    if (!publicClient || !chainAddresses?.AIAgentRuleManager) return;
+    setIsUnsettingRule(true);
+    try {
+      const feeData = await publicClient.estimateFeesPerGas();
+      const maxFeePerGas = feeData.maxFeePerGas ? feeData.maxFeePerGas * 2n : undefined;
+      const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? undefined;
+      const txHash = await writeContractAsync({
+        address: chainAddresses.AIAgentRuleManager as `0x${string}`,
+        abi: [{
+          name: 'unsetAgentCombinedRule',
+          type: 'function',
+          stateMutability: 'nonpayable',
+          inputs: [{ name: 'agentWallet', type: 'address' }],
+          outputs: [],
+        }] as const,
+        functionName: 'unsetAgentCombinedRule',
+        args: [agentWallet],
+        ...(maxFeePerGas ? { maxFeePerGas, maxPriorityFeePerGas } : {}),
+      });
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+      toast.success('Agent policy unlinked.');
+      refetchAgentRuleInfo();
+    } catch (err: any) {
+      const msg = err?.shortMessage ?? err?.message ?? 'Unlink failed';
+      toast.error('Unlink policy failed', { description: msg });
+    } finally {
+      setIsUnsettingRule(false);
+    }
+  }, [publicClient, chainAddresses, writeContractAsync, refetchAgentRuleInfo]);
 
   const handleCreateRule = useCallback(async () => {
     console.log('[handleCreateRule] START — new code running');
@@ -1032,8 +1159,10 @@ export function useAgentPayID(): AgentPayIDState {
 
     myRuleSets,
     myActiveRule,
-    setAgentCombinedRule,
+    setAgentCombinedRule: handleSetAgentPolicy,
     isSettingRule,
+    unsetAgentCombinedRule: handleUnsetAgentPolicy,
+    isUnsettingRule,
 
     ruleJsonInput,
     setRuleJsonInput,

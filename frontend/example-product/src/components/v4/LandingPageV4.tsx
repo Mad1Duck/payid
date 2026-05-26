@@ -18,6 +18,7 @@ import {
 import { Link } from '@tanstack/react-router'
 import { useV4Palette } from './theme'
 import { PayIDLogo } from './AppLayout'
+import ProofVisualizer from '@/features/proof-visualizer/pages/ProofVisualizer'
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 20 },
@@ -141,13 +142,13 @@ function SecuritySimulator() {
                 <span className="font-semibold text-gray-400">WASM_SANDBOX_LOGS:</span>
               </div>
               <div className="p-3 bg-black/50 rounded-lg border border-white/5 text-[11px] text-gray-300 space-y-1 font-mono">
-                <p className="text-gray-500">Evaluating intent with 0G Compute TEE...</p>
+                <p className="text-gray-500">Evaluating intent with WASM sandbox...</p>
                 {stage === 'evaluating' && (
                   <p className="text-[#00D084] animate-pulse">Running spend policy verification checks...</p>
                 )}
                 {stage !== 'evaluating' && (
                   <>
-                    <p className="text-gray-400">✓ Token Allowlist checked (USDC/A0GI)</p>
+                    <p className="text-gray-400">✓ Token Allowlist checked (USDC/ETH)</p>
                     <p className="text-gray-400">
                       {mode === 'hacker' 
                         ? '✖ Whitelist restriction: 0xHacker is NOT an authorized counterparty' 
@@ -403,7 +404,7 @@ export default function LandingPageV4() {
               {
                 icon: FileCheck,
                 title: 'EIP-712 Rule Portability (ERC-721 NFT)',
-                desc: 'Every payment policy is stored permanently on 0G Storage and minted as a portable ERC-721 Rule NFT. Rules are completely ownable, composable, and transferable across wallets.',
+                desc: 'Every payment policy is stored permanently on decentralized storage (IPFS) and minted as a portable ERC-721 Rule NFT. Rules are completely ownable, composable, and transferable across wallets.',
                 tag: 'EVM Standard',
               },
             ].map((feat, idx) => (
@@ -447,8 +448,8 @@ export default function LandingPageV4() {
               {
                 step: '01',
                 title: 'Set Rules via Rule Builder or JSON Schema',
-                desc: 'Define time-blocks, spending limits, merchant restrictions, or KYC settings. The rule metadata is securely persisted on 0G Storage, and rules are minted as custom ownable Rule NFTs.',
-                details: 'Metadata root hash committed on 0G Storage Newton Testnet.',
+                desc: 'Define time-blocks, spending limits, merchant restrictions, or KYC settings. The rule metadata is securely persisted on decentralized storage (IPFS), and rules are minted as custom ownable Rule NFTs.',
+                details: 'Metadata root hash committed on-chain via IPFS.',
               },
               {
                 step: '02',
@@ -466,7 +467,7 @@ export default function LandingPageV4() {
                 step: '04',
                 title: 'On-Chain Signature Verification & Settlement',
                 desc: 'The cryptographic proof is forwarded to `PayIDVerifier` on-chain. The smart contract performs a single signature check and securely releases the funds. If tampered with, the EVM reverts the execution.',
-                details: 'Deterministic Solidity verification on the 0G Chain.',
+                details: 'Deterministic Solidity verification on EVM chains.',
               },
             ].map((item) => (
               <div key={item.step} className="relative">
@@ -491,8 +492,25 @@ export default function LandingPageV4() {
         </div>
       </section>
 
+      {/* INTERACTIVE PROOF DEMO */}
+      <section id="proof-demo" className="relative z-10 py-20 border-t border-white/3 bg-black/10">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              See How It Works — Live Demo
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+              Watch the complete payment proof pipeline: from rule evaluation to on-chain verification.
+            </p>
+          </div>
+          <div className="max-w-2xl mx-auto">
+            <ProofVisualizer />
+          </div>
+        </div>
+      </section>
+
       {/* CALL TO ACTION */}
-      <section className="relative z-10 py-16 px-6 border-t border-white/[0.03] bg-[#0E1322]/20">
+      <section className="relative z-10 py-16 px-6 border-t border-white/3 bg-[#0E1322]/20">
         <div className="max-w-4xl mx-auto text-center rounded-3xl p-8 sm:p-12 md:p-16 border border-white/5 bg-gradient-to-br from-white/[0.01] via-transparent to-transparent relative overflow-hidden">
           {/* Inner ambient glow */}
           <div className="absolute inset-0 bg-[#00D084]/[0.01] pointer-events-none" />
@@ -522,7 +540,7 @@ export default function LandingPageV4() {
             <span className="text-xs font-bold tracking-tight">PAY.ID</span>
           </div>
           <p className="text-[10px] text-gray-500 leading-relaxed font-mono">
-            Active Spend Safeguards & Compliance Layer for Web3 Agents · Deployed on 0G Newton Testnet
+            Active Spend Safeguards & Compliance Layer for Web3 Agents · Deployed on Multiple EVM Testnets
           </p>
         </div>
       </footer>

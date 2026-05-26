@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link, useLocation } from '@tanstack/react-router'
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
@@ -324,13 +324,12 @@ const NO_ARG = new Set([
   'upper',
 ])
 
-const UNAVAILABLE_TEMPLATES = new Set([
+const ALWAYS_UNAVAILABLE_TEMPLATES = new Set([
   'KYC Required',
   'Low Risk Only',
   'Indonesia Only',
-  'USD Minimum',
-  'Daily Budget',
 ])
+const ORACLE_TEMPLATES = new Set(['USD Minimum', 'Daily Budget'])
 
 export default function RulesPage() {
   const location = useLocation()
@@ -402,6 +401,12 @@ export default function RulesPage() {
     handleFileChange,
     handleDeploy,
   } = useRuleBuilder()
+
+  const UNAVAILABLE_TEMPLATES = useMemo(() => {
+    const set = new Set(ALWAYS_UNAVAILABLE_TEMPLATES)
+    if (is0G) ORACLE_TEMPLATES.forEach((t) => set.add(t))
+    return set
+  }, [is0G])
 
   const { writeContract } = useWriteContract()
 

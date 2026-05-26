@@ -6,6 +6,10 @@ sidebar_label: Setup
 
 # Installation & Setup
 
+:::tip Quick Start
+If you just want to test PAY.ID quickly, check out [Simple Usage →](../simple-usage) for copy-paste examples.
+:::
+
 ## Requirements
 
 | Tool | Version |
@@ -55,6 +59,10 @@ npm packages are `payid` (core SDK) and `payid-react` (React hooks). Not `@payid
 
 `payid-react` requires three nested providers. Add this once to your app root:
 
+:::tip Choose a testnet
+Pick one from [Contract Addresses →](../network/contracts-address). This example uses Arbitrum Sepolia.
+:::
+
 ```tsx
 // main.tsx (or _app.tsx / layout.tsx)
 import { WagmiProvider, createConfig, http } from 'wagmi'
@@ -62,42 +70,49 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PayIDProvider } from 'payid-react'
 import type { Chain } from 'viem'
 
-// 0G Galileo Testnet — currently deployed & active
-const zeroGGalileo = {
-  id: 16602,
-  name: '0G Galileo Testnet',
-  nativeCurrency: { decimals: 18, name: 'A0GI', symbol: 'A0GI' },
+// Example: Arbitrum Sepolia (chain 421614)
+const arbitrumSepolia = {
+  id: 421614,
+  name: 'Arbitrum Sepolia',
+  nativeCurrency: { decimals: 18, name: 'Ether', symbol: 'ETH' },
   rpcUrls: {
-    default: { http: ['https://evmrpc-testnet.0g.ai'] },
+    default: { http: ['https://sepolia-rollup.arbitrum.io/rpc'] },
   },
   blockExplorers: {
-    default: { name: '0G Explorer', url: 'https://chainscan-galileo.0g.ai' },
+    default: { name: 'Arbitrum Sepolia Explorer', url: 'https://sepolia.arbiscan.io' },
   },
 } as const satisfies Chain
 
+// Or use any other supported chain: Sepolia, Base Sepolia, Polygon Amoy, 0G Galileo, etc.
+// See: https://docs.pay.id/network/contracts-address
+
 const wagmiConfig = createConfig({
-  chains: [zeroGGalileo],
-  transports: { [zeroGGalileo.id]: http() },
+  chains: [arbitrumSepolia],
+  transports: { [arbitrumSepolia.id]: http() },
 })
 
 const queryClient = new QueryClient()
 
-// Contract addresses for 0G Galileo Testnet (Chain 16602)
-// Full list: https://docs.pay.id/network/contracts-address
-const GALILEO_CONTRACTS = {
-  ruleAuthority:       '0x3d2F9441c589a24A524c36892268f35C6467bFF6',
-  ruleItemERC721:      '0xc22fE6CbeE7fA5A35DAf40B30D91d5D3bFfa2fD8',
-  combinedRuleStorage: '0x486a6d305742B0b5847770BF421114161440E79b',
-  payIDVerifier:       '0xE2FfE1037b996B8F66dE7cba0398A411850Ecd91',
-  payWithPayID:        '0x04eEAF2dc4Ee22E7362a60dd652E1DF450697dbb',
-  vindexRegistry:      '0x3F6ba46650f78AcAeebf906306987994555a8CCb',
+// Contract addresses for your chosen chain
+// Get addresses from: https://docs.pay.id/network/contracts-address
+const CONTRACTS = {
+  ruleAuthority:       '0x44a50e4B7051C7155C28271bA9eacFd71ee571a8',
+  ruleItemERC721:      '0xD3897D0ba0F219835b000992B21e56e8C44C7715',
+  combinedRuleStorage: '0xF674A5738D4f70006a9d3C541A0CF149E284a182',
+  payIDVerifier:       '0x8FeCc22437Ab5Bc53805B2ebe8b861A2F3177737',
+  payWithPayID:        '0x73c8B8f359AC2A16a8962e16842B8e7A1773024f',
+  vindexRegistry:      '0xa7448AEc914074e19C0bC2259E6e1FAe695aCb0f',
+  // Optional contracts (include if you use these features):
+  // aiAgentRegistry:     '0x...',
+  // aiAgentRuleManager:  '0x...',
+  // attestationVerifier: '0x...',
 }
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <PayIDProvider contracts={{ [zeroGGalileo.id]: GALILEO_CONTRACTS }}>
+        <PayIDProvider contracts={{ [arbitrumSepolia.id]: CONTRACTS }}>
           {children}
         </PayIDProvider>
       </QueryClientProvider>
@@ -206,12 +221,16 @@ The `payid` package has several subpath exports:
 
 ## Environment Variables
 
-For scripts and backend servers. Example using **0G Galileo Testnet**:
+:::tip Required for backend only
+Frontend apps don't need most of these — just configure PayIDProvider with contract addresses.
+:::
+
+For scripts and backend servers. Example using **Arbitrum Sepolia**:
 
 ```env
-# ── Network (0G Galileo Testnet) ──────────────────────────────
-RPC_URL=https://evmrpc-testnet.0g.ai
-CHAIN_ID=16602
+# ── Network (Arbitrum Sepolia) ──────────────────────────────
+RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
+CHAIN_ID=421614
 
 # ── Server wallet (backend only — never expose to browser) ─────
 PRIVATE_KEY=0x...
@@ -220,19 +239,20 @@ PRIVATE_KEY=0x...
 ISSUER_ADDRESS=0x...
 ISSUER_PRIVATE_KEY=0x...
 
-# ── 0G Storage indexer ────────────────────────────────────────
-ZG_STORAGE_INDEXER=https://indexer-storage-testnet-turbo.0g.ai
-
-# ── IPFS fallback (get free API key from pinata.cloud) ────────
+# ── Storage (optional — for fetching rules from IPFS or 0G Storage) ─
+# IPFS fallback (get free API key from pinata.cloud)
 PINATA_JWT=eyJh...
 PINATA_GATEWAY=https://gateway.pinata.cloud
 
-# ── Contract addresses — 0G Galileo (Chain 16602) ─────────────
-COMBINED_RULE_STORAGE=0x486a6d305742B0b5847770BF421114161440E79b
-RULE_ITEM_ERC721=0xc22fE6CbeE7fA5A35DAf40B30D91d5D3bFfa2fD8
-PAYID_VERIFIER=0xE2FfE1037b996B8F66dE7cba0398A411850Ecd91
-PAY_WITH_PAYID=0x04eEAF2dc4Ee22E7362a60dd652E1DF450697dbb
-RULE_AUTHORITY=0x3d2F9441c589a24A524c36892268f35C6467bFF6
+# 0G Storage indexer (optional, for 0G Storage backend)
+ZG_STORAGE_INDEXER=https://indexer-storage-testnet-turbo.0g.ai
+
+# ── Contract addresses — Arbitrum Sepolia (Chain 421614) ─────
+COMBINED_RULE_STORAGE=0xF674A5738D4f70006a9d3C541A0CF149E284a182
+RULE_ITEM_ERC721=0xD3897D0ba0F219835b000992B21e56e8C44C7715
+PAYID_VERIFIER=0x8FeCc22437Ab5Bc53805B2ebe8b861A2F3177737
+PAY_WITH_PAYID=0x73c8B8f359AC2A16a8962e16842B8e7A1773024f
+RULE_AUTHORITY=0x44a50e4B7051C7155C28271bA9eacFd71ee571a8
 ```
 
 → Full address list: [Contract Addresses →](../network/contracts-address)

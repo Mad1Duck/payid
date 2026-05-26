@@ -114,7 +114,7 @@ export const TEMPLATES: Array<Template> = [
         transform: '',
         transformArg: '',
         op: '>=',
-        value: '4500000000',
+        value: '10000000000',
       },
     ],
     unit: 'USD',
