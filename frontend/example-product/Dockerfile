@@ -1,11 +1,10 @@
 FROM oven/bun:1.3.13 AS builder
 WORKDIR /app
 COPY . .
-# Install from root so bun resolves workspace:* packages
 RUN bun install
-# Build workspace packages (payid, payid-react) so their dist/ exists before vite build
-RUN bun run --filter './packages/*' build
-# Build the frontend app
+# Build sdk-core (payid) first, then payid-react which depends on it
+RUN bun run --cwd packages/sdk-core build
+RUN bun run --cwd packages/payid-react build
 RUN cd frontend/example-product && bunx vite build
 
 FROM oven/bun:1.3.13 AS runner
