@@ -1,9 +1,11 @@
 FROM oven/bun:1.3.13 AS builder
-# Copy entire monorepo so workspace:* packages (payid, payid-react) are resolvable
 WORKDIR /app
 COPY . .
-# Install from root so bun resolves workspace packages in packages/
+# Install from root so bun resolves workspace:* packages
 RUN bun install
+# Build workspace packages (payid, payid-react) so their dist/ exists before vite build
+RUN bun run --filter './packages/*' build
+# Build the frontend app
 RUN cd frontend/example-product && bunx vite build
 
 FROM oven/bun:1.3.13 AS runner
