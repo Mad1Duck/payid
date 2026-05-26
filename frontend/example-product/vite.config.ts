@@ -17,7 +17,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: [
-      // { find: 'vite-plugin-node-polyfills/shims/buffer', replacement: 'buffer' },
+      { find: 'vite-plugin-node-polyfills/shims/buffer', replacement: 'buffer' },
       { find: 'vite-plugin-node-polyfills/shims/process', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: 'node:fs/promises', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: 'node:fs', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
