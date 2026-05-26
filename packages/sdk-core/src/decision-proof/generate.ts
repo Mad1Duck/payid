@@ -23,18 +23,33 @@ export async function generateDecisionProof(params: {
   blockTimestamp?: number;
   attestationUIDs?: string[];
 }): Promise<DecisionProof> {
-  // L1: zero-address guard
+  // L1: input validation
+  if (!params.payId || typeof params.payId !== "string" || params.payId.trim() === "") {
+    throw new Error("GENERATE_PROOF: payId must not be empty");
+  }
   if (!ethers.isAddress(params.payer) || params.payer === ethers.ZeroAddress) {
-    throw new Error("GENERATE_PROOF: payer address tidak valid atau zero");
+    throw new Error("GENERATE_PROOF: payer address is invalid or zero");
   }
   if (!ethers.isAddress(params.receiver) || params.receiver === ethers.ZeroAddress) {
-    throw new Error("GENERATE_PROOF: receiver address tidak valid atau zero");
+    throw new Error("GENERATE_PROOF: receiver address is invalid or zero");
   }
   if (!ethers.isAddress(params.verifyingContract) || params.verifyingContract === ethers.ZeroAddress) {
-    throw new Error("GENERATE_PROOF: verifyingContract tidak valid atau zero");
+    throw new Error("GENERATE_PROOF: verifyingContract is invalid or zero");
+  }
+  if (!ethers.isAddress(params.ruleAuthority)) {
+    throw new Error("GENERATE_PROOF: ruleAuthority is not a valid address");
+  }
+  if (params.asset !== undefined && !ethers.isAddress(params.asset)) {
+    throw new Error("GENERATE_PROOF: asset is not a valid address");
   }
   if (params.amount <= 0n) {
-    throw new Error("GENERATE_PROOF: amount harus > 0");
+    throw new Error("GENERATE_PROOF: amount must be > 0");
+  }
+  if (params.ttlSeconds !== undefined && (params.ttlSeconds <= 0 || !Number.isInteger(params.ttlSeconds))) {
+    throw new Error("GENERATE_PROOF: ttlSeconds must be a positive integer");
+  }
+  if (params.blockTimestamp !== undefined && params.blockTimestamp <= 0) {
+    throw new Error("GENERATE_PROOF: blockTimestamp is invalid");
   }
 
   const now = params.blockTimestamp ?? Math.floor(Date.now() / 1000);
@@ -49,7 +64,7 @@ export async function generateDecisionProof(params: {
     chainId = Number(network.chainId);
   }
   if (!chainId || chainId <= 0 || !Number.isInteger(chainId)) {
-    throw new Error(`GENERATE_PROOF: chainId tidak valid: ${chainId}`);
+    throw new Error(`GENERATE_PROOF: chainId is invalid: ${chainId}`);
   }
 
   const requiresAttestation =

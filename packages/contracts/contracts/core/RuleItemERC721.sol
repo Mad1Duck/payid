@@ -146,16 +146,18 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
 
         // Sanity-check: pastikan feed bisa dipanggil dan harga dalam batas wajar
         try IAggregatorV3(newFeed).latestRoundData() returns (
-            uint80,
+            uint80 roundId,
             int256 answer,
             uint256,
-            uint256,
-            uint80
+            uint256 updatedAt,
+            uint80 answeredInRound
         ) {
             require(
                 answer >= MIN_ETH_PRICE && answer <= MAX_ETH_PRICE,
                 "ORACLE_PRICE_OUT_OF_RANGE"
             );
+            require(answeredInRound >= roundId, "STALE_ORACLE_DATA");
+            require(block.timestamp - updatedAt <= 1 hours, "ORACLE_PRICE_STALE");
         } catch {
             revert("ORACLE_NOT_CALLABLE");
         }
@@ -288,7 +290,8 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         treasuryBalance += price;
 
         if (msg.value > price) {
-            payable(msg.sender).transfer(msg.value - price);
+            (bool ok, ) = payable(msg.sender).call{value: msg.value - price}("");
+            require(ok, "REFUND_FAILED");
         }
 
         emit Subscribed(msg.sender, subscriptionExpiry[msg.sender]);
@@ -496,7 +499,8 @@ contract RuleItemERC721 is ERC721, ERC721URIStorage, AccessControl, Pausable {
         require(ok, "DEPLOYER_TRANSFER_FAILED");
 
         if (msg.value > price) {
-            payable(msg.sender).transfer(msg.value - price);
+            (bool refundOk, ) = payable(msg.sender).call{value: msg.value - price}("");
+            require(refundOk, "REFUND_FAILED");
         }
 
         emit RuleExpiryExtended(tokenId, newExpiry);

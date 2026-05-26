@@ -1,5 +1,6 @@
 export const CHAIN_NAMES: Record<number, string> = {
   31337: 'Hardhat',
+  31338: 'Local Fork',
   16601: '0G Newton Fork',
   16602: '0G Galileo',
   11155111: 'Sepolia',

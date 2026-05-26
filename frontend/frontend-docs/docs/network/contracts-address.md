@@ -6,8 +6,14 @@ sidebar_label: Contract Addresses
 
 # Network & Contract Addresses
 
-:::info Deploy Your Own
-PAY.ID contracts need to be deployed to your target network. Use the Hardhat Ignition module in `packages/contracts/ignition/modules/PayID.ts` to deploy, then fill in the addresses below.
+:::tip Recommended Testnet — 0G Galileo (Chain 16602)
+Contracts are **already deployed and active** on 0G Galileo Testnet. Skip straight to the [0G Galileo section ↓](#0g-galileo-testnet-chain-id-16602) to start building without deploying anything.
+
+Get testnet tokens: [faucet.0g.ai](https://faucet.0g.ai) · Explorer: [chainscan-galileo.0g.ai](https://chainscan-galileo.0g.ai)
+:::
+
+:::info Deploying to Your Own Network
+To deploy to a new network, use the Hardhat Ignition module at `packages/contracts/ignition/modules/PayID.ts`, then fill in the addresses below.
 :::
 
 ---
@@ -41,11 +47,11 @@ npx hardhat ignition deploy ignition/modules/PayID.ts --network localhost
 
 ---
 
-## 0G Newton Testnet — Fork (Chain ID: 16601)
+## Local Fork (Chain ID: 31338)
 
-This is a local fork of 0G Newton Testnet used for development. All mock contracts (MockEAS, MockAgentRegistry, MockOracle) are deployed here.
+A local fork for development. All mock contracts (MockEAS, MockAgentRegistry, MockOracle) are available here. Use this when you want to test against a fork of a real network without spending real tokens.
 
-<!-- sync:16601:start -->
+<!-- sync:31338-fork:start -->
 | Contract | Address |
 |---|---|
 | `AIAgentRegistry` | `0x1eB5C49630E08e95Ba7f139BcF4B9BA171C9a8C7` |
@@ -61,13 +67,15 @@ This is a local fork of 0G Newton Testnet used for development. All mock contrac
 | `MockEAS` | `0xa31F4c0eF2935Af25370D9AE275169CCd9793DA3` |
 | `MockAgentRegistry` | `0x1f53E116c31F171e59f45f0752AEc5d1F5aA3714` |
 | `MockOracle` | `0xd038a2ee73b64f30d65802ad188f27921656f28f` |
-<!-- sync:16601:end -->
+<!-- sync:31338-fork:end -->
 
 ```bash
 cd packages/contracts
-bun run deploy:zerog-fork
-bun run sync:zerog-fork
+bun run deploy:local-fork
+bun run sync:local-fork
 ```
+
+**RPC:** `http://100.73.196.95:8550` (configure `LOCAL_FORK_RPC_URL` in `.env` to override)
 
 ---
 
@@ -98,10 +106,10 @@ bun run sync:zerog-newton
 
 ---
 
-## 0G Galileo Testnet (Chain ID: 16602)
+## 0G Galileo Testnet (Chain ID: 16602) {#0g-galileo-testnet-chain-id-16602}
 
-:::tip Deployed & Active
-Contracts deployed to 0G Galileo Testnet. Use these addresses directly.
+:::tip ✅ Deployed & Active — Recommended Starting Point
+All contracts are live. No deployment needed. Get free testnet tokens from the faucet and start building immediately.
 :::
 
 | Contract | Address |
@@ -125,11 +133,17 @@ Contracts deployed to 0G Galileo Testnet. Use these addresses directly.
 | `VindexRegistry` | `0x3F6ba46650f78AcAeebf906306987994555a8CCb` |
 
 **Network Info:**
-- **RPC**: `https://evmrpc-testnet.0g.ai`
-- **Explorer**: `https://chainscan-galileo.0g.ai`
-- **Faucet**: `https://faucet.0g.ai`
+
+| | |
+|---|---|
+| **RPC** | `https://evmrpc-testnet.0g.ai` |
+| **Chain ID** | `16602` |
+| **Currency** | `A0GI` |
+| **Explorer** | [chainscan-galileo.0g.ai](https://chainscan-galileo.0g.ai) |
+| **Faucet** | [faucet.0g.ai](https://faucet.0g.ai) |
 
 ```bash
+# Re-deploy if needed (addresses above already up-to-date)
 cd packages/contracts
 bun run deploy:zerog-galileo
 bun run sync:zerog-galileo
@@ -155,34 +169,29 @@ Contracts have not been deployed to public testnets yet. Deploy using the Igniti
 ```bash
 cd packages/contracts
 
-# Local
-npx hardhat ignition deploy ignition/modules/PayID.ts --network localhost
+# Local Hardhat node (Chain 31337)
+bun run deploy:local
 
-# 0G Newton Testnet (Fork — Chain 16601)
-bun run deploy:zerog-fork
+# Local Fork (Chain 31338)
+bun run deploy:local-fork
 
-# 0G Newton Testnet (Real — Chain 16600)
+# 0G Newton Testnet (Chain 16600)
 bun run deploy:zerog-newton
 
-# 0G Galileo Testnet (Chain 16602)
+# 0G Galileo Testnet (Chain 16602) ← recommended
 bun run deploy:zerog-galileo
 
-# Lisk Sepolia
-npx hardhat ignition deploy ignition/modules/PayID.ts \
-  --network liskSepolia \
-  --parameters ignition/parameters/liskSepolia.json
-
-# Monad Testnet
-npx hardhat ignition deploy ignition/modules/PayID.ts \
-  --network monadTestnet \
-  --parameters ignition/parameters/monadTestnet.json
+# Other testnets
+bun run deploy:lisk-sepolia
+bun run deploy:monad
+bun run deploy:polygon-amoy
 ```
 
-After deploying, copy the addresses from `ignition/deployments/<network>/deployed_addresses.json`, or run the sync script:
+After deploying, run the sync script to copy addresses into `payid-react` and the frontend:
 
 ```bash
-# Sync to frontend and payid-react
-bun run sync:zerog-fork      # for 16601
+bun run sync:local           # for 31337
+bun run sync:local-fork      # for 31338
 bun run sync:zerog-newton    # for 16600
 bun run sync:zerog-galileo   # for 16602
 ```

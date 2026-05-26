@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { parseUnits } from 'viem';
 import { useAccount } from 'wagmi';
 import { usePayIDQR } from 'payid-react';
 import { useV4Palette } from '@/components/v4/theme';
@@ -12,16 +13,16 @@ export function useReceivePage() {
   const payId = isConnected && address ? `${address}@pay.id` : 'connect@pay.id';
   const displayPayId = isConnected && address ? `${shortAddr(address)}@pay.id` : 'connect@pay.id';
   const walletAddress = address ?? '';
-  
+
   // Independent copied states
   const [copiedPayId, setCopiedPayId] = useState(false);
   const [copiedPayload, setCopiedPayload] = useState(false);
   const [copiedWallet, setCopiedWallet] = useState(false);
-  
+
   const [showAddress, setShowAddress] = useState(false);
 
   const { status, payload, qrDataUrl, error: qrError, generate, reset } = usePayIDQR();
-  
+
   // Persisted state
   const [localPayload, setLocalPayload] = useState<string | null>(null);
   const [localQrDataUrl, setLocalQrDataUrl] = useState<string | null>(null);
@@ -81,7 +82,7 @@ export function useReceivePage() {
       } catch (e) {
         console.error('Failed to decode expiresAt from payload:', e);
       }
-      
+
       setLocalPayload(payload);
       setLocalQrDataUrl(qrDataUrl || null);
       setLocalExpiresAt(expiresAt);
@@ -98,7 +99,7 @@ export function useReceivePage() {
     if (!address) return;
     const expiresAt = Math.floor(Date.now() / 1000) + (Number(expiryMin) || 60) * 60;
     const parsedMax = maxAmount && parseFloat(maxAmount) > 0
-      ? BigInt(Math.floor(parseFloat(maxAmount) * 1e18))
+      ? parseUnits(maxAmount, 18)
       : BigInt('1000000000000000000000000');
     generate({
       payId,
@@ -171,7 +172,7 @@ export function useReceivePage() {
         url: shareUrl,
       })
         .then(() => toast.success('Shared successfully!'))
-        .catch(() => {});
+        .catch(() => { });
     } else {
       navigator.clipboard.writeText(shareUrl);
       toast.success(activePayload ? 'Direct checkout link copied to clipboard!' : 'Direct payment link copied to clipboard!');
@@ -192,9 +193,9 @@ export function useReceivePage() {
     p, address, isConnected, payId, displayPayId, walletAddress,
     copiedPayId, copiedPayload, copiedWallet,
     showAddress, setShowAddress,
-    status, 
-    payload: localPayload || payload, 
-    qrDataUrl: localQrDataUrl || qrDataUrl, 
+    status,
+    payload: localPayload || payload,
+    qrDataUrl: localQrDataUrl || qrDataUrl,
     qrError,
     expiresAt: localExpiresAt,
     maxAmount, setMaxAmount, expiryMin, setExpiryMin,

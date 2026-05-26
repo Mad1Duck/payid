@@ -5,6 +5,7 @@ import "./PayIDVerifier.sol";
 import "./AttestationVerifier.sol";
 import "../interfaces/IAggregatorV3.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title PayWithPayID
@@ -20,7 +21,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * dengan address yang sama, initialize() akan menerima address yang sama
  * di semua chain → bytecode + storage identik.
  */
-contract PayWithPayID {
+contract PayWithPayID is ReentrancyGuard {
 
     // immutable di-encode ke bytecode → bytecode beda antar chain → CREATE2 address beda
     PayIDVerifier       public verifier;
@@ -94,7 +95,7 @@ contract PayWithPayID {
         PayIDVerifier.Decision  calldata d,
         bytes                   calldata sig,
         bytes32[]               calldata attestationUIDs
-    ) external payable onlyInitialized {
+    ) external payable onlyInitialized nonReentrant {
         require(d.asset == address(0), "ASSET_NOT_NATIVE");
         require(msg.value == d.amount,  "AMOUNT_MISMATCH");
 
@@ -120,7 +121,7 @@ contract PayWithPayID {
         PayIDVerifier.Decision  calldata d,
         bytes                   calldata sig,
         bytes32[]               calldata attestationUIDs
-    ) external onlyInitialized {
+    ) external onlyInitialized nonReentrant {
         require(d.asset != address(0), "ASSET_NOT_ERC20");
 
         if (d.requiresAttestation) {
@@ -156,12 +157,15 @@ contract PayWithPayID {
         address                 tokenPriceOracle,
         uint256                 minUsdValue,
         uint8                   tokenDecimals
-    ) external onlyInitialized {
+    ) external onlyInitialized nonReentrant {
         require(d.asset != address(0), "ASSET_NOT_ERC20");
 
         if (tokenPriceOracle != address(0) && minUsdValue > 0) {
-            (, int256 price,,,) = IAggregatorV3(tokenPriceOracle).latestRoundData();
+            (uint80 roundId, int256 price,, uint256 updatedAt, uint80 answeredInRound) =
+                IAggregatorV3(tokenPriceOracle).latestRoundData();
             require(price > 0, "INVALID_ORACLE_PRICE");
+            require(answeredInRound >= roundId, "STALE_ORACLE_DATA");
+            require(block.timestamp - updatedAt <= 1 hours, "ORACLE_PRICE_STALE");
 
             uint256 usdValue = (d.amount * uint256(price)) / (10 ** (tokenDecimals + 8));
             require(usdValue >= minUsdValue, "BELOW_USD_MINIMUM");

@@ -14,6 +14,8 @@ export async function runWasmRule(
 
 // Core evaluation ─
 
+const MAX_RULE_DEPTH = 10;
+
 function evaluateRule(context: any, config: any): RuleResult {
   const rules: any[] = config?.rules;
   if (!Array.isArray(rules) || rules.length === 0) {
@@ -21,12 +23,15 @@ function evaluateRule(context: any, config: any): RuleResult {
   }
 
   const logic: string = config?.logic ?? "AND";
-  return evalRules(context, rules, logic);
+  return evalRules(context, rules, logic, 0);
 }
 
-function evalRules(context: any, rules: any[], logic: string): RuleResult {
+function evalRules(context: any, rules: any[], logic: string, depth: number): RuleResult {
+  if (depth > MAX_RULE_DEPTH) {
+    return { decision: "REJECT", code: "MAX_DEPTH_EXCEEDED", reason: `rule nesting exceeds the limit of ${MAX_RULE_DEPTH}` };
+  }
   for (const rule of rules) {
-    const res = evalOneRule(context, rule);
+    const res = evalOneRule(context, rule, depth);
     if (res.decision === "REJECT" && logic === "AND") return res;
     if (res.decision === "ALLOW" && logic === "OR") return res;
   }
@@ -34,14 +39,14 @@ function evalRules(context: any, rules: any[], logic: string): RuleResult {
   return { decision: "REJECT", code: "NO_RULE_MATCH", reason: "no rule matched in OR group" };
 }
 
-function evalOneRule(context: any, rule: any): RuleResult {
+function evalOneRule(context: any, rule: any, depth: number): RuleResult {
   const ruleId = rule?.id ?? "UNKNOWN_RULE";
   const message = rule?.message ?? "";
 
   // Format C: nested rules
   if (Array.isArray(rule?.rules)) {
     const subLogic = rule?.logic ?? "AND";
-    const res = evalRules(context, rule.rules, subLogic);
+    const res = evalRules(context, rule.rules, subLogic, depth + 1);
     if (res.decision === "REJECT" && message) {
       return { decision: "REJECT", code: ruleId, reason: message };
     }

@@ -2,6 +2,8 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title EscrowMilestone
@@ -9,7 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  *         Client locks funds. Freelancer delivers milestones.
  *         VRAN sentinel confirms delivery → funds release.
  */
-contract EscrowMilestone {
+contract EscrowMilestone is Ownable, ReentrancyGuard {
     enum Status { Pending, Active, Disputed, Completed, Refunded }
 
     struct Milestone {
@@ -37,6 +39,8 @@ contract EscrowMilestone {
 
     // Trusted arbiters (VRAN sentinels with high reputation)
     mapping(address => bool) public arbiters;
+
+    constructor() Ownable(msg.sender) {}
 
     error NotClient();
     error NotFreelancer();
@@ -71,8 +75,8 @@ contract EscrowMilestone {
         _;
     }
 
-    function setArbiter(address arbiter, bool allowed) external {
-        // In production, restrict to owner/governance
+    function setArbiter(address arbiter, bool allowed) external onlyOwner {
+        require(arbiter != address(0), "ZERO_ADDRESS");
         arbiters[arbiter] = allowed;
     }
 
@@ -143,7 +147,7 @@ contract EscrowMilestone {
     function releaseMilestone(
         uint256 escrowId,
         uint256 index
-    ) external onlyArbiter {
+    ) external onlyArbiter nonReentrant {
         Escrow storage e = escrows[escrowId];
         if (index >= e.milestones.length) revert InvalidMilestone();
         if (e.milestones[index].released) revert AlreadyReleased();
@@ -170,7 +174,7 @@ contract EscrowMilestone {
     /**
      * @notice Arbiter resolves dispute: refund remaining to client.
      */
-    function resolveRefund(uint256 escrowId) external onlyArbiter {
+    function resolveRefund(uint256 escrowId) external onlyArbiter nonReentrant {
         Escrow storage e = escrows[escrowId];
         if (e.status != Status.Disputed) revert NotDisputed();
         uint256 remaining = e.total - e.released;
@@ -182,7 +186,7 @@ contract EscrowMilestone {
     /**
      * @notice Auto-refund if deadline passed and not completed.
      */
-    function autoRefund(uint256 escrowId) external {
+    function autoRefund(uint256 escrowId) external nonReentrant {
         Escrow storage e = escrows[escrowId];
         if (block.timestamp < e.deadline) revert DeadlinePassed();
         if (e.status != Status.Active && e.status != Status.Disputed) revert NotDisputed();

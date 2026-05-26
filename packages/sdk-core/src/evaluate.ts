@@ -18,8 +18,21 @@ export async function evaluate(
   if (!context.tx) {
     throw new Error("evaluate(): context.tx is required");
   }
+  if (context.tx.chainId !== undefined && (!Number.isInteger(context.tx.chainId) || context.tx.chainId <= 0)) {
+    throw new Error(`evaluate(): context.tx.chainId is invalid: ${context.tx.chainId}`);
+  }
+  if (context.tx.amount !== undefined) {
+    const amt = BigInt(context.tx.amount);
+    if (amt <= 0n) throw new Error("evaluate(): context.tx.amount must be > 0");
+  }
   if (!ruleConfig || typeof ruleConfig !== "object") {
     throw new Error("evaluate(): ruleConfig is required");
+  }
+  if (ruleConfig.logic !== "AND" && ruleConfig.logic !== "OR") {
+    throw new Error(`evaluate(): ruleConfig.logic must be "AND" or "OR", got: ${ruleConfig.logic}`);
+  }
+  if (!Array.isArray(ruleConfig.rules) || ruleConfig.rules.length === 0) {
+    throw new Error("evaluate(): ruleConfig.rules must be a non-empty array");
   }
 
   let result: RuleResult;

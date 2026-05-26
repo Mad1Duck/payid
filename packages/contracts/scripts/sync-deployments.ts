@@ -1,33 +1,101 @@
 /**
  * sync-deployments.ts
- * Reads Hardhat Ignition deployment results and updates addresses.ts
- * in both frontend/example-product and frontend-docs.
+ * Reads Hardhat Ignition deployment results and updates:
+ *   - addresses.ts        (contract addresses per chain)
+ *   - chainRegistry.ts    (viem Chain objects — auto-generated, imported by main.tsx)
+ *   - chain.ts            (chainMeta — auto-generated)
  *
  * Usage:
  *   bun run scripts/sync-deployments.ts
  *   bun run scripts/sync-deployments.ts --network zeroGGalileo
+ *   bun run scripts/sync-deployments.ts --network myChain --rpc-url http://... --chain-name "My Chain" --native-symbol ETH
  */
 
 import fs from 'fs';
 import path from 'path';
 
-// ─── Config ──────────────────────────────────────────────────────────────────
+// ─── Single source of truth for all known chains ─────────────────────────────
+//
+// To add a new chain permanently:
+//   1. Add an entry here with all metadata
+//   2. Run sync — chainRegistry.ts, chain.ts, and addresses.ts are all auto-updated
+//   That's it. No manual edits to main.tsx or any other file.
 
-const NETWORK_CHAIN_MAP: Record<string, number> = {
-  zeroGTestnet: 16600,
-  zeroGFork: 16601,
-  zeroGGalileo: 16602,
-  zeroGMainnet: 16661,
-  devnode: 31337,
-  localhost: 31337,
+type ChainFullMeta = {
+  networkName: string;    // name used in --network flag and hardhat config
+  label: string;          // displayed in UI
+  isTestnet: boolean;
+  deployDirs: string[];   // candidate ignition deployment dir names
+  envVar?: string;        // VITE_xxx_RPC_URL override (optional)
+  defaultRpcUrl: string;  // fallback RPC URL
+  nativeCurrency: { name: string; symbol: string; decimals: number };
+  blockExplorer?: { name: string; url: string };
 };
 
-const CHAIN_META: Record<number, { name: string, label: string, isTestnet: boolean; }> = {
-  16600: { name: "zeroGTestnet", label: "0G Newton Testnet", isTestnet: true },
-  16601: { name: "zeroGFork", label: "0G Newton Testnet (Fork)", isTestnet: true },
-  16602: { name: "zeroGGalileo", label: "0G Galileo Testnet", isTestnet: true },
-  137: { name: "polygon", label: "Polygon", isTestnet: false },
-  31337: { name: "devnode", label: "Devnode", isTestnet: true },
+const CHAIN_FULL_META: Record<number, ChainFullMeta> = {
+  16600: {
+    networkName: 'zeroGTestnet',
+    label: '0G Newton Testnet',
+    isTestnet: true,
+    deployDirs: ['zerog-newton-v1'],
+    envVar: 'VITE_ZEROG_NEWTON_RPC_URL',
+    defaultRpcUrl: 'https://16600.rpc.thirdweb.com',
+    nativeCurrency: { name: 'A0GI', symbol: 'A0GI', decimals: 18 },
+    blockExplorer: { name: '0G Explorer', url: 'https://chainscan-newton.0g.ai' },
+  },
+  16601: {
+    networkName: 'zeroGFork',
+    label: '0G Newton Testnet (Fork)',
+    isTestnet: true,
+    deployDirs: ['zerog-fork-v1'],
+    envVar: 'VITE_ZEROG_FORK_RPC_URL',
+    defaultRpcUrl: 'http://100.73.196.95:8550',
+    nativeCurrency: { name: 'A0GI', symbol: 'A0GI', decimals: 18 },
+    blockExplorer: { name: '0G Explorer', url: 'https://chainscan-newton.0g.ai' },
+  },
+  16602: {
+    networkName: 'zeroGGalileo',
+    label: '0G Galileo Testnet',
+    isTestnet: true,
+    deployDirs: ['zerog-galileo-v1', 'chain-16602'],
+    envVar: 'VITE_ZEROG_GALILEO_RPC_URL',
+    defaultRpcUrl: 'https://evmrpc-testnet.0g.ai',
+    nativeCurrency: { name: 'A0GI', symbol: 'A0GI', decimals: 18 },
+    blockExplorer: { name: '0G Galileo Explorer', url: 'https://chainscan-galileo.0g.ai' },
+  },
+  16661: {
+    networkName: 'zeroGMainnet',
+    label: '0G Mainnet',
+    isTestnet: false,
+    deployDirs: ['zerog-mainnet-v1'],
+    envVar: 'VITE_ZEROG_MAINNET_RPC_URL',
+    defaultRpcUrl: 'https://evmrpc.0g.ai',
+    nativeCurrency: { name: '0G', symbol: '0G', decimals: 18 },
+    blockExplorer: { name: '0G Explorer', url: 'https://chainscan.0g.ai' },
+  },
+  31337: {
+    networkName: 'devnode',
+    label: 'DevNode',
+    isTestnet: true,
+    deployDirs: ['payid-devnode', 'chain-31337'],
+    envVar: 'VITE_DEV_NODE_RPC_URL',
+    defaultRpcUrl: '/rpc',
+    nativeCurrency: { name: 'Dev Token', symbol: 'DEV', decimals: 18 },
+  },
+  31338: {
+    networkName: 'localFork',
+    label: 'Local Fork',
+    isTestnet: true,
+    deployDirs: ['local-fork-v1', 'chain-31338'],
+    envVar: 'VITE_LOCAL_FORK_RPC_URL',
+    defaultRpcUrl: 'http://100.73.196.95:8550',
+    nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+  },
+};
+
+// Aliases: hardhat network name → canonical networkName in CHAIN_FULL_META
+const NETWORK_ALIASES: Record<string, string> = {
+  localhost: 'devnode',
 };
 
 // Contract name → key in addresses.ts
@@ -51,29 +119,43 @@ const CONTRACT_KEY_MAP: Record<string, string> = {
   'PayIDModule#TimeLockVesting': 'TimeLockVesting',
 };
 
-// Target frontend addresses.ts files to update
 const REPO_ROOT = path.resolve(__dirname, '../../..');
-const TARGETS = [
+
+// Target addresses.ts files
+const ADDRESS_TARGETS = [
   path.join(REPO_ROOT, 'frontend/example-product/src/constants/contracts/addresses.ts'),
   path.join(REPO_ROOT, 'frontend/frontend-docs/src/constants/contracts/addresses.ts'),
 ];
 
-// Named --deployment-id directories produced by `deploy:*` scripts
-const CHAIN_DEPLOY_DIRS: Record<number, string[]> = {
-  16600: ['zerog-newton-v1'],
-  16601: ['zerog-fork-v1'],
-  16602: ['zerog-galileo-v1'],
-  16661: ['zerog-mainnet-v1'],
-  31337: ['payid-devnode', 'chain-31337'],
-};
+// Generated chain files (one per frontend app)
+const CHAIN_REGISTRY_TARGET = path.join(REPO_ROOT, 'frontend/example-product/src/constants/contracts/chainRegistry.ts');
+const CHAIN_META_TARGET = path.join(REPO_ROOT, 'frontend/example-product/src/constants/contracts/chain.ts');
+
+// ─── Derived maps (from CHAIN_FULL_META — do not edit manually) ──────────────
+
+function buildNetworkChainMap(): Record<string, number> {
+  const map: Record<string, number> = {};
+  for (const [id, meta] of Object.entries(CHAIN_FULL_META)) {
+    map[meta.networkName] = Number(id);
+  }
+  for (const [alias, canonical] of Object.entries(NETWORK_ALIASES)) {
+    const target = Object.values(CHAIN_FULL_META).find(m => m.networkName === canonical);
+    if (target) {
+      const id = Object.entries(CHAIN_FULL_META).find(([, m]) => m.networkName === canonical)?.[0];
+      if (id) map[alias] = Number(id);
+    }
+  }
+  return map;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function findDeploymentDir(chainId: number): string | null {
   const ignitionDeployments = path.join(__dirname, '../ignition/deployments');
+  const meta = CHAIN_FULL_META[chainId];
   const candidates = [
     `chain-${chainId}`,
-    ...(CHAIN_DEPLOY_DIRS[chainId] ?? []),
+    ...(meta?.deployDirs ?? []),
   ];
   for (const c of candidates) {
     const full = path.join(ignitionDeployments, c);
@@ -91,8 +173,8 @@ function readDeployedAddresses(deployDir: string): Record<string, string> {
 }
 
 function buildAddressBlock(chainId: number, addresses: Record<string, string>): string {
-  const meta = CHAIN_META[chainId];
-  const label = meta ? `${meta.label} \u2014 Chain ${chainId}` : `Chain ${chainId}`;
+  const meta = CHAIN_FULL_META[chainId];
+  const label = meta ? `${meta.label} — Chain ${chainId}` : `Chain ${chainId}`;
   const lines: string[] = [];
   for (const [ignitionKey, tsKey] of Object.entries(CONTRACT_KEY_MAP)) {
     const addr = addresses[ignitionKey] ?? '0x0000000000000000000000000000000000000000';
@@ -108,53 +190,144 @@ function updateAddressesFile(filePath: string, chainId: number, newBlock: string
   }
 
   const raw = fs.readFileSync(filePath, 'utf-8');
-  // Normalise line endings; remember original style
   const crlf = raw.includes('\r\n');
   const normalized = raw.replace(/\r\n/g, '\n');
   const lines = normalized.split('\n');
 
-  // Line-based block detection: regex over full content is unreliable because
-  // every address property ends with `as \`0x${string}\`` which contains `{` and `}`
-  // and breaks greedy [^}]* patterns.
   const openRe = new RegExp(`^  ${chainId}:\\s*\\{\\s*$`);
   let openIdx = -1;
   let closeIdx = -1;
 
   for (let i = 0; i < lines.length; i++) {
     if (openRe.test(lines[i])) {
-      // Include the preceding comment line in the replacement range if present
       openIdx = (i > 0 && /^\s*\/\//.test(lines[i - 1])) ? i - 1 : i;
-      // Closing line is exactly `  }` or `  },` at the same 2-space indent
       for (let j = i + 1; j < lines.length; j++) {
-        if (/^  \},?$/.test(lines[j])) {
-          closeIdx = j;
-          break;
-        }
+        if (/^  \},?$/.test(lines[j])) { closeIdx = j; break; }
       }
       break;
     }
   }
 
   let content: string;
-
   if (openIdx !== -1 && closeIdx !== -1) {
     const before = lines.slice(0, openIdx);
     const after = lines.slice(closeIdx + 1);
     content = [...before, newBlock + ',', ...after].join('\n');
     console.log(`  ✅ Updated chain ${chainId} block`);
   } else {
-    // Block not found — insert before the file's closing `} as const`
     content = normalized.replace(/(\n} as const)/, `,\n\n${newBlock}\n$1`);
     console.log(`  ✅ Inserted chain ${chainId} block`);
   }
 
-  // Update header comment
   content = content.replace(/\/\/ Last synced:.*/, `// Last synced: ${new Date().toISOString()}`);
-
-  // Restore original line endings
   if (crlf) content = content.replace(/\n/g, '\r\n');
-
   fs.writeFileSync(filePath, content, 'utf-8');
+}
+
+// ─── Generated file: chainRegistry.ts ────────────────────────────────────────
+
+function buildChainRegistryFile(
+  extraChain?: { id: number; label: string; envVar: string; defaultRpcUrl: string; nativeCurrency: ChainFullMeta['nativeCurrency']; blockExplorer?: ChainFullMeta['blockExplorer'] }
+): string {
+  const allChains = { ...CHAIN_FULL_META };
+  if (extraChain) {
+    allChains[extraChain.id] = {
+      networkName: `chain${extraChain.id}`,
+      label: extraChain.label,
+      isTestnet: true,
+      deployDirs: [`chain-${extraChain.id}`],
+      envVar: extraChain.envVar,
+      defaultRpcUrl: extraChain.defaultRpcUrl,
+      nativeCurrency: extraChain.nativeCurrency,
+      blockExplorer: extraChain.blockExplorer,
+    };
+  }
+
+  const chainBlocks = Object.entries(allChains).map(([id, meta]) => {
+    const rpcExpr = meta.envVar
+      ? `import.meta.env.${meta.envVar} ?? '${meta.defaultRpcUrl}'`
+      : `'${meta.defaultRpcUrl}'`;
+    const explorerBlock = meta.blockExplorer
+      ? `\n    blockExplorers: {\n      default: { name: '${meta.blockExplorer.name}', url: '${meta.blockExplorer.url}' },\n    },`
+      : '';
+    return (
+      `  // ${meta.label}\n` +
+      `  ${id}: {\n` +
+      `    id: ${id},\n` +
+      `    name: '${meta.label}',\n` +
+      `    nativeCurrency: { decimals: ${meta.nativeCurrency.decimals}, name: '${meta.nativeCurrency.name}', symbol: '${meta.nativeCurrency.symbol}' },\n` +
+      `    rpcUrls: {\n` +
+      `      default: { http: [${rpcExpr}] },\n` +
+      `      public: { http: [${rpcExpr}] },\n` +
+      `    },${explorerBlock}\n` +
+      `  }`
+    );
+  });
+
+  return (
+    `// Auto-generated by sync-deployments.ts — do not edit manually\n` +
+    `// Last synced: ${new Date().toISOString()}\n` +
+    `//\n` +
+    `// To add a new chain: edit CHAIN_FULL_META in packages/contracts/scripts/sync-deployments.ts\n` +
+    `// then run the sync command. This file will be regenerated automatically.\n\n` +
+    `import type { Chain } from 'viem'\n\n` +
+    `export const CHAIN_REGISTRY: Record<number, Chain> = {\n` +
+    chainBlocks.join(',\n\n') + ',\n' +
+    `}\n`
+  );
+}
+
+function writeChainRegistry(extraChain?: Parameters<typeof buildChainRegistryFile>[0]): void {
+  if (!fs.existsSync(path.dirname(CHAIN_REGISTRY_TARGET))) {
+    console.warn(`  ⚠️  chainRegistry target dir not found, skipping`);
+    return;
+  }
+  const content = buildChainRegistryFile(extraChain);
+  fs.writeFileSync(CHAIN_REGISTRY_TARGET, content, 'utf-8');
+  console.log(`  ✅ Generated chainRegistry.ts (${Object.keys(CHAIN_FULL_META).length + (extraChain ? 1 : 0)} chains)`);
+}
+
+// ─── Generated file: chain.ts (chainMeta) ────────────────────────────────────
+
+function buildChainMetaFile(
+  extraChain?: { id: number; label: string; networkName: string; isTestnet: boolean }
+): string {
+  const allChains = { ...CHAIN_FULL_META };
+  if (extraChain) {
+    allChains[extraChain.id] = {
+      ...allChains[extraChain.id],
+      networkName: extraChain.networkName,
+      label: extraChain.label,
+      isTestnet: extraChain.isTestnet,
+    } as ChainFullMeta;
+  }
+
+  const entries = Object.entries(allChains).map(([id, meta]) => {
+    const isLocalProp = !meta.isTestnet
+      ? `isTestnet: false as const`
+      : Number(id) >= 31337
+        ? `isTestnet: true as const`
+        : `isTestnet: true as const`;
+    return `  ${id}: { name: "${meta.networkName}", label: "${meta.label}", ${isLocalProp} }`;
+  });
+
+  return (
+    `// Auto-generated by sync-deployments.ts — do not edit manually\n\n` +
+    `export const chainMeta = {\n` +
+    entries.join(',\n') + ',\n' +
+    `} as const;\n\n` +
+    `export type ChainId = keyof typeof chainMeta;\n`
+  );
+}
+
+function writeChainMeta(extraChain?: Parameters<typeof buildChainMetaFile>[0]): void {
+  if (!fs.existsSync(path.dirname(CHAIN_META_TARGET))) {
+    console.warn(`  ⚠️  chain.ts target dir not found, skipping`);
+    return;
+  }
+  const content = buildChainMetaFile(extraChain);
+  fs.writeFileSync(CHAIN_META_TARGET, content, 'utf-8');
+  console.log(`  ✅ Generated chain.ts`);
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -162,49 +335,74 @@ function updateAddressesFile(filePath: string, chainId: number, newBlock: string
 async function main() {
   const args = process.argv.slice(2);
 
-  // Resolve --network <name> flag (--network=name or --network name)
-  const networkFlagIdx = args.indexOf('--network');
-  const networkFlagName =
-    args.find(a => a.startsWith('--network='))?.split('=')[1] ??
-    (networkFlagIdx !== -1 ? args[networkFlagIdx + 1] : undefined);
+  const getFlag = (name: string) =>
+    args.find(a => a.startsWith(`--${name}=`))?.split('=')[1] ??
+    (() => { const i = args.indexOf(`--${name}`); return i !== -1 ? args[i + 1] : undefined; })();
 
-  // First positional arg that is not a flag (e.g. raw chain ID)
+  const networkFlagName = getFlag('network');
+  const rpcUrlFlag = getFlag('rpc-url');
+  const chainNameFlag = getFlag('chain-name');
+  const nativeSymbolFlag = getFlag('native-symbol') ?? 'ETH';
   const positional = args.find(a => !a.startsWith('-'));
+
+  const NETWORK_CHAIN_MAP = buildNetworkChainMap();
 
   let chainId: number;
   let networkArg: string;
 
   if (networkFlagName) {
-    // --network <name>
-    networkArg = networkFlagName;
+    networkArg = NETWORK_ALIASES[networkFlagName] ?? networkFlagName;
     const resolved = NETWORK_CHAIN_MAP[networkArg];
     if (!resolved) {
-      console.error(`❌ Unknown network: "${networkArg}". Known: ${Object.keys(NETWORK_CHAIN_MAP).join(', ')}`);
+      console.error(`❌ Unknown network: "${networkFlagName}". Known: ${Object.keys(NETWORK_CHAIN_MAP).join(', ')}`);
       process.exit(1);
     }
     chainId = resolved;
   } else if (positional && /^\d+$/.test(positional)) {
-    // Raw chain ID passed as positional argument (e.g. sync:zerog-fork passes 16601)
     chainId = Number(positional);
     networkArg =
-      Object.keys(NETWORK_CHAIN_MAP).find(k => NETWORK_CHAIN_MAP[k] === chainId) ??
+      Object.entries(NETWORK_CHAIN_MAP).find(([, id]) => id === chainId)?.[0] ??
       String(chainId);
   } else if (positional) {
-    // Network name as positional argument
-    networkArg = positional;
+    networkArg = NETWORK_ALIASES[positional] ?? positional;
     const resolved = NETWORK_CHAIN_MAP[networkArg];
     if (!resolved) {
-      console.error(`❌ Unknown network: "${networkArg}". Known: ${Object.keys(NETWORK_CHAIN_MAP).join(', ')}`);
+      console.error(`❌ Unknown network: "${positional}". Known: ${Object.keys(NETWORK_CHAIN_MAP).join(', ')}`);
       process.exit(1);
     }
     chainId = resolved;
   } else {
-    // Default
     networkArg = 'zeroGGalileo';
     chainId = NETWORK_CHAIN_MAP[networkArg];
   }
 
   console.log(`\n🔍 Syncing deployments for network: ${networkArg} (Chain ID: ${chainId})\n`);
+
+  // Handle completely unknown chain (not in CHAIN_FULL_META)
+  let extraChain: Parameters<typeof writeChainRegistry>[0] | undefined;
+  if (!CHAIN_FULL_META[chainId]) {
+    if (!rpcUrlFlag) {
+      console.error(
+        `❌ Chain ${chainId} is not in CHAIN_FULL_META.\n` +
+        `   Either add it to sync-deployments.ts, or pass --rpc-url <url> --chain-name "<name>" for a one-time sync.`
+      );
+      process.exit(1);
+    }
+    const label = chainNameFlag ?? `Chain ${chainId}`;
+    const envVar = `VITE_CHAIN_${chainId}_RPC_URL`;
+    extraChain = {
+      id: chainId,
+      label,
+      envVar,
+      defaultRpcUrl: rpcUrlFlag,
+      nativeCurrency: { name: nativeSymbolFlag, symbol: nativeSymbolFlag, decimals: 18 },
+    };
+    console.warn(
+      `⚠️  Chain ${chainId} is not in CHAIN_FULL_META.\n` +
+      `   Syncing with --rpc-url as a one-time override.\n` +
+      `   To make it permanent, add it to CHAIN_FULL_META in sync-deployments.ts.\n`
+    );
+  }
 
   const deployDir = findDeploymentDir(chainId);
   if (!deployDir) {
@@ -217,17 +415,20 @@ async function main() {
 
   console.log(`\n📋 Deployed contracts found: ${Object.keys(rawAddresses).length}`);
   for (const [k, v] of Object.entries(rawAddresses)) {
-    const friendlyKey = CONTRACT_KEY_MAP[k] || k;
-    console.log(`   ${friendlyKey}: ${v}`);
+    console.log(`   ${CONTRACT_KEY_MAP[k] || k}: ${v}`);
   }
 
   const newBlock = buildAddressBlock(chainId, rawAddresses);
 
-  console.log('\n📝 Updating frontend files...');
-  for (const target of TARGETS) {
+  console.log('\n📝 Updating addresses.ts...');
+  for (const target of ADDRESS_TARGETS) {
     console.log(`\n  → ${path.relative(REPO_ROOT, target)}`);
     updateAddressesFile(target, chainId, newBlock);
   }
+
+  console.log('\n📝 Regenerating chainRegistry.ts and chain.ts...');
+  writeChainRegistry(extraChain);
+  writeChainMeta(extraChain ? { id: chainId, label: extraChain.label, networkName: `chain${chainId}`, isTestnet: true } : undefined);
 
   console.log(`\n✅ Sync complete for chain ${chainId} (${networkArg})\n`);
 }

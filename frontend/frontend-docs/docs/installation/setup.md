@@ -58,35 +58,46 @@ npm packages are `payid` (core SDK) and `payid-react` (React hooks). Not `@payid
 ```tsx
 // main.tsx (or _app.tsx / layout.tsx)
 import { WagmiProvider, createConfig, http } from 'wagmi'
-import { mainnet, hardhat } from 'wagmi/chains'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PayIDProvider } from 'payid-react'
+import type { Chain } from 'viem'
+
+// 0G Galileo Testnet — currently deployed & active
+const zeroGGalileo = {
+  id: 16602,
+  name: '0G Galileo Testnet',
+  nativeCurrency: { decimals: 18, name: 'A0GI', symbol: 'A0GI' },
+  rpcUrls: {
+    default: { http: ['https://evmrpc-testnet.0g.ai'] },
+  },
+  blockExplorers: {
+    default: { name: '0G Explorer', url: 'https://chainscan-galileo.0g.ai' },
+  },
+} as const satisfies Chain
 
 const wagmiConfig = createConfig({
-  chains: [mainnet],
-  transports: { [mainnet.id]: http() },
+  chains: [zeroGGalileo],
+  transports: { [zeroGGalileo.id]: http() },
 })
 
 const queryClient = new QueryClient()
+
+// Contract addresses for 0G Galileo Testnet (Chain 16602)
+// Full list: https://docs.pay.id/network/contracts-address
+const GALILEO_CONTRACTS = {
+  ruleAuthority:       '0x3d2F9441c589a24A524c36892268f35C6467bFF6',
+  ruleItemERC721:      '0xc22fE6CbeE7fA5A35DAf40B30D91d5D3bFfa2fD8',
+  combinedRuleStorage: '0x486a6d305742B0b5847770BF421114161440E79b',
+  payIDVerifier:       '0xE2FfE1037b996B8F66dE7cba0398A411850Ecd91',
+  payWithPayID:        '0x04eEAF2dc4Ee22E7362a60dd652E1DF450697dbb',
+  vindexRegistry:      '0x3F6ba46650f78AcAeebf906306987994555a8CCb',
+}
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <PayIDProvider
-          contracts={{
-            // Override contract addresses per chainId
-            // Get addresses from: docs/network/contracts-address
-            [mainnet.id]: {
-              ruleAuthority:       '0x...',
-              ruleItemERC721:      '0x...',
-              combinedRuleStorage: '0x...',
-              payIDVerifier:       '0x...',
-              payWithPayID:        '0x...',
-            },
-          }}
-          ipfsGateway="https://gateway.pinata.cloud/ipfs/"
-        >
+        <PayIDProvider contracts={{ [zeroGGalileo.id]: GALILEO_CONTRACTS }}>
           {children}
         </PayIDProvider>
       </QueryClientProvider>
@@ -195,30 +206,36 @@ The `payid` package has several subpath exports:
 
 ## Environment Variables
 
-For scripts and backend servers:
+For scripts and backend servers. Example using **0G Galileo Testnet**:
 
 ```env
-# Network
-RPC_URL=https://your-rpc-url.com
-CHAIN_ID=1
+# ── Network (0G Galileo Testnet) ──────────────────────────────
+RPC_URL=https://evmrpc-testnet.0g.ai
+CHAIN_ID=16602
 
-# Server wallet (backend only — never expose to browser)
+# ── Server wallet (backend only — never expose to browser) ─────
 PRIVATE_KEY=0x...
 
-# Issuer wallets for Context V2 (server mode only)
+# ── Issuer wallets for Context V2 (server mode only) ──────────
 ISSUER_ADDRESS=0x...
 ISSUER_PRIVATE_KEY=0x...
 
-# IPFS (get free API key from pinata.cloud)
+# ── 0G Storage indexer ────────────────────────────────────────
+ZG_STORAGE_INDEXER=https://indexer-storage-testnet-turbo.0g.ai
+
+# ── IPFS fallback (get free API key from pinata.cloud) ────────
 PINATA_JWT=eyJh...
 PINATA_GATEWAY=https://gateway.pinata.cloud
 
-# Contract addresses (from Contract Addresses page)
-COMBINED_RULE_STORAGE=0x...
-RULE_ITEM_ERC721=0x...
-PAYID_VERIFIER=0x...
-PAY_WITH_PAYID=0x...
+# ── Contract addresses — 0G Galileo (Chain 16602) ─────────────
+COMBINED_RULE_STORAGE=0x486a6d305742B0b5847770BF421114161440E79b
+RULE_ITEM_ERC721=0xc22fE6CbeE7fA5A35DAf40B30D91d5D3bFfa2fD8
+PAYID_VERIFIER=0xE2FfE1037b996B8F66dE7cba0398A411850Ecd91
+PAY_WITH_PAYID=0x04eEAF2dc4Ee22E7362a60dd652E1DF450697dbb
+RULE_AUTHORITY=0x3d2F9441c589a24A524c36892268f35C6467bFF6
 ```
+
+→ Full address list: [Contract Addresses →](../network/contracts-address)
 
 ---
 

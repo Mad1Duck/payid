@@ -142,13 +142,30 @@ Smart contracts verify the proof (never execute rules). This keeps contracts sim
 
 ---
 
+## Live Testnet
+
+PAY.ID is **currently deployed on 0G Galileo Testnet** (Chain ID: 16602). No deployment needed to get started.
+
+| | |
+|---|---|
+| **RPC** | `https://evmrpc-testnet.0g.ai` |
+| **Explorer** | [chainscan-galileo.0g.ai](https://chainscan-galileo.0g.ai) |
+| **Faucet** | [faucet.0g.ai](https://faucet.0g.ai) — get free A0GI tokens |
+| **Contract addresses** | [See full list →](./network/contracts-address) |
+
+---
+
 ## Getting Started
 
-- [⚡ Quick Start →](./quickstart) — React app to first payment in minutes
-- [🔧 Installation →](./installation/setup) — Install and configure packages
+| Step | Link |
+|---|---|
+| 1. Install packages & configure providers | [🔧 Installation →](./installation/setup) |
+| 2. Make your first payment | [⚡ Quick Start →](./quickstart) |
+| 3. Learn how rules work | [📋 Rule Basics →](./rules/rule-basics) |
+| 4. All React hooks (20+) | [⚛️ React Integration →](./integration/react-integration) |
+| 5. Backend / Node.js | [🖥️ Server Guide →](./examples/server) |
+
+**Advanced:**
 - [📖 Core Concepts →](./core-concepts/overview) — Deep dive into Rules, Context, and Proofs
-- [📋 Rule Basics →](./rules/rule-basics) — Write your first payment rule
-- [⚛️ React Integration →](./integration/react-integration) — All 20+ React hooks with examples
-- [🖥️ Server Guide →](./examples/server) — Backend / Node.js integration
 - [🏦 Bank / QRIS Bridge →](./integration/bank-qris-bridge) — Fiat payment policy integration
 - [🛡️ VRAN Reputation →](./integration/vran-reputation) — On-chain reputation & anti-scam

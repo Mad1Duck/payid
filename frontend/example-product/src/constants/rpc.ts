@@ -7,4 +7,5 @@ export const RPC_URLS = {
   zeroG: 'https://16600.rpc.thirdweb.com',
   zeroGFork: 'http://100.73.196.95:8550',
   zeroGGalileo: 'https://evmrpc-testnet.0g.ai',
+  localFork: import.meta.env.VITE_LOCAL_FORK_RPC_URL ?? 'http://100.73.196.95:8550',
 } as const;

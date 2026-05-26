@@ -62,7 +62,7 @@
   "scripts": {
     "build": "tsup",
     "type-check": "tsc --noEmit",
-    "test": "echo 'No unit tests — add test files to run with bun test'",
+    "test": "bun test",
     "prepublishOnly": "bun run type-check && bun run test && bun run build",
     "release": "release-it",
     "release:dry": "release-it --dry-run",

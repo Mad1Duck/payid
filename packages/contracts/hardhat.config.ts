@@ -125,11 +125,10 @@ export default defineConfig({
       accounts: { mnemonic: process.env.MNEMONIC ?? "" },
     },
 
-    // Local 0G fork (chainId 16601)
-    zeroGFork: {
+    localFork: {
       type: "http",
-      chainId: 16601,
-      url: "http://100.73.196.95:8550",
+      chainId: 31338,
+      url: process.env.LOCAL_FORK_RPC_URL ?? "http://100.73.196.95:8550",
       accounts: {
         mnemonic: "test test test test test test test test test test test junk",
         count: 5,

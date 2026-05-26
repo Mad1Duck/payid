@@ -90,14 +90,13 @@ contract PayWithPayIDBatch {
             total += decisions[i].amount;
         }
 
-        // Pull total from payer
-        IERC20(asset).transferFrom(msg.sender, address(this), total);
+        IERC20 token = IERC20(asset);
 
-        // Approve PayWithPayID for total (if needed by its logic)
-        // NOTE: PayWithPayID.payERC20 uses transferFrom(payer, receiver)
-        // so we need to route through PayWithPayID or replicate logic.
-        // For simplicity, we forward approvals and call individually.
-        IERC20(asset).approve(address(payWithPayID), total);
+        // Pull total from payer into this contract
+        token.transferFrom(msg.sender, address(this), total);
+
+        // Approve PayWithPayID exactly once for the batch total
+        token.approve(address(payWithPayID), total);
 
         for (uint256 i; i < n; ++i) {
             (bool ok, ) = address(payWithPayID).call(
@@ -110,6 +109,10 @@ contract PayWithPayIDBatch {
             );
             if (!ok) revert BatchTransferFailed(i);
         }
+
+        // Reset residual approval to zero
+        uint256 residual = token.allowance(address(this), address(payWithPayID));
+        if (residual > 0) token.approve(address(payWithPayID), 0);
 
         emit BatchPaymentERC20(msg.sender, asset, n, total);
     }
