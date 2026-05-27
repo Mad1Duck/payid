@@ -183,6 +183,23 @@ export function ScamReportPage() {
   const [stakeAmount, setStakeAmount] = useState('')
   const [activeTab, setActiveTab] = useState<'submit' | 'confirm'>('submit')
   const p = useV4Palette()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { uploadToIPFS, isUploading, error: uploadError } = useIPFSUpload()
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) setEvidenceFile(file)
+  }
+
+  const handleUpload = async () => {
+    if (!evidenceFile) return
+    try {
+      const cid = await uploadToIPFS(evidenceFile)
+      setEvidenceHash(cid)
+    } catch {}
+  }
+
+  const canGoToStep2 = evidenceHash !== ''
 
   const { canReport, score } = useCanReport({})
   const { minStake, minReporterReputation } = useVranConfig({})
