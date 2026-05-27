@@ -1,18 +1,64 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useChainId } from 'wagmi';
 import type { PayIDContracts } from './types';
 import { PAYID_CONTRACTS } from './contracts/addresses';
+import type { IReputationAdapter, IEscrowAdapter } from './adapters/types';
+import { NoopReputationAdapter, NoopEscrowAdapter } from './adapters/noop';
 
 //  Constants
 export const DEFAULT_IPFS_GATEWAY = 'https://gateway.pinata.cloud/ipfs/';
 export const DEFAULT_ZG_GATEWAY = 'https://indexer-storage-testnet-turbo.0g.ai';
+const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 
-//  Context
+/** ═══════════════════════════════════════════════════════════════════════
+ *  Adapter Resolution Flow
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ *  For each module (reputation / escrow), the resolver checks in order:
+ *
+ *  1. INJECTED adapter  →  user passed a custom adapter (e.g. any platform)
+ *     • If adapter.name === 'noop' → feature DISABLED
+ *     • Else → feature ACTIVE, label = adapter.label
+ *
+ *  2. CONTRACT deployed  →  PAY.ID contract address is non-zero
+ *     • vindexRegistry for reputation  →  label = "VRAN"
+ *     • escrowMilestone for escrow     →  label = "Escrow"
+ *
+ *  3. FALLBACK  →  Noop adapter
+ *     • Feature DISABLED, label = "Disabled"
+ *
+ *  Hooks read this metadata and route to either:
+ *    • adapter.getReputation()  (injected path)
+ *    • useReadContract({ address: contracts.vindexRegistry })  (default path)
+ */
+
+export interface ModuleInfo {
+  label: string;
+  source: 'injected' | 'contract' | 'noop';
+  active: boolean;
+}
+
+export interface ReputationModule {
+  adapter: IReputationAdapter;
+  info: ModuleInfo;
+}
+
+export interface EscrowModule {
+  adapter: IEscrowAdapter;
+  info: ModuleInfo;
+}
+
 export interface PayIDContextValue {
   contracts: PayIDContracts;
   chainId: number;
   ipfsGateway: string;
   zgGateway: string;
+  reputation: ReputationModule;
+  escrow: EscrowModule;
+  features: {
+    reputation: boolean;
+    escrow: boolean;
+  };
 }
 
 const PayIDContext = createContext<PayIDContextValue | null>(null);
@@ -54,9 +100,40 @@ interface PayIDProviderProps {
    * <PayIDProvider zgGateway="https://indexer-storage-testnet-turbo.0g.ai">
    */
   zgGateway?: string;
+  /**
+   * Custom reputation adapter. Injected when the integrating platform
+   * has its own reputation system (e.g. any platform, custom DAO).
+   *
+   * Pass `NoopReputationAdapter` to completely disable reputation features.
+   * Leave undefined to use PAY.ID's built-in VindexRegistry.
+   *
+   * @example
+   * import { NoopReputationAdapter } from 'payid-react';
+   * <PayIDProvider reputationAdapter={NoopReputationAdapter}>
+   */
+  reputationAdapter?: IReputationAdapter;
+  /**
+   * Custom escrow adapter. Injected when the integrating platform
+   * has its own escrow system (e.g. any platform's escrow).
+   *
+   * Pass `NoopEscrowAdapter` to completely disable escrow features.
+   * Leave undefined to use PAY.ID's built-in EscrowMilestone.
+   *
+   * @example
+   * import { NoopEscrowAdapter } from 'payid-react';
+   * <PayIDProvider escrowAdapter={NoopEscrowAdapter}>
+   */
+  escrowAdapter?: IEscrowAdapter;
 }
 
-export function PayIDProvider({ children, contracts: overrides, ipfsGateway, zgGateway }: PayIDProviderProps) {
+export function PayIDProvider({
+  children,
+  contracts: overrides,
+  ipfsGateway,
+  zgGateway,
+  reputationAdapter,
+  escrowAdapter,
+}: PayIDProviderProps) {
   const chainId = useChainId();
 
   const defaults = PAYID_CONTRACTS[chainId];
@@ -81,8 +158,68 @@ export function PayIDProvider({ children, contracts: overrides, ipfsGateway, zgG
   const resolvedZgGateway =
     zgGateway && zgGateway.trim().length > 0 ? zgGateway.replace(/\/$/, '') : DEFAULT_ZG_GATEWAY;
 
+  // ═══ Resolver: injected → contract → noop ═══════════════════════════
+  const { reputation, escrow, features } = useMemo(() => {
+    const hasVindex = !!contracts.vindexRegistry && contracts.vindexRegistry !== ZERO_ADDR;
+    const hasEscrow = !!contracts.escrowMilestone && contracts.escrowMilestone !== ZERO_ADDR;
+
+    // ─── Reputation resolver ─────────────────────────────────────────
+    let rep: ReputationModule;
+    if (reputationAdapter) {
+      const isNoop = reputationAdapter.name === 'noop';
+      rep = {
+        adapter: reputationAdapter,
+        info: {
+          label: reputationAdapter.label,
+          source: 'injected',
+          active: !isNoop,
+        },
+      };
+    } else if (hasVindex) {
+      rep = {
+        adapter: NoopReputationAdapter,
+        info: { label: 'VRAN', source: 'contract', active: true },
+      };
+    } else {
+      rep = {
+        adapter: NoopReputationAdapter,
+        info: { label: 'Disabled', source: 'noop', active: false },
+      };
+    }
+
+    // ─── Escrow resolver ──────────────────────────────────────────────
+    let esc: EscrowModule;
+    if (escrowAdapter) {
+      const isNoop = escrowAdapter.name === 'noop';
+      esc = {
+        adapter: escrowAdapter,
+        info: {
+          label: escrowAdapter.label,
+          source: 'injected',
+          active: !isNoop,
+        },
+      };
+    } else if (hasEscrow) {
+      esc = {
+        adapter: NoopEscrowAdapter,
+        info: { label: 'Escrow', source: 'contract', active: true },
+      };
+    } else {
+      esc = {
+        adapter: NoopEscrowAdapter,
+        info: { label: 'Disabled', source: 'noop', active: false },
+      };
+    }
+
+    return {
+      reputation: rep,
+      escrow: esc,
+      features: { reputation: rep.info.active, escrow: esc.info.active },
+    };
+  }, [contracts, reputationAdapter, escrowAdapter]);
+
   return (
-    <PayIDContext.Provider value={{ contracts, chainId, ipfsGateway: resolvedGateway, zgGateway: resolvedZgGateway }}>
+    <PayIDContext.Provider value={{ contracts, chainId, ipfsGateway: resolvedGateway, zgGateway: resolvedZgGateway, reputation, escrow, features }}>
       {children}
     </PayIDContext.Provider>
   );

@@ -42,130 +42,31 @@ export type PayIDQRStatus =
   | 'ready'
   | 'error';
 
-/**
- * Parameter yang diisi receiver saat generate QR.
- */
 export interface PayIDQRParams {
-  /** PAY.ID identifier milik receiver, contoh: "pay.id/toko-budi" */
   payId: string;
-
-  /**
-   * Token yang diterima. ZeroAddress = ETH native.
-   * @example "0x0000000000000000000000000000000000000000"  // ETH
-   * @example "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"  // USDC mainnet
-   */
   allowedAsset: Address;
-
-  /**
-   * Batas maksimum amount per transaksi (dalam satuan terkecil token).
-   * Payer tidak bisa melebihi nilai ini.
-   * @example 1000000n  // 1 USDC (6 desimal)
-   * @example 10000000000000000n  // 0.01 ETH (18 desimal)
-   */
   maxAmount: bigint;
-
-  /**
-   * Unix timestamp kapan QR kedaluwarsa.
-   * Setelah expired, payer tidak bisa pakai QR ini.
-   * @example Math.floor(Date.now() / 1000) + 3600  // 1 jam dari sekarang
-   */
   expiresAt: number;
-
-  /**
-   * ruleSetHash dari CombinedRuleStorage — bind ke rule on-chain milik receiver.
-   * Kalau tidak diisi, payer bisa pakai rule apapun (lebih longgar).
-   */
   ruleSetHash?: Hash;
-
-  /**
-   * Address CombinedRuleStorage yang menyimpan rule receiver.
-   * Default: contracts.combinedRuleStorage dari PayIDProvider.
-   */
   ruleAuthorityAddress?: Address;
-
-  /**
-   * Error correction level untuk QR image.
-   * - 'L' = 7%  — cocok untuk QR kecil, rentan rusak
-   * - 'M' = 15% — default, balance antara ukuran dan ketahanan
-   * - 'Q' = 25% — lebih tahan rusak
-   * - 'H' = 30% — paling tahan, ukuran QR lebih besar
-   * @default 'M'
-   */
   errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H';
-
-  /**
-   * Ukuran QR image dalam pixel (width = height).
-   * @default 256
-   */
   size?: number;
-
-  /**
-   * Warna modul QR (kotak hitam).
-   * @default '#000000'
-   */
   darkColor?: string;
-
-  /**
-   * Warna background QR.
-   * @default '#ffffff'
-   */
   lightColor?: string;
 }
 
 export interface PayIDQRResult {
-  /** Status saat ini dari proses generate */
   status: PayIDQRStatus;
-
-  /** true saat signing/encoding/rendering sedang berjalan */
   isPending: boolean;
-
-  /** true saat QR sudah siap */
   isReady: boolean;
-
-  /** Pesan error jika status === 'error' */
   error: string | null;
-
-  /**
-   * String payload QR dalam format "payid-v2:<base64url(JSON)>".
-   * Tersedia saat status === 'ready'.
-   *
-   * Bisa dipakai langsung sebagai input ke library QR apapun:
-   * @example
-   * import QRCode from 'react-qr-code'
-   * <QRCode value={payload} />
-   */
   payload: string | null;
-
-  /**
-   * QR image sebagai data URL ("data:image/png;base64,...").
-   * Hanya tersedia kalau package 'qrcode' sudah diinstall.
-   * Null jika 'qrcode' tidak ada atau rendering gagal.
-   *
-   * @example
-   * <img src={qrDataUrl} alt="Scan untuk bayar" />
-   */
   qrDataUrl: string | null;
-
-  /**
-   * SessionPolicyV2 yang sudah disign — tersedia saat status === 'ready'.
-   * Bisa di-serialize ke JSON untuk disimpan/dikirim ke server.
-   */
   policy: object | null;
-
-  /**
-   * Generate QR baru. Memanggil ulang akan mengganti QR sebelumnya.
-   * Membutuhkan wallet terhubung (receiver harus sign policy).
-   */
   generate: (params: PayIDQRParams) => Promise<void>;
-
-  /** Reset ke state idle, hapus QR yang ada */
   reset: () => void;
 }
 
-/**
- * Coba load 'qrcode' package secara dynamic (optional peer dependency).
- * Return null jika tidak terinstall — bukan error fatal.
- */
 async function tryLoadQRCode(): Promise<{
   toDataURL: (text: string, opts: object) => Promise<string>;
 } | null> {

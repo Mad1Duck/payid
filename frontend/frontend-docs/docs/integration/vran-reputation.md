@@ -124,6 +124,30 @@ function slashReporter(uint256 reportId) external;
 
 ---
 
+## ScamReportPage UI
+
+The frontend provides a 3-step reporting wizard at `/v4/app/reputation/report`:
+
+1. **Upload Evidence** — Drag or click to select a file (PDF, image, or text). Uploaded to **Pinata IPFS v3** (`uploads.pinata.cloud/v3/files`).
+2. **Target Address** — Enter the 0x address being reported.
+3. **Stake & Submit** — Enter ETH stake (must be ≥ `minStake`), review summary, and submit on-chain.
+
+### IPFS Upload Configuration
+
+Set your Pinata JWT in `.env`:
+
+```bash
+VITE_PINATA_JWT=your_pinata_jwt_here
+```
+
+Get your JWT at [https://app.pinata.cloud/developers/api-keys](https://app.pinata.cloud/developers/api-keys).
+
+Without a valid JWT, the upload step will show an error: `VITE_PINATA_JWT not configured`.
+
+### Navigation
+
+The **Report Address** and **Confirm Report** buttons on the Reputation page use `<Link>` from `@tanstack/react-router` for SPA navigation (no full page reload).
+
 ## Reporting Flow
 
 1. **Reporter** submits report with `msg.value >= minStake` + evidence hash (IPFS/Arweave CID)

@@ -1,6 +1,6 @@
 // Provider
 export { PayIDProvider, usePayIDContext } from './PayIDProvider';
-export type { PayIDContextValue } from './PayIDProvider';
+export type { PayIDContextValue, ModuleInfo, ReputationModule, EscrowModule } from './PayIDProvider';
 export type {
   PayIDContracts,
   RuleRef,
@@ -13,6 +13,7 @@ export type {
   AgentRuleInfo,
   AgentSubscription,
   AgentWithRule,
+  TxHookResult,
 } from './types';
 export { RuleDirection } from './types';
 
@@ -75,6 +76,17 @@ export {
   useSuccessfulReports,
 } from './hooks/useReputation';
 
+// Hooks: Escrow (milestone-based)
+export {
+  useUserEscrows,
+  useCreateEscrow,
+  useSubmitMilestone,
+  useReleaseMilestone,
+  useDisputeEscrow,
+  useResolveRefund,
+  useAutoRefund,
+} from './hooks/useEscrow';
+
 // Hooks: Offline Cache
 export { useOfflineCache } from './hooks/useOfflineCache';
 export type { CacheStats, DraftPayment } from './hooks/useOfflineCache';
@@ -126,6 +138,46 @@ export {
   useUnsubscribeFromAgent,
   useSetPreferredAgent,
 } from './hooks/useAIAgentRules';
+
+// Adapters (plug-and-play reputation & escrow sources)
+export type {
+  IReputationAdapter,
+  IEscrowAdapter,
+  ReputationResult,
+  VranConfigResult,
+  ReportResult,
+  MilestoneDef,
+  EscrowResult,
+} from './adapters/types';
+export {
+  DefaultReputationAdapter,
+  DefaultEscrowAdapter,
+} from './adapters/default';
+export {
+  NoopReputationAdapter,
+  NoopEscrowAdapter,
+} from './adapters/noop';
+
+export {
+  CompositeReputationAdapter,
+  PlatformEscrowAdapter,
+  createCompositeIntegration,
+} from './adapters/composite/platform-composite';
+export type { CompositeReputationOptions } from './adapters/composite/platform-composite';
+
+export {
+  FallbackReputationAdapter,
+  FallbackEscrowAdapter,
+  createFallbackReputation,
+  createFallbackEscrow,
+} from './adapters/composite/fallback';
+export type { FallbackReputationOptions, FallbackEscrowOptions } from './adapters/composite/fallback';
+
+export {
+  withMiddlewareReputation,
+  withMiddlewareEscrow,
+} from './adapters/composite/middleware';
+export type { MiddlewareOptions } from './adapters/composite/middleware';
 
 // Contract addresses
 export { PAYID_CONTRACTS, getContracts } from './contracts/addresses';

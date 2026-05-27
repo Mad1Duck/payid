@@ -404,33 +404,170 @@ await registerCombinedRule({
 
 ---
 
-## 9️⃣ Batch Payments 📦
+## 9️⃣ DAO Payroll & Batch Payments 📦
 
-Pay multiple people at once:
+### PayWithPayIDBatch (Smart Contract)
+
+The `PayWithPayIDBatch` contract lets you pay multiple recipients in a **single transaction**, saving gas and ensuring atomicity:
+
+```solidity
+function batchPayETH(
+    PayIDVerifier.Decision[] calldata decisions,
+    bytes[] calldata sigs,
+    bytes32[][] calldata attestationUIDs
+) external payable
+```
 
 ```tsx
-import { usePayNative } from 'payid-react'
+import { usePayWithPayIDBatch } from './hooks/usePayWithPayIDBatch'
 
-function BatchPay({ receivers }: { receivers: `0x${string}`[] }) {
-  const { pay, isPending } = usePayNative()
+function BatchPayButton({
+  recipients,
+  decisions,
+  sigs,
+  attestationUIDs,
+}: {
+  recipients: { address: `0x${string}`; amount: bigint }[]
+  decisions: any[]
+  sigs: `0x${string}`[]
+  attestationUIDs: `0x${string}`[][]
+}) {
+  const { batchPayNative, isPending } = usePayWithPayIDBatch()
+
+  const totalValue = recipients.reduce((sum, r) => sum + r.amount, 0n)
 
   const handleBatchPay = async () => {
-    for (const receiver of receivers) {
-      await pay({
-        decision: proofForReceiver,
-        signature: signatureForReceiver,
-        attestationUIDs: [],
-      })
-    }
+    await batchPayNative(decisions, sigs, attestationUIDs, totalValue)
   }
 
-  return <button onClick={handleBatchPay} disabled={isPending}>Batch Pay</button>
+  return (
+    <button onClick={handleBatchPay} disabled={isPending}>
+      {isPending ? 'Batch Paying...' : `Pay ${recipients.length} Recipients`}
+    </button>
+  )
+}
+```
+
+### DAO Payroll UI
+
+The frontend provides a full DAO Payroll page at `/v4/app/payroll`:
+
+- **Contributor List** — Add recipients with address, amount, role, and schedule (one-time / weekly / monthly)
+- **Treasury Status** — Live balance check with "insufficient funds" warning
+- **Simulation** — Pre-flight validation of addresses and balance before submitting
+- **Batch Execution** — One-time batch payment via `PayWithPayIDBatch`
+- **Recurring Subscriptions** — Create `RecurringPayments` subscriptions for scheduled payroll
+
+```tsx
+import { useDAOPayroll } from '@/features/dao-payroll/hooks/useDAOPayroll'
+
+function PayrollPage() {
+  const {
+    recipients,
+    addRecipient,
+    removeRecipient,
+    simulate,
+    createSubscriptions,
+    executeBatchPayment,
+    isCreating,
+    isBatching,
+    simulationResult,
+    totalPayroll,
+    isSufficient,
+  } = useDAOPayroll()
+
+  // Add a contributor
+  addRecipient() // uses form state: newAddress, newAmount, newRole, newSchedule
+
+  // Run simulation
+  simulate()
+
+  // Execute based on schedule type
+  if (schedule === 'one-time') {
+    await executeBatchPayment(decisions, sigs, attestationUIDs)
+  } else {
+    await createSubscriptions() // weekly / monthly via RecurringPayments
+  }
 }
 ```
 
 ---
 
-## 🔟 Multi-Chain Deployment 🌐
+## 🔟 Time-Lock Vesting ⏳
+
+Create token vesting schedules with cliff and linear release. Perfect for team allocations, investor locks, and contributor grants.
+
+### Smart Contract: TimeLockVesting
+
+```solidity
+function createSchedule(
+    address beneficiary,
+    address asset,
+    uint256 totalAmount,
+    uint256 startTime,
+    uint256 cliff,
+    uint256 duration,
+    bool revocable,
+    address revoker
+) external payable returns (uint256 scheduleId)
+
+function release(uint256 scheduleId) external
+
+function revoke(uint256 scheduleId) external
+```
+
+### Frontend Usage
+
+```tsx
+import { useTimeLockVesting } from '@/features/shared/hooks/useTimeLockVesting'
+
+function VestingManager() {
+  const vesting = useTimeLockVesting()
+
+  // Create a 6-month cliff, 12-month total vesting schedule
+  const create = async () => {
+    const now = Math.floor(Date.now() / 1000)
+    const cliff = 180 * 24 * 60 * 60 // 180 days
+    const duration = 365 * 24 * 60 * 60 // 365 days
+
+    await vesting.createSchedule(
+      beneficiaryAddress,
+      '0x0000000000000000000000000000000000000000', // ETH
+      parseUnits('1000', 18), // 1000 ETH
+      BigInt(now),
+      BigInt(cliff),
+      BigInt(duration),
+      true, // revocable
+      revokerAddress,
+      parseUnits('1000', 18) // send full amount to contract
+    )
+  }
+
+  // Beneficiary releases vested tokens
+  const release = async (scheduleId: bigint) => {
+    await vesting.release(scheduleId)
+  }
+
+  // Revoker cancels remaining unvested tokens
+  const revoke = async (scheduleId: bigint) => {
+    await vesting.revoke(scheduleId)
+  }
+}
+```
+
+### Vesting Page UI
+
+Route: `/v4/app/vesting`
+
+- **Create Schedule** — Set beneficiary, amount, cliff (months), duration (months), revocable flag
+- **My Schedules** — List of schedules where user is beneficiary or revoker
+- **Progress Tracking** — Visual progress bar showing cliff / vesting / fully vested status
+- **Release Button** — Available when vested > released
+- **Revoke Button** — Available for revoker on revocable schedules
+
+---
+
+## 1️⃣1️⃣ Multi-Chain Deployment 🌐
 
 ### Configure Multiple Chains
 
@@ -477,7 +614,7 @@ const activeRules = RULES_BY_CHAIN[chainId] || DEFAULT_RULES
 
 ---
 
-## 1️⃣1️⃣ Error Handling & Retry Logic 🔄
+## 1️⃣2️⃣ Error Handling & Retry Logic 🔄
 
 Don't let network errors ruin the experience — retry automatically:
 
@@ -502,7 +639,7 @@ const handlePayWithRetry = async () => {
 
 ---
 
-## 1️⃣2️⃣ Subscription Management 💳
+## 1️⃣3️⃣ Subscription Management 💳
 
 ### Extend Rule Expiry
 
@@ -553,7 +690,7 @@ function SubscriptionBadge() {
 
 ---
 
-## 1️⃣3️⃣ Custom IPFS Gateway 🌐
+## 1️⃣4️⃣ Custom IPFS Gateway 🌐
 
 ```tsx
 <PayIDProvider
@@ -566,7 +703,7 @@ function SubscriptionBadge() {
 
 ---
 
-## 1️⃣4️⃣ Decision Proof Verification ✅
+## 1️⃣5️⃣ Decision Proof Verification ✅
 
 Verify a proof on-chain:
 
@@ -584,7 +721,7 @@ function VerifyProof({ decision, signature }: { decision: any, signature: string
 
 ---
 
-## 1️⃣5️⃣ Nonce Management 🔒
+## 1️⃣6️⃣ Nonce Management 🔒
 
 Check if a nonce was already used (prevents replay attacks):
 
@@ -604,6 +741,97 @@ function CheckNonce({ payer, nonce }: { payer: `0x${string}`, nonce: string }) {
 
 ---
 
+## 1️⃣6️⃣ Plug-and-Play Adapters 🔌
+
+PAY.ID supports **custom reputation and escrow adapters**, allowing platforms with their own on-chain systems (e.g. **any platform's milestone manager + reputation contract**) to integrate seamlessly without duplicating features.
+
+### How It Works
+
+| Component | PAY.ID Default | Platform Override |
+|-----------|---------------|-------------------|
+| Reputation | `VindexRegistry` | `IReputationAdapter` |
+| Escrow | `EscrowMilestone` | `IEscrowAdapter` |
+
+When an adapter is injected, PAY.ID hooks automatically route to it. When omitted, hooks fall back to native contract calls. Pass a **noop adapter** to completely disable a feature.
+
+### Inject Custom Adapters
+
+```tsx
+import {
+  PayIDProvider,
+  NoopReputationAdapter,   // disable PAY.ID reputation
+  NoopEscrowAdapter,       // disable PAY.ID escrow
+} from 'payid-react';
+
+// Platform with its own reputation + escrow
+function YourApp() {
+  return (
+    <PayIDProvider
+      contracts={YOUR_PAYID_CONTRACTS}
+      reputationAdapter={NoopReputationAdapter}  // hide VRAN UI
+      escrowAdapter={NoopEscrowAdapter}          // hide Escrow UI
+    >
+      <App />
+    </PayIDProvider>
+  );
+}
+```
+
+### Build Your Own Adapter
+
+```tsx
+import type { IReputationAdapter, ReputationResult } from 'payid-react';
+
+class YourPlatformReputationAdapter implements IReputationAdapter {
+  readonly name = 'your-platform';
+  readonly label = 'Your Platform Reputation';
+
+  async getReputation(target: `0x${string}`): Promise<ReputationResult> {
+    // Call your platform's reputation contract
+    const score = await platform.reputation.getScore(target);
+    return { score, isBlacklisted: score < 100, isTrusted: score >= 700 };
+  }
+
+  async getConfig() {
+    return { minStake: parseEther('0.01'), consensusThreshold: 3n, minReporterReputation: 700n };
+  }
+
+  async canReport(address: `0x${string}`) {
+    const score = await platform.reputation.getScore(address);
+    return score >= 100;
+  }
+}
+
+// Use it
+<PayIDProvider reputationAdapter={new YourPlatformReputationAdapter()}>
+  <App />
+</PayIDProvider>
+```
+
+### Feature Flags in UI
+
+```tsx
+import { usePayIDContext } from 'payid-react';
+
+function AppLayout() {
+  const { features } = usePayIDContext();
+
+  return (
+    <nav>
+      {features.reputation && <Link to="/reputation">Reputation</Link>}
+      {features.escrow && <Link to="/escrow">Escrow</Link>}
+      {/* Always show core features */}
+      <Link to="/send">Send</Link>
+      <Link to="/receive">Receive</Link>
+    </nav>
+  );
+}
+```
+
+**Key principle:** PAY.ID core (rules, payments, proofs) is always active. Optional modules (reputation, escrow) are **opt-in via adapter injection**.
+
+---
+
 ## Advanced Patterns Summary 📚
 
 | Pattern | Use Case |
@@ -617,7 +845,9 @@ function CheckNonce({ payer, nonce }: { payer: `0x${string}`, nonce: string }) {
 | **State Tracking** | Spending limits |
 | **Risk Scoring** | Dynamic limits based on risk |
 | **Directional Rules** | Separate INBOUND/OUTBOUND policies |
-| **Batch Payments** | Multiple recipients |
+| **DAO Payroll** | Batch + recurring contributor payments |
+| **Time-Lock Vesting** | Cliff + linear release schedules |
+| **Plug-and-Play Adapters** | Integrate platform-specific reputation/escrow |
 | **Multi-Chain** | Deploy across networks |
 | **Retry Logic** | Handle transient failures |
 | **Subscription** | Rule slot management |

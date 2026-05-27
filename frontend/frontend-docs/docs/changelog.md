@@ -94,6 +94,8 @@ The 0G storage resolver is now configurable via SDK instead of relying solely on
 
 ### 🐛 Bug Fixes
 
+- **VRAN IPFS upload** — Fixed `useIPFSUpload` calling a non-existent placeholder endpoint (`api.payid-vran.ipfs.nftstorage.link/upload`). Now uses **Pinata v3 API** (`uploads.pinata.cloud/v3/files`) with `VITE_PINATA_JWT` auth, consistent with the rest of the codebase.
+- **Reputation page navigation** — Replaced `window.location.href` (full page reload) with `<Link>` from `@tanstack/react-router` for the **Report Address** and **Confirm Report** buttons on `ReputationPage.tsx`, enabling SPA navigation.
 - **Tailwind CSS lint warnings** — Converted bracket opacity syntax (`bg-white/[0.03]`) to new Tailwind v4 syntax (`bg-white/3`) across all V4 components
 - **LandingPageV4 TypeScript error** — Fixed `ease` type in `fadeUp()` transition (array → `'easeOut' as const`)
 - **v3/AppLayout warning** — Fixed `md:ml-[200px]` → `md:ml-50`
@@ -146,12 +148,120 @@ packages/sdk-core/src/index.ts
 - Displays live reputation score with color-coded badge (Trusted / Neutral / Blacklisted)
 - Shows between Quick Actions and Activity Feed
 
-#### 8. Frontend Documentation
+#### 8. AttestationVerifier Integration (Main Payment Flow)
 
+- `AttestationVerifier` is now wired into `usePayIDFlow`
+- Pre-flight on-chain verification: calls `verifyAttestationBatch(attestationUIDs, payer)` before submitting payment
+- Attestation check is **fail-closed**: if `requiresAttestation` is true and verification fails, the payment is rejected
+- `attestationUIDs` passed through to `payNative` / `payERC20` contract calls
+- Admin page: `useAttestationVerifier` hook for verifier initialization and management (`/v4/app/admin`)
+
+#### 9. Frontend Documentation
+
+- `docs/integration/platform-payid-bridge.md` — New doc page for Platform × PAY.ID seamless composition
+- `docs/integration/platform-adapters.md` — New doc page for Plug-and-Play Adapters
 - `docs/integration/bank-qris-bridge.md` — New doc page for Bank/QRIS Bridge
 - `docs/integration/vran-reputation.md` — New doc page for VRAN
 - `docs/changelog.md` — This changelog page
 - `docs/intro.md` — Updated with "What's New" section
+- `docs/advanced-usage.md` — Added DAO Payroll, Batch Payment, Time-Lock Vesting, and Plug-and-Play Adapters sections
+
+#### 10. Platform Adapters (Plug-and-Play SDK)
+
+- `packages/payid-react/src/adapters/types.ts` — Adapter interfaces: `IReputationAdapter`, `IEscrowAdapter`
+- `packages/payid-react/src/adapters/default.ts` — Default adapters wrapping `VindexRegistry` and `EscrowMilestone`
+- `packages/payid-react/src/adapters/noop.ts` — No-op adapters return safe defaults instead of throwing
+- `packages/payid-react/src/PayIDProvider.tsx` — New typed context:
+  - `ReputationModule`: `{ adapter: IReputationAdapter, info: { label, source, active } }`
+  - `EscrowModule`: `{ adapter: IEscrowAdapter, info: { label, source, active } }`
+  - 3-tier resolution: injected → contract → noop
+  - **No union types, no casting** — hooks use `reputation.adapter` directly
+- `packages/payid-react/src/hooks/useReputation.ts` — Source-based routing:
+  - `source === 'injected'` → call `adapter.getReputation()`
+  - `source === 'contract'` → use wagmi `useReadContract`
+  - `source === 'noop'` → return safe defaults
+- Context exposes `features`: `{ reputation, escrow }` for conditional UI
+
+#### 11. Platform × PAY.ID Bridge (Composite Adapters)
+
+- `packages/payid-react/src/adapters/composite/platform-composite.ts` — Composite adapter implementations:
+  - `CompositeReputationAdapter`: Blends platform reputation (60%) + PAY.ID VRAN (40%) into composite score
+  - `PlatformEscrowAdapter`: Bridges any platform's escrow to `IEscrowAdapter` interface
+  - `createCompositeIntegration()`: One-liner factory for full Platform × PAY.ID setup
+- Fail-closed by default: if VRAN blacklists, composite score is blocked regardless of platform score
+- Configurable weights: `platformWeight` + `vranWeight` for different trust models
+- Escrow policy-gating: PAY.ID rules evaluate before platform milestone actions
+
+#### 12. Adapter System Refinements (Async + React Query + Fallback + Middleware)
+
+- **P1 — Async Consistency**: All adapter methods now return `Promise<...>` uniformly. No more sync/async union types (`Promise<T> | T`). Updated `IReputationAdapter`, `IEscrowAdapter`, and all implementations (noop, default, composite, fallback, middleware).
+- **P2 — React Query Integration**: Injected adapters now use `useQuery` from `@tanstack/react-query` instead of manual `useEffect` + `useState`. Benefits: caching by queryKey, deduping across components, background refetch, stale-while-revalidate.
+- **P3 — Fallback Chain + Write Hook Routing**:
+  - `FallbackReputationAdapter` / `FallbackEscrowAdapter`: Try primary adapter first; on failure, automatically fall back to secondary. Perfect for progressive adoption (e.g. 10% platform users + 90% VRAN).
+  - `useSubmitReport` and `useConfirmReport` now route writes through the adapter system. Injected adapters with `submitReport`/`confirmReport` are called via `useMutation`; contract path still uses wagmi `useWriteContract`.
+- **P4 — Adapter Middleware**: New `withMiddlewareReputation()` and `withMiddlewareEscrow()` wrappers. Add cross-cutting concerns to any adapter:
+  - **Logging**: Every call logged with timing (ms)
+  - **Retry**: Exponential backoff retry on transient failures
+  - **Timeout**: Auto-abort calls hanging > 10s
+  - **Customizable**: `log`, `retry`, `timeout`, `logger` options
+
+#### 13. Escrow Hooks & Complete Adapter Routing
+
+- **`useEscrow` hooks (new)**:
+  - `useUserEscrows({ user? })` — Read escrows with `useQuery` (injected path) or contract iteration (contract path)
+  - `useCreateEscrow()` — Create escrow, routes through `adapter.createEscrow()` or `useWriteContract`
+  - `useSubmitMilestone()` — Submit deliverable evidence
+  - `useReleaseMilestone()` — Release payment
+  - `useDisputeEscrow()` — Raise dispute
+  - `useResolveRefund()` — Resolve with refund
+  - `useAutoRefund()` — Trigger auto-refund after deadline
+  - All write hooks use `useMutation` for injected path, `useWriteContract` for contract path
+- **`useReport` routed through adapter**: If injected adapter implements `getReport`, `useReport({ reportId })` calls `adapter.getReport()` via `useQuery`. Otherwise falls back to contract `reports(reportId)`.
+- **`reportCount` added to `VranConfigResult`**: Optional field so adapters can expose total report count. All implementations updated (noop, default, composite).
+- **Example app nav**: `AppLayout.tsx` now shows escrow nav item conditionally via `features.escrow`
+
+#### 14. `useSuccessfulReports` Adapter Routing + Shared `TxHookResult`
+
+- **`getSuccessfulReports` added to `IReputationAdapter`**: Optional adapter method for reading successful report counts. Implemented in default, composite, fallback, and middleware adapters.
+- **`useSuccessfulReports` routed through adapter system**: Injected path uses `adapter.getSuccessfulReports()` via `useQuery`; contract path reads from `successfulReports(address)`. Return shape now includes `error` field.
+- **`TxHookResult` extracted to shared types**: Single source of truth in `src/types/index.ts`. Removed duplicate definitions from `useReputation.ts`, `useEscrow.ts`, `usePayID.ts`, and `useAIAgentRules.ts`. Exported from package public API.
+
+#### 15. Dead Code Cleanup + Consistency Fixes
+
+- **`TxHookResult` deduplication completed**: Also removed from `useAIAgentRegistry.ts` (was missed in #14). All 4 write-hook files now import from shared `src/types/index.ts`.
+- **`adapters/index.ts` barrel file removed**: No internal or external consumers existed; all imports use direct submodule paths (`./adapters/default`, `./adapters/noop`, etc.).
+- **`useReport` return shape fixed**: Contract path now returns `error` (from `useReadContract`) instead of hardcoded `null`, matching the injected path and all other read hooks.
+- **`DefaultReputationAdapter.getConfig` fixed**: Now reads `reportCount` from contract (`reportCount()`) instead of hardcoding `0`. ABI updated to include `reportCount` view function.
+
+#### 16. Trust Threshold Hardcoding Fixed
+
+- **`trustThreshold` added to `VranConfigResult`**: Optional field exposing the trust threshold used for `isTrusted` computation. Defaults to 700 if not tracked.
+- **`DefaultReputationAdapter`**: Added `trustThreshold` constructor parameter (default 700). `getReputation()` uses `this.trustThreshold` instead of hardcoded 700. `getConfig()` returns the threshold.
+- **`useContractReputation`**: Removed extra `isTrusted` contract call. Now computes `isTrusted = score >= DEFAULT_TRUST_THRESHOLD && !isBlacklisted` locally — one fewer contract call.
+- **`useContractCanReport`**: Reads `minReporterReputation` from contract instead of hardcoding 100. Uses the live contract value for threshold comparison.
+- **`useContractVranConfig` / `useInjectedVranConfig`**: Now return `trustThreshold` in their result shapes.
+- **All adapters updated**: Noop, composite, fallback, and middleware adapters all pass through `trustThreshold`.
+
+#### 17. `DefaultEscrowAdapter.createEscrow` Placeholder Fixed
+
+- **`createEscrow` now returns real `escrowId`**: Parses `EscrowCreated` event from transaction receipt instead of returning hardcoded `0n`. Event ABI added to inline `EscrowMilestoneAbi`. Throws descriptive error if event not found.
+
+#### 18. Documentation: Phantom Integration Example
+
+- **`platform-adapters.md`**: Added complete end-to-end Section 4 — "Phantom Example: Your Own Contracts + PAY.ID Hooks". Covers:
+  - PhantomReputationAdapter + PhantomEscrowAdapter implementations
+  - `PayIDProvider` wiring with mixed contracts (Phantom reputation/escrow + PAY.ID payment)
+  - UI examples: `ReputationPanel` (`useReputation`, `useCanReport`, `useVranConfig`) and `EscrowPanel` (`useUserEscrows`, `useCreateEscrow`, `useSubmitMilestone`, `useReleaseMilestone`)
+
+#### 19. RPC Batching Optimization (Multicall)
+
+- **`useContractReputation`**: Batched 2 separate `useReadContract` calls (`getReputation` + `isBlacklisted`) into single `useReadContracts` multicall — 1 RPC request instead of 2.
+- **`useContractCanReport`**: Batched 2 separate `useReadContract` calls (`getReputation` + `minReporterReputation`) into single `useReadContracts` multicall.
+- **`useContractVranConfig`**: Batched 4 separate `useReadContract` calls (`minStake` + `consensusThreshold` + `minReporterReputation` + `reportCount`) into single `useReadContracts` multicall — 1 RPC request instead of 4.
+- **`useContractUserEscrows`**: Replaced N+1 loop of individual `readContract` calls with `publicClient.multicall` — all `escrows(i)` calls batched into 1 RPC request.
+- **`DefaultEscrowAdapter.getUserEscrows`**: Same multicall optimization applied at adapter level.
+
+**Impact**: For a typical page load (reputation + canReport + vranConfig + escrow list), RPC requests drop dari ~7+ menjadi ~3 (1 per batched group + 1 nextEscrowId + 1 for other unbatched calls).
 
 ---
 

@@ -3,6 +3,7 @@ import { Link, useLocation, useRouterState } from '@tanstack/react-router'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Bot,
+  Briefcase,
   ChevronDown,
   Clock,
   Cpu,
@@ -116,6 +117,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     query: { enabled: !!adminRole && !!address },
   })
 
+  const { features, reputation, escrow } = usePayIDContext()
+
   const navItems = [
     { to: '/v4/app/dashboard', icon: LayoutDashboard, label: 'Overview' },
     { to: '/v4/app/send', icon: Send, label: 'Send' },
@@ -128,12 +131,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     { to: '/v4/app/rules/builder', icon: Pencil, label: 'Rule Builder' },
     { to: '/v4/app/agent', icon: Bot, label: 'AI Agent' },
     { to: '/v4/app/ai-agents', icon: Cpu, label: 'My AI Agents' },
-    { to: '/v4/app/reputation', icon: Star, label: 'Reputation' },
-    {
-      to: '/v4/app/reputation/report',
-      icon: ShieldAlert,
-      label: 'Report Scam',
-    },
+    ...(features.reputation
+      ? [
+          { to: '/v4/app/reputation', icon: Star, label: reputation.info.label },
+          { to: '/v4/app/reputation/report', icon: ShieldAlert, label: 'Report Scam' },
+        ]
+      : []),
+    ...(features.escrow
+      ? [
+          { to: '/v4/app/escrow', icon: Briefcase, label: escrow.info.label },
+        ]
+      : []),
     // { to: '/v4/app/tools', icon: Wrench, label: 'Tools' },
     ...(isAdmin ? [{ to: '/v4/app/admin', icon: Lock, label: 'Admin' }] : []),
     { to: '/v4/app/settings', icon: Settings, label: 'Settings' },

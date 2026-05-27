@@ -2,10 +2,8 @@ import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 
 import { useMemo } from 'react';
 import type { Abi } from 'viem';
 import { usePayIDContext } from '../PayIDProvider';
-import type { AIAgent, AdminAgent } from '../types';
+import type { AIAgent, AdminAgent, TxHookResult } from '../types';
 import type { Address, Hash } from 'viem';
-
-/* ── Inline ABI fragments ─────────────────────────────────────────────── */
 
 const AI_AGENT_REGISTRY_ABI = [
   // ── Admin Agent Views ──
@@ -296,8 +294,6 @@ const AI_AGENT_REGISTRY_ABI = [
   },
 ] as const satisfies Abi;
 
-/* ── Types ──────────────────────────────────────────────────────────── */
-
 interface QueryResult<T> {
   data: T | undefined;
   isLoading: boolean;
@@ -311,16 +307,6 @@ interface QueryListResult<T> {
   isError: boolean;
   refetch: () => void;
 }
-
-interface TxHookResult {
-  hash: `0x${string}` | undefined;
-  isPending: boolean;
-  isConfirming: boolean;
-  isSuccess: boolean;
-  error: Error | null;
-}
-
-/* ── Helpers ────────────────────────────────────────────────────────── */
 
 function normalizeAdminAgent(raw: unknown): AdminAgent {
   const a = raw as any;
@@ -360,12 +346,6 @@ function useContractEnabled() {
   return !!contracts.aiAgentRegistry && contracts.aiAgentRegistry !== '0x0000000000000000000000000000000000000000';
 }
 
-/* ════════════════════════════════════════════════════════════════════
-   ADMIN AGENT HOOKS
-   ════════════════════════════════════════════════════════════════════ */
-
-/* ── Hook: useIsAdminAIAgent ────────────────────────────────────────── */
-
 export function useIsAdminAIAgent(address: Address | undefined): QueryResult<boolean> {
   const enabled = useContractEnabled();
   const { contracts } = usePayIDContext();
@@ -380,8 +360,6 @@ export function useIsAdminAIAgent(address: Address | undefined): QueryResult<boo
 
   return { data: data as boolean | undefined, isLoading, isError, refetch };
 }
-
-/* ── Hook: useAdminAIAgent ─────────────────────────────────────────── */
 
 export function useAdminAIAgent(address: Address | undefined): QueryResult<AdminAgent> {
   const enabled = useContractEnabled();
@@ -402,8 +380,6 @@ export function useAdminAIAgent(address: Address | undefined): QueryResult<Admin
 
   return { data: normalized, isLoading, isError, refetch };
 }
-
-/* ── Hook: useAllAdminAIAgents ─────────────────────────────────────── */
 
 export function useAllAdminAIAgents(options?: { onlyActive?: boolean; }): QueryListResult<AdminAgent> {
   const enabled = useContractEnabled();
@@ -426,8 +402,6 @@ export function useAllAdminAIAgents(options?: { onlyActive?: boolean; }): QueryL
 
   return { data: normalized, isLoading, isError, refetch };
 }
-
-/* ── Hook: useRegisterAdminAIAgent ─────────────────────────────────── */
 
 export function useRegisterAdminAIAgent(): TxHookResult & {
   registerAgent: (params: {
@@ -461,8 +435,6 @@ export function useRegisterAdminAIAgent(): TxHookResult & {
   return { registerAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };
 }
 
-/* ── Hook: useUpdateAdminAIAgent ───────────────────────────────────── */
-
 export function useUpdateAdminAIAgent(): TxHookResult & {
   updateAgent: (params: {
     agentWallet: Address;
@@ -495,8 +467,6 @@ export function useUpdateAdminAIAgent(): TxHookResult & {
   return { updateAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };
 }
 
-/* ── Hook: useDeactivateAdminAIAgent ───────────────────────────────── */
-
 export function useDeactivateAdminAIAgent(): TxHookResult & {
   deactivate: (agentWallet: Address) => void;
 } {
@@ -517,8 +487,6 @@ export function useDeactivateAdminAIAgent(): TxHookResult & {
   return { deactivate, hash, isPending, isConfirming, isSuccess, error: error ?? null };
 }
 
-/* ── Hook: useRegistryAdmin ────────────────────────────────────────── */
-
 export function useRegistryAdmin(): QueryResult<Address> {
   const enabled = useContractEnabled();
   const { contracts } = usePayIDContext();
@@ -532,12 +500,6 @@ export function useRegistryAdmin(): QueryResult<Address> {
 
   return { data: (data as Address | undefined) ?? undefined, isLoading, isError, refetch };
 }
-
-/* ════════════════════════════════════════════════════════════════════
-   USER AGENT HOOKS
-   ════════════════════════════════════════════════════════════════════ */
-
-/* ── Hook: useIsUserAIAgent ────────────────────────────────────────── */
 
 export function useIsUserAIAgent(address: Address | undefined): QueryResult<boolean> {
   const enabled = useContractEnabled();
@@ -553,8 +515,6 @@ export function useIsUserAIAgent(address: Address | undefined): QueryResult<bool
 
   return { data: data as boolean | undefined, isLoading, isError, refetch };
 }
-
-/* ── Hook: useUserAIAgent ──────────────────────────────────────────── */
 
 export function useUserAIAgent(address: Address | undefined): QueryResult<AIAgent> {
   const enabled = useContractEnabled();
@@ -575,8 +535,6 @@ export function useUserAIAgent(address: Address | undefined): QueryResult<AIAgen
 
   return { data: normalized, isLoading, isError, refetch };
 }
-
-/* ── Hook: useUserAIAgentByHandle ──────────────────────────────────── */
 
 export function useUserAIAgentByHandle(handle: string | undefined): QueryResult<AIAgent> {
   const enabled = useContractEnabled();
@@ -608,8 +566,6 @@ export function useUserAIAgentByHandle(handle: string | undefined): QueryResult<
   return { data: normalized, isLoading: resolving || isLoading, isError: resolveError || isError, refetch };
 }
 
-/* ── Hook: useAllUserAIAgents ──────────────────────────────────────── */
-
 export function useAllUserAIAgents(options?: { onlyActive?: boolean; verifiedOnly?: boolean; }): QueryListResult<AIAgent> {
   const enabled = useContractEnabled();
   const { contracts } = usePayIDContext();
@@ -633,8 +589,6 @@ export function useAllUserAIAgents(options?: { onlyActive?: boolean; verifiedOnl
 
   return { data: normalized, isLoading, isError, refetch };
 }
-
-/* ── Hook: useRegisterUserAIAgent ──────────────────────────────────── */
 
 export function useRegisterUserAIAgent(): TxHookResult & {
   registerAgent: (params: {
@@ -670,8 +624,6 @@ export function useRegisterUserAIAgent(): TxHookResult & {
   return { registerAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };
 }
 
-/* ── Hook: useUpdateUserAIAgent ────────────────────────────────────── */
-
 export function useUpdateUserAIAgent(): TxHookResult & {
   updateAgent: (params: {
     name: string;
@@ -704,8 +656,6 @@ export function useUpdateUserAIAgent(): TxHookResult & {
   return { updateAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };
 }
 
-/* ── Hook: useDeactivateUserAIAgent ────────────────────────────────── */
-
 export function useDeactivateUserAIAgent(): TxHookResult & { deactivate: () => void; } {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
@@ -722,8 +672,6 @@ export function useDeactivateUserAIAgent(): TxHookResult & { deactivate: () => v
 
   return { deactivate, hash, isPending, isConfirming, isSuccess, error: error ?? null };
 }
-
-/* ── Hook: useVerifyUserAIAgent ────────────────────────────────────── */
 
 export function useVerifyUserAIAgent(): TxHookResult & { verify: (owner: Address) => void; } {
   const { contracts } = usePayIDContext();
@@ -743,8 +691,6 @@ export function useVerifyUserAIAgent(): TxHookResult & { verify: (owner: Address
   return { verify, hash, isPending, isConfirming, isSuccess, error: error ?? null };
 }
 
-/* ── Hook: useRecordUserInference ──────────────────────────────────── */
-
 export function useRecordUserInference(): TxHookResult & { record: () => void; } {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
@@ -761,11 +707,6 @@ export function useRecordUserInference(): TxHookResult & { record: () => void; }
 
   return { record, hash, isPending, isConfirming, isSuccess, error: error ?? null };
 }
-
-/* ════════════════════════════════════════════════════════════════════
-   BACKWARD COMPATIBILITY ALIASES
-   (Old hook names → User agent hooks)
-   ════════════════════════════════════════════════════════════════════ */
 
 export const useIsAIAgent = useIsUserAIAgent;
 export const useAIAgent = useUserAIAgent;

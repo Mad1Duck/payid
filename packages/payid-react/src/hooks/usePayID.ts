@@ -7,18 +7,11 @@ import {
 import { useCallback } from 'react';
 import type { Abi, Hash, EstimateContractGasParameters } from 'viem';
 import { usePayIDContext } from '../PayIDProvider';
+import type { TxHookResult } from '../types';
 import PayIDVerifierABI from '../abis/PayIDModule#PayIDVerifier.json';
 import PayWithPayIDABI from '../abis/PayIDModule#PayWithPayID.json';
 import RuleItemERC721ABI from '../abis/PayIDModule#RuleItemERC721.json';
 import RuleAuthorityABI from '../abis/PayIDModule#RuleAuthority.json';
-
-interface TxHookResult {
-  hash: Hash | undefined;
-  isPending: boolean;
-  isConfirming: boolean;
-  isSuccess: boolean;
-  error: Error | null;
-}
 
 import type { DecisionPayload as Decision } from 'payid';
 

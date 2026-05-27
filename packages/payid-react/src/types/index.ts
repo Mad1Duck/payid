@@ -6,14 +6,11 @@ export interface PayIDContracts {
   combinedRuleStorage: Address;
   payIDVerifier: Address;
   payWithPayID: Address;
-  /** VindexRegistry address for VRAN reputation checks */
   vindexRegistry?: Address;
-  /** AttestationVerifier address for EAS attestation checks */
   attestationVerifier?: Address;
-  /** AIAgentRegistry address for AI agent marketplace */
   aiAgentRegistry?: Address;
-  /** AIAgentRuleManager address for AI agent rule subscriptions */
   aiAgentRuleManager?: Address;
+  escrowMilestone?: Address;
 }
 
 export interface RuleRef {
@@ -65,9 +62,6 @@ export interface CombinedRule {
   direction?: RuleDirection;
 }
 
-/* ── AI Agent Types ────────────────────────────────────────────── */
-
-/** Admin Agent: minimal on-chain, encrypted metadata, admin-only register */
 export interface AdminAgent {
   agentWallet: Address;
   owner: Address;
@@ -79,7 +73,6 @@ export interface AdminAgent {
   active: boolean;
 }
 
-/** User Agent: rich metadata on-chain, self-registered */
 export interface AIAgent {
   owner: Address;
   handle: string;
@@ -112,3 +105,10 @@ export interface AgentWithRule {
   ruleSetHash: Hash;
 }
 
+export interface TxHookResult {
+  hash: Hash | undefined;
+  isPending: boolean;
+  isConfirming: boolean;
+  isSuccess: boolean;
+  error: Error | null;
+}

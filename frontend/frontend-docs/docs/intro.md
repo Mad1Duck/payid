@@ -141,7 +141,9 @@ Smart contracts verify the proof (never execute rules). This keeps contracts sim
 
 ## What's New
 
-- **[🛡️ VRAN Reputation](./integration/vran-reputation)** — Decentralized trust layer. Check merchant reputation and blacklist status before paying.
+- **[🔗 Platform × PAY.ID Bridge](./integration/platform-payid-bridge)** — Seamlessly blend any platform's milestone escrow with PAY.ID's reputation & policy layer. Composite scoring, policy-gated escrow, and one-liner setup.
+- **[🔌� Platform Adapters](./integration/platform-adapters)** — Plug in your own reputation/escrow system or unplug PAY.ID's defaults. Perfect for platforms that already have `MilestoneManager` and `ReputationContract`.
+- **[�🛡️ VRAN Reputation](./integration/vran-reputation)** — Decentralized trust layer. Check merchant reputation and blacklist status before paying.
 - **[🏦 Bank / QRIS Bridge](./integration/bank-qris-bridge)** — Use PAY.ID as a policy oracle for fiat payment rails (QRIS, SWIFT, SEPA).
 - **[⚙️ Configurable Storage Resolver](./api/sdk-reference)** — Override the storage indexer URL via SDK options instead of global variables.
 

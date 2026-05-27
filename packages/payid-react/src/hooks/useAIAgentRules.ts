@@ -2,10 +2,8 @@ import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 
 import { useMemo } from 'react';
 import type { Abi } from 'viem';
 import { usePayIDContext } from '../PayIDProvider';
-import type { AgentRuleInfo, AgentSubscription, AgentWithRule } from '../types';
+import type { AgentRuleInfo, AgentSubscription, AgentWithRule, TxHookResult } from '../types';
 import type { Address, Hash } from 'viem';
-
-/* ── Inline ABI fragments ─────────────────────────────────────────────── */
 
 const AI_AGENT_RULE_MANAGER_ABI = [
   {
@@ -123,8 +121,6 @@ const AI_AGENT_RULE_MANAGER_ABI = [
   },
 ] as const satisfies Abi;
 
-/* ── Types ──────────────────────────────────────────────────────────── */
-
 interface QueryResult<T> {
   data: T | undefined;
   isLoading: boolean;
@@ -138,16 +134,6 @@ interface QueryListResult<T> {
   isError: boolean;
   refetch: () => void;
 }
-
-interface TxHookResult {
-  hash: `0x${string}` | undefined;
-  isPending: boolean;
-  isConfirming: boolean;
-  isSuccess: boolean;
-  error: Error | null;
-}
-
-/* ── Hook: useAgentCombinedRule ─────────────────────────────────────── */
 
 export function useAgentCombinedRule(agent: Address | undefined): QueryResult<AgentRuleInfo> {
   const { contracts } = usePayIDContext();
@@ -173,8 +159,6 @@ export function useAgentCombinedRule(agent: Address | undefined): QueryResult<Ag
 
   return { data: normalized, isLoading, isError, refetch };
 }
-
-/* ── Hook: useAgentSubscription ────────────────────────────────────── */
 
 export function useAgentSubscription(
   user: Address | undefined,
@@ -205,8 +189,6 @@ export function useAgentSubscription(
   return { data: normalized, isLoading, isError, refetch };
 }
 
-/* ── Hook: useIsSubscribedToAgent ──────────────────────────────────── */
-
 export function useIsSubscribedToAgent(
   user: Address | undefined,
   agent: Address | undefined,
@@ -230,8 +212,6 @@ export function useIsSubscribedToAgent(
   return { data: data as boolean | undefined, isLoading, isError, refetch };
 }
 
-/* ── Hook: usePreferredAgent ──────────────────────────────────────── */
-
 export function usePreferredAgent(user: Address | undefined): QueryResult<Address> {
   const { contracts } = usePayIDContext();
 
@@ -250,8 +230,6 @@ export function usePreferredAgent(user: Address | undefined): QueryResult<Addres
 
   return { data: (data as Address | undefined) ?? undefined, isLoading, isError, refetch };
 }
-
-/* ── Hook: useEffectiveAgentRule ────────────────────────────────────── */
 
 export function useEffectiveAgentRule(user: Address | undefined): QueryResult<{
   ruleSetHash: Hash;
@@ -281,8 +259,6 @@ export function useEffectiveAgentRule(user: Address | undefined): QueryResult<{
   return { data: normalized, isLoading, isError, refetch };
 }
 
-/* ── Hook: useAllAgentsWithRules ────────────────────────────────────── */
-
 export function useAllAgentsWithRules(): QueryListResult<AgentWithRule> {
   const { contracts } = usePayIDContext();
 
@@ -309,8 +285,6 @@ export function useAllAgentsWithRules(): QueryListResult<AgentWithRule> {
   return { data: normalized, isLoading, isError, refetch };
 }
 
-/* ── Hook: useSubscriptionPrice ───────────────────────────────────── */
-
 export function useAgentSubscriptionPrice(): QueryResult<bigint> {
   const { contracts } = usePayIDContext();
 
@@ -327,8 +301,6 @@ export function useAgentSubscriptionPrice(): QueryResult<bigint> {
 
   return { data: data as bigint | undefined, isLoading, isError, refetch };
 }
-
-/* ── Hook: useSetAgentCombinedRule ────────────────────────────────── */
 
 export function useSetAgentCombinedRule(): TxHookResult & {
   setAgentCombinedRule: (agentWallet: Address, ruleSetHash: Hash) => void;
@@ -350,8 +322,6 @@ export function useSetAgentCombinedRule(): TxHookResult & {
   return { setAgentCombinedRule, hash, isPending, isConfirming, isSuccess, error: error ?? null };
 }
 
-/* ── Hook: useUnsetAgentCombinedRule ──────────────────────────────── */
-
 export function useUnsetAgentCombinedRule(): TxHookResult & { unset: (agentWallet: Address) => void; } {
   const { contracts } = usePayIDContext();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
@@ -369,8 +339,6 @@ export function useUnsetAgentCombinedRule(): TxHookResult & { unset: (agentWalle
 
   return { unset, hash, isPending, isConfirming, isSuccess, error: error ?? null };
 }
-
-/* ── Hook: useSubscribeToAgent ────────────────────────────────────── */
 
 export function useSubscribeToAgent(): TxHookResult & {
   subscribeToAgent: (params: { agent: Address; value: bigint; }) => void;
@@ -393,8 +361,6 @@ export function useSubscribeToAgent(): TxHookResult & {
   return { subscribeToAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };
 }
 
-/* ── Hook: useUnsubscribeFromAgent ─────────────────────────────────── */
-
 export function useUnsubscribeFromAgent(): TxHookResult & {
   unsubscribeFromAgent: (agent: Address) => void;
 } {
@@ -414,8 +380,6 @@ export function useUnsubscribeFromAgent(): TxHookResult & {
 
   return { unsubscribeFromAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };
 }
-
-/* ── Hook: useSetPreferredAgent ───────────────────────────────────── */
 
 export function useSetPreferredAgent(): TxHookResult & {
   setPreferredAgent: (agent: Address) => void;

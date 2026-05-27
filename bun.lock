@@ -134,8 +134,9 @@
       "name": "payid-react",
       "version": "1.0.8",
       "dependencies": {
+        "@tanstack/react-query": "^5",
         "ethers": "^6.16.0",
-        "payid": "^1.0.5",
+        "payid": "workspace:*",
       },
       "devDependencies": {
         "@types/qrcode": "^1.5.6",
