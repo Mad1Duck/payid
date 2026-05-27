@@ -8,25 +8,25 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { Link, useLocation } from '@tanstack/react-router'
+import { useLocation } from '@tanstack/react-router'
 import {
   CheckCircle2,
   Clock,
-  Cpu,
   Crown,
   DollarSign,
   FlaskConical,
   Info,
   Loader2,
   Play,
-  Plus,
   ShieldAlert,
   ShieldCheck,
-  Zap,
 } from 'lucide-react'
 import { GameConsole } from '../components/GameConsole'
 import { CartridgeTray } from '../components/CartridgeTray'
 import { RuleCartridge } from '../components/RuleCartridge'
+import { RuleConsoleHeader, RuleConsolePageHeader } from '../components/RuleConsoleHeader'
+import { RuleConsoleStats } from '../components/RuleConsoleStats'
+import { AgentPolicyBanner } from '../components/AgentPolicyBanner'
 import { formatPriceWithUSD } from '@/features/rules/utils/pricing'
 import { evalRule, type DemoCtx, type MiniRule, type MiniCond } from '@/features/rules/utils/miniEvaluator'
 import { useRulesConsole } from '../hooks/useRulesConsole'
@@ -61,12 +61,6 @@ export default function RulesConsolePage() {
 
   const card = `rounded-2xl border ${p.cardBorder}`
   const inp = `px-3 py-2 rounded-xl text-sm border ${p.inputBorder} ${p.inputBg} ${p.textMain} focus:outline-none focus:border-[#8B5CF6]/40`
-  const stepBadge = (n: number, label: string, done: boolean) => (
-    <div key={n} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium ${done ? 'border-[#00D084]/40 bg-[#00D084]/10 text-[#00D084]' : `${p.cardBorder} ${p.textMuted}`}`}>
-      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${done ? 'bg-[#00D084] text-[#0B0F1A]' : 'bg-current/20'}`}>{n}</span>
-      {label}
-    </div>
-  )
 
   return (
     <motion.div
@@ -74,147 +68,27 @@ export default function RulesConsolePage() {
       animate={{ opacity: 1, y: 0 }}
       className="max-w-5xl space-y-6"
     >
-      {/* ── Sub Navigation Tabs ── */}
-      <div className={`flex items-center gap-2 border-b ${p.cardBorder} pb-3`}>
-        <Link
-          to="/v4/app/rules"
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
-            currentPath === '/v4/app/rules'
-              ? 'bg-[#00D084]/10 text-[#00D084] border-[#00D084]/20 shadow-[0_0_12px_rgba(0,208,132,0.08)]'
-              : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent cursor-pointer'
-          }`}
-        >
-          <Cpu className="w-3.5 h-3.5" />
-          Policy Console & Enforcer
-        </Link>
-        <Link
-          to="/v4/app/rules/builder"
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
-            currentPath === '/v4/app/rules/builder'
-              ? 'bg-[#00D084]/10 text-[#00D084] border-[#00D084]/20 shadow-[0_0_12px_rgba(0,208,132,0.08)]'
-              : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent cursor-pointer'
-          }`}
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Custom Rule Builder
-        </Link>
-      </div>
+      <RuleConsoleHeader currentPath={currentPath} />
 
-      {/* ── Header ── */}
       <div className="space-y-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h1
-              className={`text-2xl font-bold ${p.textMain} flex items-center gap-2`}
-            >
-              <Cpu className="w-6 h-6 text-[#8B5CF6]" />
-              Rule Console
-            </h1>
-            <div className="flex items-center justify-between grow w-full">
-              <p className={`text-sm ${p.textMuted} mt-0.5`}>
-                Drag &amp; drop rules into slots and register your live payment
-                policy
-              </p>
-             
-            </div>
-          </div>
-          {isConnected && (
-            <div className='flex flex-col gap-2 items-center justify-center'>
-            <div
-              className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border ${p.cardBorder} text-xs ${p.textMuted}`}
-              style={{ backgroundColor: p.cardBg }}
-            >
-              <Crown className="w-3.5 h-3.5 text-[#F59E0B]" />
-              <span>
-                {sub?.isActive
-                  ? `Pro · ${myRules.length}/${sub.maxSlots}`
-                  : `Free · ${myRules.length}/1`}
-              </span>
-              
-            </div>
-             <Link
-                to="/v4/app/rules/builder"
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#8B5CF6] text-white text-xs font-semibold hover:bg-[#8B5CF6]/90 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Create Rule
-              </Link>
-              </div>
-          )}
-        </div>
+        <RuleConsolePageHeader
+          isConnected={isConnected}
+          sub={sub}
+          myRulesLength={myRules.length}
+        />
 
-        {/* Step badges */}
-        {isConnected && (
-          <div className="flex flex-wrap gap-2">
-            {stepBadge(1, 'Build Rule', true)}
-            {stepBadge(2, 'Deploy NFT', myRules.length > 0)}
-            {stepBadge(
-              3,
-              'Activate',
-              myRules.some((r) => r.tokenId > 0n),
-            )}
-            {stepBadge(4, 'Go Live', !!activeCombined?.hash)}
-          </div>
-        )}
-
-        {/* Stats row */}
-        {isConnected && (
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              {
-                label: 'Active Rules',
-                value: activeCount.toString(),
-                color: '#00D084',
-              },
-              {
-                label: 'Total Rules',
-                value: myRules.length.toString(),
-                color: '#0EA5E9',
-              },
-              {
-                label: 'Policy',
-                value: activeCombined?.hash ? 'Live' : 'Off',
-                color: activeCombined?.hash ? '#00D084' : '#F59E0B',
-              },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className={`${card} p-4`}
-                style={{ backgroundColor: p.cardBg }}
-              >
-                <p
-                  className="text-2xl font-bold font-mono"
-                  style={{ color: s.color }}
-                >
-                  {s.value}
-                </p>
-                <p className={`text-[11px] mt-0.5 ${p.textMuted}`}>{s.label}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        <RuleConsoleStats
+          isConnected={isConnected}
+          activeCount={activeCount}
+          myRulesLength={myRules.length}
+          activeCombinedHash={activeCombined?.hash ?? null}
+        />
       </div>
 
-      {/* ── AI Agent Policy Banner ── */}
-      {isConnected && effectiveAgentRule?.ruleSetHash && effectiveAgentRule.ruleSetHash !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
-        <div className={`${card} p-4 flex items-center gap-3`} style={{ backgroundColor: p.cardBg, borderColor: '#00D08440' }}>
-          <Cpu className="w-5 h-5 text-[#00D084]" />
-          <div className="flex-1 min-w-0">
-            <p className={`text-sm ${p.textMain} font-medium`}>
-              Using AI Agent Policy: @{preferredAgentInfo?.handle ?? (preferredAgent ? preferredAgent.slice(0, 6) + '...' + preferredAgent.slice(-4) : '')}
-            </p>
-            <p className={`text-xs ${p.textMuted}`}>
-              Rule: {effectiveAgentRule.ruleSetHash.slice(0, 6) + '...' + effectiveAgentRule.ruleSetHash.slice(-4)} · Subscribed to agent combined rule
-            </p>
-          </div>
-          <Link
-            to="/v4/app/ai-agents"
-            className="shrink-0 text-xs font-medium text-[#00D084] hover:underline"
-          >
-            Manage
-          </Link>
-        </div>
-      )}
+      <AgentPolicyBanner
+        effectiveAgentRuleHash={effectiveAgentRule?.ruleSetHash ?? ''}
+        preferredAgentInfo={preferredAgentInfo}
+      />
 
       {/* ── Connect wallet prompt ── */}
       {!isConnected && (

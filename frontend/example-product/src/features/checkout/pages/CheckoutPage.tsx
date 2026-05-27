@@ -16,47 +16,9 @@ import {
 } from 'lucide-react';
 import { useCheckout } from '../hooks/useCheckout';
 import PremiumButton from '@/components/v4/PremiumButton';
-import { shortAddr } from '@/features/shared';
+import { shortAddr, useCountdown } from '@/features/shared';
 import { formatUnits } from 'viem';
-import { useState, useEffect } from 'react';
-
-// Custom hook to calculate remaining time
-function useCountdown(expiresAt: number | null) {
-  const [timeLeft, setTimeLeft] = useState<string>('');
-
-  useEffect(() => {
-    if (!expiresAt) {
-      setTimeLeft('');
-      return;
-    }
-
-    const updateTime = () => {
-      const now = Math.floor(Date.now() / 1000);
-      const diff = expiresAt - now;
-
-      if (diff <= 0) {
-        setTimeLeft('Expired');
-        return;
-      }
-
-      const hrs = Math.floor(diff / 3600);
-      const mins = Math.floor((diff % 3600) / 60);
-      const secs = diff % 60;
-
-      const formatted = hrs > 0 
-        ? `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-        : `${mins}:${secs.toString().padStart(2, '0')}`;
-
-      setTimeLeft(formatted);
-    };
-
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, [expiresAt]);
-
-  return timeLeft;
-}
+import { useState } from 'react';
 
 export default function CheckoutPage() {
   const { isConnected, chain } = useAccount();

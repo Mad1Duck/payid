@@ -131,15 +131,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     { to: '/v4/app/rules/builder', icon: Pencil, label: 'Rule Builder' },
     { to: '/v4/app/agent', icon: Bot, label: 'AI Agent' },
     { to: '/v4/app/ai-agents', icon: Cpu, label: 'My AI Agents' },
-    ...(features.reputation
+    ...(features?.reputation
       ? [
-          { to: '/v4/app/reputation', icon: Star, label: reputation.info.label },
+          { to: '/v4/app/reputation', icon: Star, label: reputation?.info?.label || 'Reputation' },
           { to: '/v4/app/reputation/report', icon: ShieldAlert, label: 'Report Scam' },
         ]
       : []),
-    ...(features.escrow
+    ...(features?.escrow
       ? [
-          { to: '/v4/app/escrow', icon: Briefcase, label: escrow.info.label },
+          { to: '/v4/app/escrow', icon: Briefcase, label: escrow?.info?.label || 'Escrow' },
         ]
       : []),
     // { to: '/v4/app/tools', icon: Wrench, label: 'Tools' },

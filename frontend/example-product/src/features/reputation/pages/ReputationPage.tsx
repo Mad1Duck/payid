@@ -40,7 +40,6 @@ export function ReputationPage() {
   const tier = (() => {
     if (isBlacklisted) return { label: 'Blacklisted', color: '#EF4444', desc: 'Blocked from receiving payments', icon: ShieldX }
     if (isTrusted)     return { label: 'Trusted', color: '#00D084', desc: 'Verified trusted address', icon: ShieldCheck }
-    if (score >= 700)  return { label: 'Excellent', color: '#0EA5E9', desc: 'Highly reputable', icon: ShieldCheck }
     if (score >= 500)  return { label: 'Good', color: '#F59E0B', desc: 'Established reputation', icon: Shield }
     if (score >= 100)  return { label: 'Active', color: '#64748B', desc: 'Building reputation', icon: Shield }
     return               { label: 'New', color: '#64748B', desc: 'No history yet', icon: Shield }
@@ -136,8 +135,8 @@ export function ReputationPage() {
           </div>
           <div className="flex justify-between text-xs" style={{ color: `${tier.color}80` }}>
             <span>0</span>
-            <span>100 can report</span>
-            <span>700 can confirm</span>
+            <span>{Number(minReporterReputation)} can report</span>
+            <span>{Number(minReporterReputation)} can confirm</span>
             <span>1000</span>
           </div>
         </div>
@@ -162,7 +161,7 @@ export function ReputationPage() {
                 canReport ? 'bg-[#00D084]/10 text-[#00D084]' : 'bg-[#EF4444]/10 text-[#EF4444]'
               }`}
             >
-              {canReport ? 'Can Report' : 'Need 100+ rep'}
+              {canReport ? 'Can Report' : `Need ${Number(minReporterReputation)}+ rep`}
             </div>
           </div>
         </motion.div>

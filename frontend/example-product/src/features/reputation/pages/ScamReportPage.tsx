@@ -182,29 +182,14 @@ export function ScamReportPage() {
   const [evidenceHash, setEvidenceHash] = useState('')
   const [stakeAmount, setStakeAmount] = useState('')
   const [activeTab, setActiveTab] = useState<'submit' | 'confirm'>('submit')
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const p = useV4Palette()
 
   const { canReport, score } = useCanReport({})
   const { minStake, minReporterReputation } = useVranConfig({})
-  const { submitReport, isPending, isConfirming, isSuccess, error } = useSubmitReport({})
-  const { uploadToIPFS, isUploading, error: uploadError } = useIPFSUpload()
+  const { submitReport, isPending, isSuccess, error } = useSubmitReport({})
 
   const isValidAddress = targetAddress.startsWith('0x') && targetAddress.length === 42
   const isValidStake = stakeAmount !== '' && parseFloat(stakeAmount) >= Number(minStake) / 1e18
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) setEvidenceFile(file)
-  }
-
-  const handleUpload = async () => {
-    if (!evidenceFile) return
-    try {
-      const cid = await uploadToIPFS(evidenceFile)
-      setEvidenceHash(cid)
-    } catch {}
-  }
 
   const handleSubmit = () => {
     if (!isValidAddress || !evidenceHash || !isValidStake) return
@@ -212,9 +197,7 @@ export function ScamReportPage() {
     submitReport(targetAddress as `0x${string}`, evidenceHash, stake)
   }
 
-  const canGoToStep2 = evidenceHash !== ''
-  const canGoToStep3 = canGoToStep2 && isValidAddress
-  const canSubmit = canGoToStep3 && isValidStake && canReport && !isPending && !isConfirming
+  const canSubmit = isValidAddress && evidenceHash !== '' && isValidStake && canReport && !isPending
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
@@ -273,7 +256,7 @@ export function ScamReportPage() {
                 <div>
                   <div className="text-sm font-semibold text-[#EF4444]">Not eligible to report</div>
                   <div className="text-xs text-[#EF4444]/80 mt-0.5">
-                    You need 100+ reputation to submit reports. Your score: {score}.
+                    You need {Number(minReporterReputation)}+ reputation to submit reports. Your score: {score}.
                     Complete transactions to build reputation.
                   </div>
                 </div>
