@@ -20,7 +20,7 @@ import {
   AppLayout as V4AppLayout,
   ThemeProvider as V4ThemeProvider,
 } from './components/v4'
-import { AdvancedTools as V4AdvancedTools } from '@/features/tools'
+import { AdvancedTools as V4AdvancedTools, EscrowPage as V4EscrowPage } from '@/features/tools'
 import { AdminPage as V4AdminPage } from '@/features/admin'
 import { AgentPayIDPage as V4AgentPayIDPage, UserAIAgentsPage as V4UserAIAgentsPage } from '@/features/agent'
 import { Dashboard as V4Dashboard } from '@/features/dashboard'
@@ -202,6 +202,12 @@ const v4VestingRoute = createRoute({
   component: V4TimeLockVesting,
 })
 
+const v4EscrowRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'escrow',
+  component: V4EscrowPage,
+})
+
 const v4SettingsRoute = createRoute({
   getParentRoute: () => v4AppRoute,
   path: 'settings',
@@ -263,6 +269,7 @@ const routeTree = rootRoute.addChildren([
       v4AdvancedToolsRoute,
       v4DAOPayrollRoute,
       v4VestingRoute,
+      v4EscrowRoute,
       v4SettingsRoute,
       v4AdminRoute,
       v4AgentRoute,
@@ -314,6 +321,7 @@ if (rootElement && !rootElement.innerHTML) {
                 attestationVerifier: addr.AttestationVerifier,
                 aiAgentRegistry: addr.AIAgentRegistry,
                 aiAgentRuleManager: addr.AIAgentRuleManager,
+                escrowMilestone: addr.EscrowMilestone,
               }
               return acc
             }, {} as any)}

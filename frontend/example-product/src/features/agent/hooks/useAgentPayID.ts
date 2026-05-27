@@ -774,37 +774,16 @@ export function useAgentPayID(): AgentPayIDState {
       ? (onChainRules[ruleIdx].name || `Rule #${onChainRules[ruleIdx].ruleId}`)
       : PRESET_RULES[ruleIdx].label;
 
-    // Get gas config to avoid "max fee per gas less than block base fee" error
-    const getGasConfig = async () => {
-      try {
-        const block = await publicClient.getBlock();
-        if (block?.baseFeePerGas) {
-          // Set maxPriorityFeePerGas to 1 gwei, maxFeePerGas = baseFee + priority
-          const maxPriorityFeePerGas = 1000000000n; // 1 gwei
-          const maxFeePerGas = block.baseFeePerGas + maxPriorityFeePerGas;
-          return {
-            maxFeePerGas,
-            maxPriorityFeePerGas,
-          };
-        }
-      } catch {
-        // Fallback if block fetch fails
-      }
-      return {};
-    };
-
     try {
       if (onChainPhase === 'idle') {
         setOnChainPhase('register');
         addLog(`[REGISTRY] setOwner(${tid}, ${shortAddr(address)})…`);
-        const gasConfig1 = await getGasConfig();
         const tx1 = await writeContractAsync({
           address: mockRegistryAddr,
           abi: MockAgentRegistryAbi,
           functionName: 'setOwner',
           args: [tid, address],
           chainId: activeChainId,
-          ...gasConfig1,
         });
         setTxHashes((h) => [...h, tx1]);
         await publicClient.waitForTransactionReceipt({ hash: tx1 });
@@ -812,14 +791,12 @@ export function useAgentPayID(): AgentPayIDState {
 
         setOnChainPhase('link');
         addLog(`[AGENT] linkAgentRule(${tid}, ${shortHash(ruleHashToLink)})…`);
-        const gasConfig2 = await getGasConfig();
         const tx2 = await writeContractAsync({
           address: agentPayIDAddr,
           abi: AgentPayIDAbi,
           functionName: 'linkAgentRule',
           args: [tid, ruleHashToLink],
           chainId: activeChainId,
-          ...gasConfig2,
         });
         setTxHashes((h) => [...h, tx2]);
         await publicClient.waitForTransactionReceipt({ hash: tx2 });
@@ -846,13 +823,10 @@ export function useAgentPayID(): AgentPayIDState {
         addLog(`[SETTLE] Initiating MetaMask to transfer ${displayAmount} tokens to ${shortAddr(recipient)}…`);
 
         const testValue = BigInt(Math.floor(Math.min(displayAmount, 5) * 1e15));
-        const gasConfig3 = await getGasConfig();
-
         const txSettle = await sendTransactionAsync({
           to: recipient as `0x${string}`,
           value: testValue,
           chainId: activeChainId,
-          ...gasConfig3,
         });
 
         setTxHashes((h) => [...h, txSettle]);

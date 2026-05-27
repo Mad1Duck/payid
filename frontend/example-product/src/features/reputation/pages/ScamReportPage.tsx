@@ -45,7 +45,7 @@ function ConfirmSection() {
   const p = useV4Palette()
   const [reportIdInput, setReportIdInput] = useState('')
   const [lookupId, setLookupId] = useState<bigint | null>(null)
-  const { canReport, score } = useCanReport({})
+  const { score } = useCanReport({})
   const { minReporterReputation } = useVranConfig({})
   const { report, isLoading: loadingReport } = useReport({ reportId: lookupId ?? 0n })
   const { confirmReport, isPending, isSuccess, error } = useConfirmReport({})
@@ -406,7 +406,7 @@ export function ScamReportPage() {
                       </button>
                       <button
                         onClick={() => setStep(3)}
-                        disabled={!canGoToStep3}
+                        disabled={!isValidAddress}
                         className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-bold hover:bg-[#00B86E] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                       >
                         Next: Set Stake <ChevronRight className="w-4 h-4" />
@@ -483,8 +483,6 @@ export function ScamReportPage() {
                       >
                         {isPending ? (
                           <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</>
-                        ) : isConfirming ? (
-                          <><Loader2 className="w-4 h-4 animate-spin" /> Confirming...</>
                         ) : (
                           <><ShieldAlert className="w-4 h-4" /> Submit Report</>
                         )}

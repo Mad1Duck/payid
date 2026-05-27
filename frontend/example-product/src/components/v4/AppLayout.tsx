@@ -21,7 +21,6 @@ import {
   ShieldAlert,
   Star,
   Wallet,
-  Zap,
   Gift,
   Users,
 } from 'lucide-react'

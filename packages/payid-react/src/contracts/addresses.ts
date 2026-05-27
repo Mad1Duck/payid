@@ -24,6 +24,7 @@ export const PAYID_CONTRACTS: Record<number, PayIDContracts> = {
     vindexRegistry: "0x0B306BF915C4d645ff596e518fAf3F9669b97016",
     aiAgentRegistry: "0x0000000000000000000000000000000000000000",
     aiAgentRuleManager: "0x0000000000000000000000000000000000000000",
+    escrowMilestone: "0x0000000000000000000000000000000000000000",
   },
 
   4202: {
@@ -33,6 +34,7 @@ export const PAYID_CONTRACTS: Record<number, PayIDContracts> = {
     payIDVerifier: "0x0000000000000000000000000000000000000000",
     payWithPayID: "0x0000000000000000000000000000000000000000",
     vindexRegistry: "0x0000000000000000000000000000000000000000",
+    escrowMilestone: "0x0000000000000000000000000000000000000000",
   },
 
   10143: {
@@ -42,6 +44,7 @@ export const PAYID_CONTRACTS: Record<number, PayIDContracts> = {
     payIDVerifier: "0x0000000000000000000000000000000000000000",
     payWithPayID: "0x0000000000000000000000000000000000000000",
     vindexRegistry: "0x0000000000000000000000000000000000000000",
+    escrowMilestone: "0x0000000000000000000000000000000000000000",
   },
 
   1287: {
@@ -51,6 +54,7 @@ export const PAYID_CONTRACTS: Record<number, PayIDContracts> = {
     payIDVerifier: "0x0000000000000000000000000000000000000000",
     payWithPayID: "0x0000000000000000000000000000000000000000",
     vindexRegistry: "0x0000000000000000000000000000000000000000",
+    escrowMilestone: "0x0000000000000000000000000000000000000000",
   },
 
   // 0G Newton Testnet (real, chain 16600) — update after deploy
@@ -64,6 +68,7 @@ export const PAYID_CONTRACTS: Record<number, PayIDContracts> = {
     attestationVerifier: "0x0000000000000000000000000000000000000000",
     aiAgentRegistry: "0x0000000000000000000000000000000000000000",
     aiAgentRuleManager: "0x0000000000000000000000000000000000000000",
+    escrowMilestone: "0x6B21b3ae41f818Fc91e322b53f8D0773d31eCB75",
   },
 
   // 0G Newton Testnet (Fork, chain 16601)
@@ -77,6 +82,7 @@ export const PAYID_CONTRACTS: Record<number, PayIDContracts> = {
     attestationVerifier: "0x6e0a5725dD4071e46356bD974E13F35DbF9ef367",
     aiAgentRegistry: "0x1eB5C49630E08e95Ba7f139BcF4B9BA171C9a8C7",
     aiAgentRuleManager: "0x5A569Ad19272Afa97103fD4DbadF33B2FcbaA175",
+    escrowMilestone: "0x76cec9299B6Fa418dc71416FF353737AB7933A7D",
   },
 
   // 0G Galileo Testnet (chain 16602)
@@ -90,6 +96,7 @@ export const PAYID_CONTRACTS: Record<number, PayIDContracts> = {
     attestationVerifier: "0x524130A6974B3075eb6DB32afA89AE4315bf7b2d",
     aiAgentRegistry: "0x76E829f48BD5e3c5380f5c77Fe1a3EFBD9AC5a44",
     aiAgentRuleManager: "0xd5eA6ABe9727061c18fa65Fcd75bd7dAc7E7e7f5",
+    escrowMilestone: "0x69bbbF46FD45D7D89CEb761A6D188B1760f61080",
   },
 };
 

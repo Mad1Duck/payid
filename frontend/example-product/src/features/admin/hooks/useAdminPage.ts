@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract, useChainId, useChains, usePublicClient } from 'wagmi';
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract, useChainId, useChains } from 'wagmi';
 import { usePayIDContext } from 'payid-react';
 import { parseEther } from 'viem';
 import {
@@ -61,34 +61,12 @@ export function useAdminPage() {
   const chainId = useChainId();
   const chains = useChains();
   const nativeSymbol = chains.find(c => c.id === chainId)?.nativeCurrency.symbol ?? 'ETH';
-  const publicClient = usePublicClient();
-
   const { writeContract, isPending, error, data: hash } = useWriteContract();
   const { isLoading: confirming } = useWaitForTransactionReceipt({ hash });
   const txBusy = isPending || confirming;
   const txError = error
     ? ((error as any).shortMessage ?? (error as any).message ?? 'Transaction failed')
     : null;
-
-  // Helper to get gas config with proper maxFeePerGas > baseFee
-  const getGasConfig = async () => {
-    if (!publicClient) return {};
-    try {
-      const block = await publicClient.getBlock();
-      if (block?.baseFeePerGas) {
-        // Set maxPriorityFeePerGas to 1 gwei, maxFeePerGas = baseFee + priority
-        const maxPriorityFeePerGas = 1000000000n; // 1 gwei
-        const maxFeePerGas = block.baseFeePerGas + maxPriorityFeePerGas;
-        return {
-          maxFeePerGas,
-          maxPriorityFeePerGas,
-        };
-      }
-    } catch {
-      // Fallback if block fetch fails
-    }
-    return {};
-  };
 
   /* ── Contract addresses ── */
   const attestationVerifierAddr: `0x${string}` =
@@ -251,143 +229,117 @@ export function useAdminPage() {
   /* ── Handlers ── */
   const initVerifier = async () => {
     if (!initRuleAuthorityAddr || !initAttestVerifierAddr) return;
-    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.payIDVerifier,
       abi: PayIDVerifierAbi,
       functionName: 'initialize',
       args: [initRuleAuthorityAddr as `0x${string}`, initAttestVerifierAddr as `0x${string}`],
-      ...gasConfig,
     });
   };
   const initPWP = async () => {
     if (!initPWPVerifierAddr || !initPWPAttestAddr) return;
-    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.payWithPayID,
       abi: PayWithPayIDAbi,
       functionName: 'initialize',
       args: [initPWPVerifierAddr as `0x${string}`, initPWPAttestAddr as `0x${string}`],
-      ...gasConfig,
     });
   };
   const setAuthority = async (trusted: boolean) => {
     if (!authorityAddr) return;
-    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.payIDVerifier,
       abi: PayIDVerifierAbi,
       functionName: 'setTrustedAuthority',
       args: [authorityAddr as `0x${string}`, trusted],
-      ...gasConfig,
     });
   };
   const setSchema = async (trusted: boolean) => {
     if (!schemaUID) return;
-    const gasConfig = await getGasConfig();
     writeContract({
       address: attestationVerifierAddr,
       abi: AttestationVerifierAbi,
       functionName: 'setTrustedSchema',
       args: [schemaUID as `0x${string}`, trusted],
-      ...gasConfig,
     });
   };
   const setAttester = async (trusted: boolean) => {
     if (!attesterAddr) return;
-    const gasConfig = await getGasConfig();
     writeContract({
       address: attestationVerifierAddr,
       abi: AttestationVerifierAbi,
       functionName: 'setTrustedAttester',
       args: [attesterAddr as `0x${string}`, trusted],
-      ...gasConfig,
     });
   };
   const setPrice = async () => {
     if (!priceCents) return;
-    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.ruleItemERC721,
       abi: RuleItemERC721Abi,
       functionName: 'setSubscriptionUsdCents',
       args: [BigInt(priceCents)],
-      ...gasConfig,
     });
   };
   const setOracle = async () => {
     if (!oracleAddr) return;
-    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.ruleItemERC721,
       abi: RuleItemERC721Abi,
       functionName: 'setOracle',
       args: [oracleAddr as `0x${string}`],
-      ...gasConfig,
     });
   };
   const togglePause = async () => {
-    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.ruleItemERC721,
       abi: RuleItemERC721Abi,
       functionName: isPaused ? 'unpause' : 'pause',
-      ...gasConfig,
     });
   };
   const withdraw = async () => {
     if (!withdrawTo || !withdrawAmount) return;
-    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.ruleItemERC721,
       abi: TREASURY_ABI,
       functionName: 'withdrawTreasury',
       args: [withdrawTo as `0x${string}`, parseEther(withdrawAmount)],
-      ...gasConfig,
     });
   };
   const withdrawAll = async () => {
     if (!withdrawTo) return;
-    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.ruleItemERC721,
       abi: TREASURY_ABI,
       functionName: 'withdrawAllTreasury',
       args: [withdrawTo as `0x${string}`],
-      ...gasConfig,
     });
   };
   const setStake = async () => {
     if (!minStake) return;
-    const gasConfig = await getGasConfig();
     writeContract({
       address: vindexRegistryAddr,
       abi: VindexRegistryAbi,
       functionName: 'setMinStake',
       args: [parseEther(minStake)],
-      ...gasConfig,
     });
   };
   const setConsensus = async () => {
     if (!consensusThreshold) return;
-    const gasConfig = await getGasConfig();
     writeContract({
       address: vindexRegistryAddr,
       abi: VindexRegistryAbi,
       functionName: 'setConsensusThreshold',
       args: [Number(consensusThreshold)],
-      ...gasConfig,
     });
   };
   const adjustReputation = async () => {
     if (!targetAddress || !newReputation) return;
-    const gasConfig = await getGasConfig();
     writeContract({
       address: vindexRegistryAddr,
       abi: VindexRegistryAbi,
       functionName: 'adjustReputation',
       args: [targetAddress as `0x${string}`, Number(newReputation), reputationReason || 'Admin adjustment'],
-      ...gasConfig,
     });
   };
 
