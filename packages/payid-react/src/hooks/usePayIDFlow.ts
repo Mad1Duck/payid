@@ -12,6 +12,7 @@ import type { Address, Hash, Abi } from 'viem';
 import { BrowserProvider } from 'ethers';
 
 import { usePayIDContext } from '../PayIDProvider';
+import { useGasBuffer } from './useGasBuffer';
 
 import CombinedRuleStorageArtifact from '../abis/PayIDModule#CombinedRuleStorage.json';
 import PayWithPayIDArtifact from '../abis/PayIDModule#PayWithPayID.json';
@@ -252,6 +253,7 @@ export function usePayIDFlow(): PayIDFlowResult {
   const [loadedRules, setLoadedRules] = useState<any[]>([]);
 
   const { writeContractAsync } = useWriteContract();
+  const withBuffer = useGasBuffer();
   const { isSuccess: isTxConfirmed, isError: isTxFailed, error: txReceiptError } = useWaitForTransactionReceipt({ hash: txHash });
 
   useEffect(() => {
@@ -552,12 +554,13 @@ export function usePayIDFlow(): PayIDFlowResult {
 
         if (allowance < params.amount) {
           setStatus('approving');
-          const approveTx = await writeContractAsync({
+          const approveArgs = await withBuffer({
             address: params.asset,
-            abi: ERC20_ABI,
+            abi: ERC20_ABI as unknown as Abi,
             functionName: 'approve',
             args: [contracts.payWithPayID, params.amount],
           });
+          const approveTx = await writeContractAsync(approveArgs);
           const receipt = await publicClient.waitForTransactionReceipt({ hash: approveTx });
           if (receipt.status !== 'success') throw new Error('ERC20 approve failed');
           log('step-4.5', 'approve confirmed');
@@ -685,36 +688,37 @@ export function usePayIDFlow(): PayIDFlowResult {
 
       setStatus('awaiting-wallet');
 
-      const hash = await writeContractAsync(
-        isETH
+      const txArgsBase = isETH
+        ? {
+          address: contracts.payWithPayID,
+          abi: PayWithPayIDABI as unknown as Abi,
+          functionName: 'payNative',
+          args: [d, sig, params.attestationUIDs ?? []],
+          value: params.amount,
+        }
+        : useOracleGuard
           ? {
             address: contracts.payWithPayID,
-            abi: PayWithPayIDABI,
-            functionName: 'payNative',
-            args: [d, sig, params.attestationUIDs ?? []],
-            value: params.amount,
+            abi: PayWithPayIDABI as unknown as Abi,
+            functionName: 'payERC20WithOracleGuard',
+            args: [
+              d,
+              sig,
+              params.attestationUIDs ?? [],
+              params.tokenPriceOracle,
+              params.minUsdValue,
+              params.tokenDecimals,
+            ],
           }
-          : useOracleGuard
-            ? {
-              address: contracts.payWithPayID,
-              abi: PayWithPayIDABI,
-              functionName: 'payERC20WithOracleGuard',
-              args: [
-                d,
-                sig,
-                params.attestationUIDs ?? [],
-                params.tokenPriceOracle,
-                params.minUsdValue,
-                params.tokenDecimals,
-              ],
-            }
-            : {
-              address: contracts.payWithPayID,
-              abi: PayWithPayIDABI,
-              functionName: 'payERC20',
-              args: [d, sig, params.attestationUIDs ?? []],
-            },
-      );
+          : {
+            address: contracts.payWithPayID,
+            abi: PayWithPayIDABI as unknown as Abi,
+            functionName: 'payERC20',
+            args: [d, sig, params.attestationUIDs ?? []],
+          };
+
+      const bufferedArgs = await withBuffer(txArgsBase as any);
+      const hash = await writeContractAsync(bufferedArgs);
 
       log('step-5', 'tx submitted', hash);
       setTxHash(hash);

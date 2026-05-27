@@ -31,8 +31,18 @@ export async function evaluate(
   if (ruleConfig.logic !== "AND" && ruleConfig.logic !== "OR") {
     throw new Error(`evaluate(): ruleConfig.logic must be "AND" or "OR", got: ${ruleConfig.logic}`);
   }
-  if (!Array.isArray(ruleConfig.rules) || ruleConfig.rules.length === 0) {
-    throw new Error("evaluate(): ruleConfig.rules must be a non-empty array");
+  if (!Array.isArray(ruleConfig.rules)) {
+    throw new Error("evaluate(): ruleConfig.rules must be an array");
+  }
+
+  // No rules = allow-all (recipient has no policy configured)
+  if (ruleConfig.rules.length === 0) {
+    return {
+      decision: "ALLOW",
+      code: "NO_RULES",
+      reason: "No policy configured for this recipient",
+      ...(options?.debug ? { debug: { trace: buildDecisionTrace(context, ruleConfig) } } : {}),
+    } as RuleResult | RuleResultDebug;
   }
 
   let result: RuleResult;
