@@ -2,6 +2,7 @@ import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 
 import { useMemo } from 'react';
 import type { Abi } from 'viem';
 import { usePayIDContext } from '../PayIDProvider';
+import { useGasBuffer } from './useGasBuffer';
 import type { AIAgent, AdminAgent, TxHookResult } from '../types';
 import type { Address, Hash } from 'viem';
 
@@ -413,8 +414,9 @@ export function useRegisterAdminAIAgent(): TxHookResult & {
   }) => void;
 } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const registerAgent = (params: {
     agentWallet: Address;
@@ -424,12 +426,12 @@ export function useRegisterAdminAIAgent(): TxHookResult & {
     publicEndpoint: string;
   }) => {
     if (!contracts.aiAgentRegistry) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRegistry,
-      abi: AI_AGENT_REGISTRY_ABI,
+      abi: AI_AGENT_REGISTRY_ABI as unknown as Abi,
       functionName: 'registerAdminAgent',
       args: [params.agentWallet, params.displayName, params.metadataHash, params.encryptedURI, params.publicEndpoint],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { registerAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };
@@ -445,8 +447,9 @@ export function useUpdateAdminAIAgent(): TxHookResult & {
   }) => void;
 } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const updateAgent = (params: {
     agentWallet: Address;
@@ -456,12 +459,12 @@ export function useUpdateAdminAIAgent(): TxHookResult & {
     publicEndpoint: string;
   }) => {
     if (!contracts.aiAgentRegistry) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRegistry,
-      abi: AI_AGENT_REGISTRY_ABI,
+      abi: AI_AGENT_REGISTRY_ABI as unknown as Abi,
       functionName: 'updateAdminAgent',
       args: [params.agentWallet, params.displayName, params.metadataHash, params.encryptedURI, params.publicEndpoint],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { updateAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };
@@ -471,17 +474,18 @@ export function useDeactivateAdminAIAgent(): TxHookResult & {
   deactivate: (agentWallet: Address) => void;
 } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const deactivate = (agentWallet: Address) => {
     if (!contracts.aiAgentRegistry) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRegistry,
-      abi: AI_AGENT_REGISTRY_ABI,
+      abi: AI_AGENT_REGISTRY_ABI as unknown as Abi,
       functionName: 'deactivateAdminAgent',
       args: [agentWallet],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { deactivate, hash, isPending, isConfirming, isSuccess, error: error ?? null };
@@ -601,8 +605,9 @@ export function useRegisterUserAIAgent(): TxHookResult & {
   }) => void;
 } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const registerAgent = (params: {
     handle: string;
@@ -613,12 +618,12 @@ export function useRegisterUserAIAgent(): TxHookResult & {
     computeEndpoint: string;
   }) => {
     if (!contracts.aiAgentRegistry) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRegistry,
-      abi: AI_AGENT_REGISTRY_ABI,
+      abi: AI_AGENT_REGISTRY_ABI as unknown as Abi,
       functionName: 'registerUserAgent',
       args: [params.handle, params.name, params.metadataURI, params.modelType, params.computeProvider, params.computeEndpoint],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { registerAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };
@@ -634,8 +639,9 @@ export function useUpdateUserAIAgent(): TxHookResult & {
   }) => void;
 } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const updateAgent = (params: {
     name: string;
@@ -645,12 +651,12 @@ export function useUpdateUserAIAgent(): TxHookResult & {
     computeEndpoint: string;
   }) => {
     if (!contracts.aiAgentRegistry) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRegistry,
-      abi: AI_AGENT_REGISTRY_ABI,
+      abi: AI_AGENT_REGISTRY_ABI as unknown as Abi,
       functionName: 'updateUserAgent',
       args: [params.name, params.metadataURI, params.modelType, params.computeProvider, params.computeEndpoint],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { updateAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };
@@ -658,16 +664,17 @@ export function useUpdateUserAIAgent(): TxHookResult & {
 
 export function useDeactivateUserAIAgent(): TxHookResult & { deactivate: () => void; } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const deactivate = () => {
     if (!contracts.aiAgentRegistry) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRegistry,
-      abi: AI_AGENT_REGISTRY_ABI,
+      abi: AI_AGENT_REGISTRY_ABI as unknown as Abi,
       functionName: 'deactivateUserAgent',
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { deactivate, hash, isPending, isConfirming, isSuccess, error: error ?? null };
@@ -675,17 +682,18 @@ export function useDeactivateUserAIAgent(): TxHookResult & { deactivate: () => v
 
 export function useVerifyUserAIAgent(): TxHookResult & { verify: (owner: Address) => void; } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const verify = (owner: Address) => {
     if (!contracts.aiAgentRegistry) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRegistry,
-      abi: AI_AGENT_REGISTRY_ABI,
+      abi: AI_AGENT_REGISTRY_ABI as unknown as Abi,
       functionName: 'verifyUserAgent',
       args: [owner],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { verify, hash, isPending, isConfirming, isSuccess, error: error ?? null };
@@ -693,16 +701,17 @@ export function useVerifyUserAIAgent(): TxHookResult & { verify: (owner: Address
 
 export function useRecordUserInference(): TxHookResult & { record: () => void; } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const record = () => {
     if (!contracts.aiAgentRegistry) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRegistry,
-      abi: AI_AGENT_REGISTRY_ABI,
+      abi: AI_AGENT_REGISTRY_ABI as unknown as Abi,
       functionName: 'recordUserInference',
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { record, hash, isPending, isConfirming, isSuccess, error: error ?? null };

@@ -80,8 +80,12 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@wagmi/core": "^3.4.12",
+    "react": "^19.2.6",
     "release-it": "^20.0.1",
-    "tsup": "^8.5.1"
+    "tsup": "^8.5.1",
+    "viem": "^2.49.3",
+    "wagmi": "^3.6.15"
   },
   "description": "PAY.ID policy engine — evaluate payment rules and generate EIP-712 Decision Proofs",
   "repository": {

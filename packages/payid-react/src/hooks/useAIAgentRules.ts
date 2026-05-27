@@ -2,6 +2,7 @@ import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 
 import { useMemo } from 'react';
 import type { Abi } from 'viem';
 import { usePayIDContext } from '../PayIDProvider';
+import { useGasBuffer } from './useGasBuffer';
 import type { AgentRuleInfo, AgentSubscription, AgentWithRule, TxHookResult } from '../types';
 import type { Address, Hash } from 'viem';
 
@@ -306,17 +307,18 @@ export function useSetAgentCombinedRule(): TxHookResult & {
   setAgentCombinedRule: (agentWallet: Address, ruleSetHash: Hash) => void;
 } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const setAgentCombinedRule = (agentWallet: Address, ruleSetHash: Hash) => {
     if (!contracts.aiAgentRuleManager) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRuleManager,
-      abi: AI_AGENT_RULE_MANAGER_ABI,
+      abi: AI_AGENT_RULE_MANAGER_ABI as unknown as Abi,
       functionName: 'setAgentCombinedRule',
       args: [agentWallet, ruleSetHash],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { setAgentCombinedRule, hash, isPending, isConfirming, isSuccess, error: error ?? null };
@@ -324,17 +326,18 @@ export function useSetAgentCombinedRule(): TxHookResult & {
 
 export function useUnsetAgentCombinedRule(): TxHookResult & { unset: (agentWallet: Address) => void; } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const unset = (agentWallet: Address) => {
     if (!contracts.aiAgentRuleManager) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRuleManager,
-      abi: AI_AGENT_RULE_MANAGER_ABI,
+      abi: AI_AGENT_RULE_MANAGER_ABI as unknown as Abi,
       functionName: 'unsetAgentCombinedRule',
       args: [agentWallet],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { unset, hash, isPending, isConfirming, isSuccess, error: error ?? null };
@@ -344,18 +347,19 @@ export function useSubscribeToAgent(): TxHookResult & {
   subscribeToAgent: (params: { agent: Address; value: bigint; }) => void;
 } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const subscribeToAgent = (params: { agent: Address; value: bigint; }) => {
     if (!contracts.aiAgentRuleManager) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRuleManager,
-      abi: AI_AGENT_RULE_MANAGER_ABI,
+      abi: AI_AGENT_RULE_MANAGER_ABI as unknown as Abi,
       functionName: 'subscribeToAgent',
       args: [params.agent],
       value: params.value,
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { subscribeToAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };
@@ -365,17 +369,18 @@ export function useUnsubscribeFromAgent(): TxHookResult & {
   unsubscribeFromAgent: (agent: Address) => void;
 } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const unsubscribeFromAgent = (agent: Address) => {
     if (!contracts.aiAgentRuleManager) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRuleManager,
-      abi: AI_AGENT_RULE_MANAGER_ABI,
+      abi: AI_AGENT_RULE_MANAGER_ABI as unknown as Abi,
       functionName: 'unsubscribeFromAgent',
       args: [agent],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { unsubscribeFromAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };
@@ -385,17 +390,18 @@ export function useSetPreferredAgent(): TxHookResult & {
   setPreferredAgent: (agent: Address) => void;
 } {
   const { contracts } = usePayIDContext();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const setPreferredAgent = (agent: Address) => {
     if (!contracts.aiAgentRuleManager) return;
-    writeContract({
+    withBuffer({
       address: contracts.aiAgentRuleManager,
-      abi: AI_AGENT_RULE_MANAGER_ABI,
+      abi: AI_AGENT_RULE_MANAGER_ABI as unknown as Abi,
       functionName: 'setPreferredAgent',
       args: [agent],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { setPreferredAgent, hash, isPending, isConfirming, isSuccess, error: error ?? null };

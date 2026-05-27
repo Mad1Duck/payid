@@ -10,6 +10,23 @@ import type {
   EscrowResult,
 } from './types';
 
+// ─── Gas Buffer Helper ───────────────────────────────────────────────────
+async function withGasBuffer(publicClient: any, txArgs: any): Promise<any> {
+  try {
+    const fees = await publicClient.estimateFeesPerGas();
+    if (fees?.maxFeePerGas) {
+      return {
+        ...txArgs,
+        maxFeePerGas: (fees.maxFeePerGas * 13n) / 10n,
+        maxPriorityFeePerGas: fees.maxPriorityFeePerGas ?? 0n,
+      };
+    }
+  } catch {
+    // fallback to wallet estimation
+  }
+  return txArgs;
+}
+
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  *  PAY.ID Default Adapters
@@ -106,23 +123,25 @@ export class DefaultReputationAdapter implements IReputationAdapter {
   }
 
   async submitReport(target: Address, evidenceHash: string, stake: bigint): Promise<Hash> {
-    const hash = await this.walletClient.writeContract({
+    const args = await withGasBuffer(this.publicClient, {
       address: this.registryAddress,
       abi: VindexRegistryAbi,
       functionName: 'submitReport',
       args: [target, evidenceHash],
       value: stake,
     });
+    const hash = await this.walletClient.writeContract(args);
     return hash;
   }
 
   async confirmReport(reportId: bigint): Promise<Hash> {
-    return this.walletClient.writeContract({
+    const args = await withGasBuffer(this.publicClient, {
       address: this.registryAddress,
       abi: VindexRegistryAbi,
       functionName: 'confirmReport',
       args: [reportId],
     });
+    return this.walletClient.writeContract(args);
   }
 
   async getReport(reportId: bigint): Promise<ReportResult | null> {
@@ -182,13 +201,14 @@ export class DefaultEscrowAdapter implements IEscrowAdapter {
     const amounts = milestones.map(m => m.amount);
     const descriptions = milestones.map(m => m.description);
 
-    const hash = await this.walletClient.writeContract({
+    const args = await withGasBuffer(this.publicClient, {
       address: this.escrowAddress,
       abi: EscrowMilestoneAbi,
       functionName: 'createEscrow',
       args: [freelancer, asset, amounts, descriptions, deadline],
       value,
     });
+    const hash = await this.walletClient.writeContract(args);
     // Wait for receipt and extract escrowId from EscrowCreated event
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
     for (const log of receipt.logs) {
@@ -209,48 +229,53 @@ export class DefaultEscrowAdapter implements IEscrowAdapter {
   }
 
   async submitMilestone(escrowId: bigint, index: number, evidenceHash: string): Promise<Hash | null> {
-    return this.walletClient.writeContract({
+    const args = await withGasBuffer(this.publicClient, {
       address: this.escrowAddress,
       abi: EscrowMilestoneAbi,
       functionName: 'submitMilestone',
       args: [escrowId, BigInt(index), evidenceHash as Hash],
     });
+    return this.walletClient.writeContract(args);
   }
 
   async releaseMilestone(escrowId: bigint, index: number): Promise<Hash | null> {
-    return this.walletClient.writeContract({
+    const args = await withGasBuffer(this.publicClient, {
       address: this.escrowAddress,
       abi: EscrowMilestoneAbi,
       functionName: 'releaseMilestone',
       args: [escrowId, BigInt(index)],
     });
+    return this.walletClient.writeContract(args);
   }
 
   async dispute(escrowId: bigint): Promise<Hash | null> {
-    return this.walletClient.writeContract({
+    const args = await withGasBuffer(this.publicClient, {
       address: this.escrowAddress,
       abi: EscrowMilestoneAbi,
       functionName: 'dispute',
       args: [escrowId],
     });
+    return this.walletClient.writeContract(args);
   }
 
   async resolveRefund(escrowId: bigint): Promise<Hash | null> {
-    return this.walletClient.writeContract({
+    const args = await withGasBuffer(this.publicClient, {
       address: this.escrowAddress,
       abi: EscrowMilestoneAbi,
       functionName: 'resolveRefund',
       args: [escrowId],
     });
+    return this.walletClient.writeContract(args);
   }
 
   async autoRefund(escrowId: bigint): Promise<Hash | null> {
-    return this.walletClient.writeContract({
+    const args = await withGasBuffer(this.publicClient, {
       address: this.escrowAddress,
       abi: EscrowMilestoneAbi,
       functionName: 'autoRefund',
       args: [escrowId],
     });
+    return this.walletClient.writeContract(args);
   }
 
   async getUserEscrows(user: Address): Promise<EscrowResult[]> {

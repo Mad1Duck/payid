@@ -11,7 +11,9 @@ import {
   useEffectiveAgentRule,
   usePreferredAgent,
   useAIAgent,
+  useGasBuffer,
 } from 'payid-react';
+import type { Abi } from 'viem';
 import { useQueryClient } from '@tanstack/react-query';
 import { resolveStorageURI } from '@/lib/storage';
 import { toast } from 'sonner';
@@ -47,7 +49,8 @@ export function useRulesConsole() {
   const { data: preferredAgentInfo } = useAIAgent(preferredAgent);
 
   /* ── Write contract ── */
-  const { writeContract, data: registerHash, isPending: isRegistering, error: registerError } = useWriteContract();
+  const { writeContractAsync, data: registerHash, isPending: isRegistering, error: registerError } = useWriteContract();
+  const withBuffer = useGasBuffer();
   const { isLoading: isConfirming, isSuccess: registerSuccess } = useWaitForTransactionReceipt({ hash: registerHash });
 
   /* ── Subscribe ── */
@@ -271,7 +274,7 @@ export function useRulesConsole() {
   /* ── Register ── */
   const nowStr = () => new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     const filled = slots.filter((s) => s.cartridge);
     if (filled.length === 0 || !isConnected) return;
     const selRules = filled.map((s) => allRules.find((r) => `rule_${r.ruleId.toString()}` === s.cartridge!.id)).filter(Boolean) as typeof allRules;
@@ -287,10 +290,16 @@ export function useRulesConsole() {
     const ruleNFTs = Array(tokenIds.length).fill(contracts.ruleItemERC721) as Array<`0x${string}`>;
     setRegisterStage('registering');
     setTxLog((prev) => [...prev, { time: nowStr(), msg: '↻ Sending transaction…', type: 'info' }]);
-    if (direction === 'none') {
-      writeContract({ address: contracts.combinedRuleStorage, abi: COMBINED_ABI, functionName: 'registerCombinedRule', args: [ruleSetHash, ruleNFTs, tokenIds, ver] });
-    } else {
-      writeContract({ address: contracts.combinedRuleStorage, abi: COMBINED_ABI, functionName: 'registerCombinedRuleForDirection', args: [ruleSetHash, direction === 'inbound' ? 0 : 1, ruleNFTs, tokenIds, ver] });
+    try {
+      if (direction === 'none') {
+        const args = await withBuffer({ address: contracts.combinedRuleStorage, abi: COMBINED_ABI as unknown as Abi, functionName: 'registerCombinedRule', args: [ruleSetHash, ruleNFTs, tokenIds, ver] });
+        await writeContractAsync(args);
+      } else {
+        const args = await withBuffer({ address: contracts.combinedRuleStorage, abi: COMBINED_ABI as unknown as Abi, functionName: 'registerCombinedRuleForDirection', args: [ruleSetHash, direction === 'inbound' ? 0 : 1, ruleNFTs, tokenIds, ver] });
+        await writeContractAsync(args);
+      }
+    } catch {
+      // errors handled via registerError effect
     }
   };
 

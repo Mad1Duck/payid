@@ -141,13 +141,9 @@
       "devDependencies": {
         "@types/qrcode": "^1.5.6",
         "@types/react": "^18.0.0",
-        "@wagmi/core": "^3.0.0",
-        "react": "^18.0.0",
         "release-it": "^20.0.1",
         "tsup": "^8.0.0",
         "typescript": "~5.8.0",
-        "viem": "^2.0.0",
-        "wagmi": "^3.0.0",
       },
       "optionalDependencies": {
         "qrcode": "^1.5.4",
@@ -169,8 +165,12 @@
       },
       "devDependencies": {
         "@types/bun": "latest",
+        "@wagmi/core": "^3.4.12",
+        "react": "^19.2.6",
         "release-it": "^20.0.1",
         "tsup": "^8.5.1",
+        "viem": "^2.49.3",
+        "wagmi": "^3.6.15",
       },
       "peerDependencies": {
         "typescript": "^5.9.3",
@@ -5448,6 +5448,8 @@
     "patch-package/yaml": ["yaml@1.10.3", "", {}, "sha512-vIYeF1u3CjlhAFekPPAk2h/Kv4T3mAkMox5OymRiJQB0spDP10LHvt+K7G9Ny6NuuMAb25/6n1qyUjAcGNf/AA=="],
 
     "path-type/pify": ["pify@3.0.0", "", {}, "sha512-C3FsVNH1udSEX48gGX1xfvwTWfsYWj5U+8/uK15BGzIGrKoUpghX8hWZwa/OFnakBiiVNmBvemTJR5mcy7iPcg=="],
+
+    "payid/react": ["react@19.2.6", "", {}, "sha512-sfWGGfavi0xr8Pg0sVsyHMAOziVYKgPLNrS7ig+ivMNb3wbCBw3KxtflsGBAwD3gYQlE/AEZsTLgToRrSCjb0Q=="],
 
     "payid-react/typescript": ["typescript@5.8.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ=="],
 

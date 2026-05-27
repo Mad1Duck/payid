@@ -2,44 +2,17 @@ import {
   useReadContract,
   useWriteContract,
   useWaitForTransactionReceipt,
-  usePublicClient,
 } from 'wagmi';
-import { useCallback } from 'react';
-import type { Abi, Hash, EstimateContractGasParameters } from 'viem';
+import type { Abi, Hash } from 'viem';
 import { usePayIDContext } from '../PayIDProvider';
 import type { TxHookResult } from '../types';
+import { useGasBuffer } from './useGasBuffer';
 import PayIDVerifierABI from '../abis/PayIDModule#PayIDVerifier.json';
 import PayWithPayIDABI from '../abis/PayIDModule#PayWithPayID.json';
 import RuleItemERC721ABI from '../abis/PayIDModule#RuleItemERC721.json';
 import RuleAuthorityABI from '../abis/PayIDModule#RuleAuthority.json';
 
 import type { DecisionPayload as Decision } from 'payid';
-
-function useGasBuffer() {
-  const publicClient = usePublicClient();
-  return useCallback(
-    async <T extends EstimateContractGasParameters<Abi, string>>(args: T): Promise<T> => {
-      if (!publicClient) return args;
-      try {
-        const [fees, gasEst] = await Promise.all([
-          publicClient.estimateFeesPerGas(),
-          publicClient.estimateContractGas(args).catch(() => undefined),
-        ]);
-        return {
-          ...args,
-          ...(fees?.maxFeePerGas && {
-            maxFeePerGas: (fees.maxFeePerGas * 13n) / 10n,
-            maxPriorityFeePerGas: fees.maxPriorityFeePerGas ?? 0n,
-          }),
-          ...(gasEst && { gas: (gasEst * 15n) / 10n }),
-        } as T;
-      } catch {
-        return args;
-      }
-    },
-    [publicClient],
-  );
-}
 
 export function useSubscriptionPrice() {
   const { contracts } = usePayIDContext();

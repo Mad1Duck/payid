@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract, useChainId, useChains } from 'wagmi';
-import { usePayIDContext } from 'payid-react';
+import { usePayIDContext, useGasBuffer } from 'payid-react';
 import { parseEther } from 'viem';
+import type { Abi } from 'viem';
 import {
   AttestationVerifierAbi,
   PayIDVerifierAbi,
@@ -61,8 +62,9 @@ export function useAdminPage() {
   const chainId = useChainId();
   const chains = useChains();
   const nativeSymbol = chains.find(c => c.id === chainId)?.nativeCurrency.symbol ?? 'ETH';
-  const { writeContract, isPending, error, data: hash } = useWriteContract();
+  const { writeContractAsync, isPending, error, data: hash } = useWriteContract();
   const { isLoading: confirming } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
   const txBusy = isPending || confirming;
   const txError = error
     ? ((error as any).shortMessage ?? (error as any).message ?? 'Transaction failed')
@@ -229,118 +231,118 @@ export function useAdminPage() {
   /* ── Handlers ── */
   const initVerifier = async () => {
     if (!initRuleAuthorityAddr || !initAttestVerifierAddr) return;
-    writeContract({
+    withBuffer({
       address: contracts.payIDVerifier,
-      abi: PayIDVerifierAbi,
+      abi: PayIDVerifierAbi as unknown as Abi,
       functionName: 'initialize',
       args: [initRuleAuthorityAddr as `0x${string}`, initAttestVerifierAddr as `0x${string}`],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
   const initPWP = async () => {
     if (!initPWPVerifierAddr || !initPWPAttestAddr) return;
-    writeContract({
+    withBuffer({
       address: contracts.payWithPayID,
-      abi: PayWithPayIDAbi,
+      abi: PayWithPayIDAbi as unknown as Abi,
       functionName: 'initialize',
       args: [initPWPVerifierAddr as `0x${string}`, initPWPAttestAddr as `0x${string}`],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
   const setAuthority = async (trusted: boolean) => {
     if (!authorityAddr) return;
-    writeContract({
+    withBuffer({
       address: contracts.payIDVerifier,
-      abi: PayIDVerifierAbi,
+      abi: PayIDVerifierAbi as unknown as Abi,
       functionName: 'setTrustedAuthority',
       args: [authorityAddr as `0x${string}`, trusted],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
   const setSchema = async (trusted: boolean) => {
     if (!schemaUID) return;
-    writeContract({
+    withBuffer({
       address: attestationVerifierAddr,
-      abi: AttestationVerifierAbi,
+      abi: AttestationVerifierAbi as unknown as Abi,
       functionName: 'setTrustedSchema',
       args: [schemaUID as `0x${string}`, trusted],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
   const setAttester = async (trusted: boolean) => {
     if (!attesterAddr) return;
-    writeContract({
+    withBuffer({
       address: attestationVerifierAddr,
-      abi: AttestationVerifierAbi,
+      abi: AttestationVerifierAbi as unknown as Abi,
       functionName: 'setTrustedAttester',
       args: [attesterAddr as `0x${string}`, trusted],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
   const setPrice = async () => {
     if (!priceCents) return;
-    writeContract({
+    withBuffer({
       address: contracts.ruleItemERC721,
-      abi: RuleItemERC721Abi,
+      abi: RuleItemERC721Abi as unknown as Abi,
       functionName: 'setSubscriptionUsdCents',
       args: [BigInt(priceCents)],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
   const setOracle = async () => {
     if (!oracleAddr) return;
-    writeContract({
+    withBuffer({
       address: contracts.ruleItemERC721,
-      abi: RuleItemERC721Abi,
+      abi: RuleItemERC721Abi as unknown as Abi,
       functionName: 'setOracle',
       args: [oracleAddr as `0x${string}`],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
   const togglePause = async () => {
-    writeContract({
+    withBuffer({
       address: contracts.ruleItemERC721,
-      abi: RuleItemERC721Abi,
+      abi: RuleItemERC721Abi as unknown as Abi,
       functionName: isPaused ? 'unpause' : 'pause',
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
   const withdraw = async () => {
     if (!withdrawTo || !withdrawAmount) return;
-    writeContract({
+    withBuffer({
       address: contracts.ruleItemERC721,
-      abi: TREASURY_ABI,
+      abi: TREASURY_ABI as unknown as Abi,
       functionName: 'withdrawTreasury',
       args: [withdrawTo as `0x${string}`, parseEther(withdrawAmount)],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
   const withdrawAll = async () => {
     if (!withdrawTo) return;
-    writeContract({
+    withBuffer({
       address: contracts.ruleItemERC721,
-      abi: TREASURY_ABI,
+      abi: TREASURY_ABI as unknown as Abi,
       functionName: 'withdrawAllTreasury',
       args: [withdrawTo as `0x${string}`],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
   const setStake = async () => {
     if (!minStake) return;
-    writeContract({
+    withBuffer({
       address: vindexRegistryAddr,
-      abi: VindexRegistryAbi,
+      abi: VindexRegistryAbi as unknown as Abi,
       functionName: 'setMinStake',
       args: [parseEther(minStake)],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
   const setConsensus = async () => {
     if (!consensusThreshold) return;
-    writeContract({
+    withBuffer({
       address: vindexRegistryAddr,
-      abi: VindexRegistryAbi,
+      abi: VindexRegistryAbi as unknown as Abi,
       functionName: 'setConsensusThreshold',
       args: [Number(consensusThreshold)],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
   const adjustReputation = async () => {
     if (!targetAddress || !newReputation) return;
-    writeContract({
+    withBuffer({
       address: vindexRegistryAddr,
-      abi: VindexRegistryAbi,
+      abi: VindexRegistryAbi as unknown as Abi,
       functionName: 'adjustReputation',
       args: [targetAddress as `0x${string}`, Number(newReputation), reputationReason || 'Admin adjustment'],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   const CONTRACTS_LIST = [

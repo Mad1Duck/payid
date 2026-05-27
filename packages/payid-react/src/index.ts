@@ -181,3 +181,6 @@ export type { MiddlewareOptions } from './adapters/composite/middleware';
 
 // Contract addresses
 export { PAYID_CONTRACTS, getContracts } from './contracts/addresses';
+
+// Gas buffer helper
+export { useGasBuffer } from './hooks/useGasBuffer';

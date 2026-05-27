@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { RecurringPaymentsAbi } from '@/constants/contracts';
 import { addresses } from '@/constants/contracts/addresses';
 import { useCallback, useState } from 'react';
+import { useGasBuffer } from 'payid-react';
+import type { Abi } from 'viem';
 
 export interface Subscription {
   payer: string;
@@ -46,7 +48,8 @@ export function useRecurringPayments() {
   const [isLoadingSubs, setIsLoadingSubs] = useState(false);
 
   // Write contract
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
+  const withBuffer = useGasBuffer();
 
   // Wait for transaction
   const { isSuccess: isConfirmed, isLoading: isConfirming } = useWaitForTransactionReceipt({
@@ -62,13 +65,14 @@ export function useRecurringPayments() {
     value?: bigint
   ) => {
     try {
-      writeContract({
+      const args = await withBuffer({
         address: recurringPaymentsAddress,
-        abi: RecurringPaymentsAbi,
+        abi: RecurringPaymentsAbi as unknown as Abi,
         functionName: 'createSubscription',
         args: [receiver, asset, maxAmount, period],
         value,
       });
+      await writeContractAsync(args);
       toast.info('Creating subscription...');
     } catch (err: any) {
       toast.error(err.message || 'Failed to create subscription');
@@ -84,12 +88,13 @@ export function useRecurringPayments() {
     attestationUIDs: readonly `0x${string}`[]
   ) => {
     try {
-      writeContract({
+      const args = await withBuffer({
         address: recurringPaymentsAddress,
-        abi: RecurringPaymentsAbi,
+        abi: RecurringPaymentsAbi as unknown as Abi,
         functionName: 'charge',
         args: [subId, decision, sig, attestationUIDs],
       });
+      await writeContractAsync(args);
       toast.info('Processing charge...');
     } catch (err: any) {
       toast.error(err.message || 'Failed to process charge');
@@ -100,12 +105,13 @@ export function useRecurringPayments() {
   // Cancel subscription
   const cancel = async (subId: bigint) => {
     try {
-      writeContract({
+      const args = await withBuffer({
         address: recurringPaymentsAddress,
-        abi: RecurringPaymentsAbi,
+        abi: RecurringPaymentsAbi as unknown as Abi,
         functionName: 'cancel',
         args: [subId],
       });
+      await writeContractAsync(args);
       toast.info('Cancelling subscription...');
     } catch (err: any) {
       toast.error(err.message || 'Failed to cancel subscription');

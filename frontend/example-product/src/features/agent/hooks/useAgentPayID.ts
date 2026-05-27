@@ -22,6 +22,7 @@ import {
   useSubscribe,
   useSubscriptionPrice,
   useActiveCombinedRule,
+  useGasBuffer,
 } from 'payid-react';
 import type { AdminAgent, CombinedRule } from 'payid-react';
 import { addresses } from '@/constants/contracts/addresses';
@@ -165,6 +166,7 @@ export function useAgentPayID(): AgentPayIDState {
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { sendTransactionAsync } = useSendTransaction();
+  const withBuffer = useGasBuffer();
 
   // Chat state
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -905,14 +907,7 @@ export function useAgentPayID(): AgentPayIDState {
     }
 
     try {
-      // Estimate fees with 2× buffer to avoid baseFee spike revert on Arbitrum
-      const feeData = await publicClient!.estimateFeesPerGas();
-      const maxFeePerGas = feeData.maxFeePerGas
-        ? feeData.maxFeePerGas * 2n
-        : undefined;
-      const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? undefined;
-
-      const txHash = await writeContractAsync({
+      const args = await withBuffer({
         address: chainAddresses?.AIAgentRegistry as `0x${string}`,
         abi: [{
           name: 'registerAdminAgent',
@@ -935,8 +930,8 @@ export function useAgentPayID(): AgentPayIDState {
           encryptedURI,
           regEndpoint.trim(),
         ],
-        ...(maxFeePerGas ? { maxFeePerGas, maxPriorityFeePerGas } : {}),
       });
+      const txHash = await writeContractAsync(args);
       await publicClient!.waitForTransactionReceipt({ hash: txHash });
       toast.success('AI Agent registered successfully!', {
         description: 'Your AI agent has been added to the registry.',
@@ -958,10 +953,7 @@ export function useAgentPayID(): AgentPayIDState {
     if (!publicClient || !chainAddresses?.AIAgentRuleManager) return;
     setIsSettingRule(true);
     try {
-      const feeData = await publicClient.estimateFeesPerGas();
-      const maxFeePerGas = feeData.maxFeePerGas ? feeData.maxFeePerGas * 2n : undefined;
-      const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? undefined;
-      const txHash = await writeContractAsync({
+      const args = await withBuffer({
         address: chainAddresses.AIAgentRuleManager as `0x${string}`,
         abi: [{
           name: 'setAgentCombinedRule',
@@ -975,8 +967,8 @@ export function useAgentPayID(): AgentPayIDState {
         }] as const,
         functionName: 'setAgentCombinedRule',
         args: [agentWallet, ruleSetHash],
-        ...(maxFeePerGas ? { maxFeePerGas, maxPriorityFeePerGas } : {}),
       });
+      const txHash = await writeContractAsync(args);
       await publicClient.waitForTransactionReceipt({ hash: txHash });
       toast.success('Agent policy published successfully!');
       refetchAgentRuleInfo();
@@ -992,10 +984,7 @@ export function useAgentPayID(): AgentPayIDState {
     if (!publicClient || !chainAddresses?.AIAgentRuleManager) return;
     setIsUnsettingRule(true);
     try {
-      const feeData = await publicClient.estimateFeesPerGas();
-      const maxFeePerGas = feeData.maxFeePerGas ? feeData.maxFeePerGas * 2n : undefined;
-      const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? undefined;
-      const txHash = await writeContractAsync({
+      const args = await withBuffer({
         address: chainAddresses.AIAgentRuleManager as `0x${string}`,
         abi: [{
           name: 'unsetAgentCombinedRule',
@@ -1006,8 +995,8 @@ export function useAgentPayID(): AgentPayIDState {
         }] as const,
         functionName: 'unsetAgentCombinedRule',
         args: [agentWallet],
-        ...(maxFeePerGas ? { maxFeePerGas, maxPriorityFeePerGas } : {}),
       });
+      const txHash = await writeContractAsync(args);
       await publicClient.waitForTransactionReceipt({ hash: txHash });
       toast.success('Agent policy unlinked.');
       refetchAgentRuleInfo();

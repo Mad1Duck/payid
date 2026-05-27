@@ -10,6 +10,8 @@ import type { Hash } from 'viem';
 import { useMemo } from 'react';
 import { usePayIDContext } from '../PayIDProvider';
 import type { TxHookResult } from '../types';
+import { useGasBuffer } from './useGasBuffer';
+import type { Abi } from 'viem';
 
 /*
  * VRAN — Vindex Reputation & Anti-Scam Network Hooks
@@ -541,20 +543,21 @@ export function useSubmitReport({ registryAddress }: Pick<UseReputationParams, '
 
   // 2. CONTRACT path — use wagmi writeContract
   const resolvedRegistry = registryAddress ?? contracts.vindexRegistry;
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const enabled = !!resolvedRegistry && resolvedRegistry !== '0x0000000000000000000000000000000000000000';
 
   const submitReport = (target: `0x${string}`, evidenceHash: string, stake: bigint) => {
     if (!enabled) throw new Error('[VRAN] VindexRegistry address not configured');
-    writeContract({
+    withBuffer({
       address: resolvedRegistry,
-      abi: VindexRegistryABI,
+      abi: VindexRegistryABI as unknown as Abi,
       functionName: 'submitReport',
       args: [target, evidenceHash],
       value: stake,
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return {
@@ -581,19 +584,20 @@ export function useConfirmReport({ registryAddress }: Pick<UseReputationParams, 
 
   // 2. CONTRACT path — use wagmi writeContract
   const resolvedRegistry = registryAddress ?? contracts.vindexRegistry;
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const enabled = !!resolvedRegistry && resolvedRegistry !== '0x0000000000000000000000000000000000000000';
 
   const confirmReport = (reportId: bigint) => {
     if (!enabled) throw new Error('[VRAN] VindexRegistry address not configured');
-    writeContract({
+    withBuffer({
       address: resolvedRegistry,
-      abi: VindexRegistryABI,
+      abi: VindexRegistryABI as unknown as Abi,
       functionName: 'confirmReport',
       args: [reportId],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return {

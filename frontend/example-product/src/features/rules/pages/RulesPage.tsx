@@ -20,6 +20,8 @@ import {
   Zap,
 } from 'lucide-react'
 import { parseEther } from 'viem'
+import type { Abi } from 'viem'
+import { useGasBuffer } from 'payid-react'
 import PremiumButton from '@/components/v4/PremiumButton'
 import { formatPriceWithUSD } from '@/features/rules/utils/pricing'
 import { genImage } from '@/features/rules/utils/image'
@@ -34,10 +36,11 @@ import { RuleItemERC721Abi } from '@/constants/contracts'
 function RuleCardItem({ rule, p, contracts, refetchMyRules, refetchSub }: any) {
   const [meta, setMeta] = useState<any>(null)
   const [loadingMeta, setLoadingMeta] = useState(true)
-  const { writeContract, data: hash, isPending, error } = useWriteContract()
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
+  const withBuffer = useGasBuffer()
 
   useEffect(() => {
     if (isSuccess) {
@@ -208,19 +211,20 @@ function RuleCardItem({ rule, p, contracts, refetchMyRules, refetchSub }: any) {
 
           {rule.tokenId > 0n && (
             <button
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation()
                 if (
                   confirm(
                     'Deactivate this rule to free up a slot? This action cannot be undone.',
                   )
                 ) {
-                  writeContract({
+                  const args = await withBuffer({
                     address: contracts.ruleItemERC721,
-                    abi: RuleItemERC721Abi,
+                    abi: RuleItemERC721Abi as unknown as Abi,
                     functionName: 'deactivateRule',
                     args: [rule.ruleId],
                   })
+                  await writeContractAsync(args)
                 }
               }}
               disabled={isPending || isConfirming}
@@ -408,7 +412,8 @@ export default function RulesPage() {
     return set
   }, [is0G])
 
-  const { writeContract } = useWriteContract()
+  const { writeContractAsync } = useWriteContract()
+  const withBuffer = useGasBuffer()
 
   const card = `rounded-2xl border ${p.cardBorder}`
   const inp = `px-3 py-2 rounded-xl text-sm border ${p.inputBorder} ${p.inputBg} ${p.textMain} focus:outline-none focus:border-[#00D084]/40`
@@ -1906,19 +1911,20 @@ export default function RulesPage() {
                               {/* Deactivate button for active rules */}
                               {isActivated && (
                                 <button
-                                  onClick={(e) => {
+                                  onClick={async (e) => {
                                     e.stopPropagation()
                                     if (
                                       confirm(
                                         'Deactivate this rule to free up a slot? This action cannot be undone.',
                                       )
                                     ) {
-                                      writeContract({
+                                      const args = await withBuffer({
                                         address: contracts.ruleItemERC721,
-                                        abi: RuleItemERC721Abi,
+                                        abi: RuleItemERC721Abi as unknown as Abi,
                                         functionName: 'deactivateRule',
                                         args: [r.ruleId],
                                       })
+                                      await writeContractAsync(args)
                                     }
                                   }}
                                   className={`p-1.5 rounded-lg text-red-500 bg-red-500/10 hover:bg-red-500/20 transition-colors tooltip-trigger`}

@@ -3,6 +3,8 @@ import { useChainId } from 'wagmi';
 import { toast } from 'sonner';
 import { TimeLockVestingAbi } from '@/constants/contracts';
 import { addresses } from '@/constants/contracts/addresses';
+import { useGasBuffer } from 'payid-react';
+import type { Abi } from 'viem';
 
 export interface VestingSchedule {
   beneficiary: `0x${string}`;
@@ -51,7 +53,8 @@ export function useTimeLockVesting() {
   });
 
   // Write contract
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
+  const withBuffer = useGasBuffer();
 
   // Wait for transaction
   const { isSuccess: isConfirmed, isLoading: isConfirming } = useWaitForTransactionReceipt({
@@ -71,13 +74,14 @@ export function useTimeLockVesting() {
     value?: bigint
   ) => {
     try {
-      writeContract({
+      const args = await withBuffer({
         address: timeLockVestingAddress,
-        abi: TimeLockVestingAbi,
+        abi: TimeLockVestingAbi as unknown as Abi,
         functionName: 'createSchedule',
         args: [beneficiary, asset, totalAmount, startTime, cliff, duration, revocable, revoker],
         value,
       });
+      await writeContractAsync(args);
       toast.info('Creating vesting schedule...');
     } catch (err: any) {
       toast.error(err.message || 'Failed to create vesting schedule');
@@ -88,12 +92,13 @@ export function useTimeLockVesting() {
   // Release vested tokens
   const release = async (scheduleId: bigint) => {
     try {
-      writeContract({
+      const args = await withBuffer({
         address: timeLockVestingAddress,
-        abi: TimeLockVestingAbi,
+        abi: TimeLockVestingAbi as unknown as Abi,
         functionName: 'release',
         args: [scheduleId],
       });
+      await writeContractAsync(args);
       toast.info('Releasing vested tokens...');
     } catch (err: any) {
       toast.error(err.message || 'Failed to release tokens');
@@ -104,12 +109,13 @@ export function useTimeLockVesting() {
   // Revoke vesting schedule
   const revoke = async (scheduleId: bigint) => {
     try {
-      writeContract({
+      const args = await withBuffer({
         address: timeLockVestingAddress,
-        abi: TimeLockVestingAbi,
+        abi: TimeLockVestingAbi as unknown as Abi,
         functionName: 'revoke',
         args: [scheduleId],
       });
+      await writeContractAsync(args);
       toast.info('Revoking vesting schedule...');
     } catch (err: any) {
       toast.error(err.message || 'Failed to revoke schedule');

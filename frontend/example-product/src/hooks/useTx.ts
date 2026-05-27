@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from 'wagmi';
 import type { Hash, WriteContractParameters } from 'viem';
 
 type TxStatus = 'idle' | 'pending' | 'confirming' | 'success' | 'error';
@@ -15,6 +15,7 @@ interface TxState {
 
 export function useTx(): TxState {
   const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
   const [hash, setHash] = useState<Hash | null>(null);
   const [status, setStatus] = useState<TxStatus>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,22 @@ export function useTx(): TxState {
       setError(null);
       setHash(null);
       try {
-        const h = await writeContractAsync(args);
+        let txArgs = args;
+        if (publicClient) {
+          try {
+            const fees = await publicClient.estimateFeesPerGas();
+            if (fees?.maxFeePerGas) {
+              txArgs = {
+                ...args,
+                maxFeePerGas: (fees.maxFeePerGas * 13n) / 10n,
+                maxPriorityFeePerGas: fees.maxPriorityFeePerGas ?? 0n,
+              } as WriteContractParameters;
+            }
+          } catch {
+            // fallback to wallet estimation
+          }
+        }
+        const h = await writeContractAsync(txArgs);
         setHash(h);
         setStatus('confirming');
       } catch (e: unknown) {
@@ -47,7 +63,7 @@ export function useTx(): TxState {
         setStatus('error');
       }
     },
-    [writeContractAsync],
+    [writeContractAsync, publicClient],
   );
 
   const reset = useCallback(() => {

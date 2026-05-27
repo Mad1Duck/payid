@@ -3,6 +3,8 @@ import { useChainId } from 'wagmi';
 import { toast } from 'sonner';
 import { AttestationVerifierAbi } from '@/constants/contracts';
 import { addresses } from '@/constants/contracts/addresses';
+import { useGasBuffer } from 'payid-react';
+import type { Abi } from 'viem';
 
 export function useAttestationVerifier() {
   const chainId = useChainId();
@@ -22,7 +24,8 @@ export function useAttestationVerifier() {
   });
 
   // Write contract
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
+  const withBuffer = useGasBuffer();
 
   // Wait for transaction
   const { isSuccess: isConfirmed, isLoading: isConfirming } = useWaitForTransactionReceipt({
@@ -80,12 +83,13 @@ export function useAttestationVerifier() {
   // Verify single attestation and mark as used (write, anti-replay)
   const verifyAttestationOnce = async (attestationUID: `0x${string}`, payer: `0x${string}`) => {
     try {
-      writeContract({
+      const args = await withBuffer({
         address: attestationVerifierAddress,
-        abi: AttestationVerifierAbi,
+        abi: AttestationVerifierAbi as unknown as Abi,
         functionName: 'verifyAttestationOnce',
         args: [attestationUID, payer],
       });
+      await writeContractAsync(args);
       toast.info('Verifying attestation...');
     } catch (err: any) {
       toast.error(err.message || 'Failed to verify attestation');
@@ -96,12 +100,13 @@ export function useAttestationVerifier() {
   // Verify batch attestations and mark all as used (write, anti-replay)
   const verifyAttestationBatchOnce = async (attestationUIDs: `0x${string}`[], payer: `0x${string}`) => {
     try {
-      writeContract({
+      const args = await withBuffer({
         address: attestationVerifierAddress,
-        abi: AttestationVerifierAbi,
+        abi: AttestationVerifierAbi as unknown as Abi,
         functionName: 'verifyAttestationBatchOnce',
         args: [attestationUIDs, payer],
       });
+      await writeContractAsync(args);
       toast.info('Verifying batch attestations...');
     } catch (err: any) {
       toast.error(err.message || 'Failed to verify batch attestations');

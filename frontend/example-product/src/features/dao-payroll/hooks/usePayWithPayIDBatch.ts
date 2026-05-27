@@ -3,6 +3,8 @@ import { useChainId } from 'wagmi';
 import { toast } from 'sonner';
 import { PayWithPayIDBatchAbi } from '@/constants/contracts';
 import { addresses } from '@/constants/contracts/addresses';
+import { useGasBuffer } from 'payid-react';
+import type { Abi } from 'viem';
 
 export interface BatchPaymentItem {
   receiver: `0x${string}`;
@@ -24,7 +26,8 @@ export function usePayWithPayIDBatch() {
   });
 
   // Write contract
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
+  const withBuffer = useGasBuffer();
 
   // Wait for transaction
   const { isSuccess: isConfirmed, isLoading: isConfirming } = useWaitForTransactionReceipt({
@@ -39,13 +42,14 @@ export function usePayWithPayIDBatch() {
     totalValue: bigint
   ) => {
     try {
-      writeContract({
+      const args = await withBuffer({
         address: payWithPayIDBatchAddress,
-        abi: PayWithPayIDBatchAbi,
+        abi: PayWithPayIDBatchAbi as unknown as Abi,
         functionName: 'batchPayNative',
         args: [decisions, sigs, attestationUIDs],
         value: totalValue,
       });
+      await writeContractAsync(args);
       toast.info('Processing batch payment...');
     } catch (err: any) {
       toast.error(err.message || 'Failed to process batch payment');
@@ -60,12 +64,13 @@ export function usePayWithPayIDBatch() {
     attestationUIDs: readonly `0x${string}`[][]
   ) => {
     try {
-      writeContract({
+      const args = await withBuffer({
         address: payWithPayIDBatchAddress,
-        abi: PayWithPayIDBatchAbi,
+        abi: PayWithPayIDBatchAbi as unknown as Abi,
         functionName: 'batchPayERC20',
         args: [decisions, sigs, attestationUIDs],
       });
+      await writeContractAsync(args);
       toast.info('Processing batch ERC20 payment...');
     } catch (err: any) {
       toast.error(err.message || 'Failed to process batch ERC20 payment');

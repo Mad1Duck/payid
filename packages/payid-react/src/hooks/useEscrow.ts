@@ -5,8 +5,9 @@ import {
   usePublicClient,
 } from 'wagmi';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import type { Address, Hash } from 'viem';
+import type { Address, Hash, Abi } from 'viem';
 import { usePayIDContext } from '../PayIDProvider';
+import { useGasBuffer } from './useGasBuffer';
 import type { MilestoneDef, EscrowResult } from '../adapters/types';
 import type { TxHookResult } from '../types';
 
@@ -251,8 +252,9 @@ function useInjectedCreateEscrow(adapter: import('../adapters/types').IEscrowAda
 
 function useContractCreateEscrow(contracts: import('../types').PayIDContracts, escrowAddress: `0x${string}` | undefined) {
   const resolvedAddress = escrowAddress ?? contracts.escrowMilestone;
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const enabled = !!resolvedAddress && resolvedAddress !== '0x0000000000000000000000000000000000000000';
 
@@ -260,13 +262,13 @@ function useContractCreateEscrow(contracts: import('../types').PayIDContracts, e
     if (!enabled) throw new Error('[Escrow] EscrowMilestone address not configured');
     const amounts = milestones.map((m) => m.amount);
     const descriptions = milestones.map((m) => m.description);
-    writeContract({
+    withBuffer({
       address: resolvedAddress,
-      abi: EscrowMilestoneABI,
+      abi: EscrowMilestoneABI as unknown as Abi,
       functionName: 'createEscrow',
       args: [freelancer, asset, amounts, descriptions, deadline],
       value,
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { createEscrow, hash, isPending, isConfirming, isSuccess, error };
@@ -309,19 +311,20 @@ function useInjectedSubmitMilestone(adapter: import('../adapters/types').IEscrow
 
 function useContractSubmitMilestone(contracts: import('../types').PayIDContracts, escrowAddress: `0x${string}` | undefined) {
   const resolvedAddress = escrowAddress ?? contracts.escrowMilestone;
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const enabled = !!resolvedAddress && resolvedAddress !== '0x0000000000000000000000000000000000000000';
 
   const submitMilestone = (escrowId: bigint, index: number, evidenceHash: string) => {
     if (!enabled) throw new Error('[Escrow] EscrowMilestone address not configured');
-    writeContract({
+    withBuffer({
       address: resolvedAddress,
-      abi: EscrowMilestoneABI,
+      abi: EscrowMilestoneABI as unknown as Abi,
       functionName: 'submitMilestone',
       args: [escrowId, BigInt(index), evidenceHash as Hash],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { submitMilestone, hash, isPending, isConfirming, isSuccess, error };
@@ -363,19 +366,20 @@ function useInjectedReleaseMilestone(adapter: import('../adapters/types').IEscro
 
 function useContractReleaseMilestone(contracts: import('../types').PayIDContracts, escrowAddress: `0x${string}` | undefined) {
   const resolvedAddress = escrowAddress ?? contracts.escrowMilestone;
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const enabled = !!resolvedAddress && resolvedAddress !== '0x0000000000000000000000000000000000000000';
 
   const releaseMilestone = (escrowId: bigint, index: number) => {
     if (!enabled) throw new Error('[Escrow] EscrowMilestone address not configured');
-    writeContract({
+    withBuffer({
       address: resolvedAddress,
-      abi: EscrowMilestoneABI,
+      abi: EscrowMilestoneABI as unknown as Abi,
       functionName: 'releaseMilestone',
       args: [escrowId, BigInt(index)],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { releaseMilestone, hash, isPending, isConfirming, isSuccess, error };
@@ -417,19 +421,20 @@ function useInjectedDispute(adapter: import('../adapters/types').IEscrowAdapter)
 
 function useContractDispute(contracts: import('../types').PayIDContracts, escrowAddress: `0x${string}` | undefined) {
   const resolvedAddress = escrowAddress ?? contracts.escrowMilestone;
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const enabled = !!resolvedAddress && resolvedAddress !== '0x0000000000000000000000000000000000000000';
 
   const dispute = (escrowId: bigint) => {
     if (!enabled) throw new Error('[Escrow] EscrowMilestone address not configured');
-    writeContract({
+    withBuffer({
       address: resolvedAddress,
-      abi: EscrowMilestoneABI,
+      abi: EscrowMilestoneABI as unknown as Abi,
       functionName: 'dispute',
       args: [escrowId],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { dispute, hash, isPending, isConfirming, isSuccess, error };
@@ -471,19 +476,20 @@ function useInjectedResolveRefund(adapter: import('../adapters/types').IEscrowAd
 
 function useContractResolveRefund(contracts: import('../types').PayIDContracts, escrowAddress: `0x${string}` | undefined) {
   const resolvedAddress = escrowAddress ?? contracts.escrowMilestone;
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const enabled = !!resolvedAddress && resolvedAddress !== '0x0000000000000000000000000000000000000000';
 
   const resolveRefund = (escrowId: bigint) => {
     if (!enabled) throw new Error('[Escrow] EscrowMilestone address not configured');
-    writeContract({
+    withBuffer({
       address: resolvedAddress,
-      abi: EscrowMilestoneABI,
+      abi: EscrowMilestoneABI as unknown as Abi,
       functionName: 'resolveRefund',
       args: [escrowId],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { resolveRefund, hash, isPending, isConfirming, isSuccess, error };
@@ -525,19 +531,20 @@ function useInjectedAutoRefund(adapter: import('../adapters/types').IEscrowAdapt
 
 function useContractAutoRefund(contracts: import('../types').PayIDContracts, escrowAddress: `0x${string}` | undefined) {
   const resolvedAddress = escrowAddress ?? contracts.escrowMilestone;
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const withBuffer = useGasBuffer();
 
   const enabled = !!resolvedAddress && resolvedAddress !== '0x0000000000000000000000000000000000000000';
 
   const autoRefund = (escrowId: bigint) => {
     if (!enabled) throw new Error('[Escrow] EscrowMilestone address not configured');
-    writeContract({
+    withBuffer({
       address: resolvedAddress,
-      abi: EscrowMilestoneABI,
+      abi: EscrowMilestoneABI as unknown as Abi,
       functionName: 'autoRefund',
       args: [escrowId],
-    });
+    }).then(args => writeContractAsync(args)).catch(() => undefined);
   };
 
   return { autoRefund, hash, isPending, isConfirming, isSuccess, error };
