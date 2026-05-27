@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from 'wagmi';
 import type { Hash, WriteContractParameters } from 'viem';
 
 type TxStatus = 'idle' | 'pending' | 'confirming' | 'success' | 'error';
@@ -15,6 +15,7 @@ interface TxState {
 
 export function useTx(): TxState {
   const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
   const [hash, setHash] = useState<Hash | null>(null);
   const [status, setStatus] = useState<TxStatus>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,29 @@ export function useTx(): TxState {
       setError(null);
       setHash(null);
       try {
-        const h = await writeContractAsync(args as any);
+        // Get current block to ensure maxFeePerGas > baseFee
+        let gasConfig = {};
+        if (publicClient) {
+          try {
+            const block = await publicClient.getBlock();
+            if (block?.baseFeePerGas) {
+              // Set maxPriorityFeePerGas to 1 gwei, maxFeePerGas = baseFee + priority
+              const maxPriorityFeePerGas = 1000000000n; // 1 gwei
+              const maxFeePerGas = block.baseFeePerGas + maxPriorityFeePerGas;
+              gasConfig = {
+                maxFeePerGas,
+                maxPriorityFeePerGas,
+              };
+            }
+          } catch {
+            // Fallback if block fetch fails
+          }
+        }
+
+        const h = await writeContractAsync({
+          ...args,
+          ...gasConfig,
+        } as any);
         setHash(h);
         setStatus('confirming');
       } catch (e: unknown) {
@@ -47,7 +70,7 @@ export function useTx(): TxState {
         setStatus('error');
       }
     },
-    [writeContractAsync],
+    [writeContractAsync, publicClient],
   );
 
   const reset = useCallback(() => {

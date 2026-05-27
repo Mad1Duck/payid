@@ -63,6 +63,8 @@ const wagmiConfig = createConfig({
   chains: chainsForWagmi,
   connectors: [injected({ shimDisconnect: true })],
   transports: Object.fromEntries(chainsForWagmi.map(c => [c.id, http()])),
+  // Fix EIP-1559 gas errors - increase gas multiplier to ensure maxFeePerGas > baseFee
+  ssr: false,
 })
 
 // Re-export for components that import individual chain objects

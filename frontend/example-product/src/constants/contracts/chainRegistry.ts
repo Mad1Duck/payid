@@ -4,7 +4,7 @@
 // To add a new chain: edit CHAIN_FULL_META in packages/contracts/scripts/sync-deployments.ts
 // then run the sync command. This file will be regenerated automatically.
 
-import type { Chain } from 'viem'
+import type { Chain } from 'viem';
 
 export const CHAIN_REGISTRY: Record<number, Chain> = {
   // 0G Newton Testnet
@@ -98,4 +98,4 @@ export const CHAIN_REGISTRY: Record<number, Chain> = {
       default: { name: 'Arbiscan Sepolia', url: 'https://sepolia.arbiscan.io' },
     },
   },
-}
+};

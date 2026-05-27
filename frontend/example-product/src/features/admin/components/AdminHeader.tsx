@@ -2,7 +2,7 @@ import { Shield } from 'lucide-react'
 
 interface Props {
   p: any
-  address: string
+  address?: `0x${string}` | undefined
 }
 
 export function AdminHeader({ p, address }: Props) {

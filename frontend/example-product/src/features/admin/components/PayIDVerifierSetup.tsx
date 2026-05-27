@@ -3,7 +3,7 @@ import { Card, Field, Divider, InitSection, TrustChecker } from '@/features/shar
 
 interface Props {
   p: any
-  verifierInit: boolean
+  verifierInit?: boolean
   initVerifier: () => void
   txBusy: boolean
   initRuleAuthorityAddr: string

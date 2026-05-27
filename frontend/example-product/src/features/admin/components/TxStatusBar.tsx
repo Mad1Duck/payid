@@ -5,7 +5,7 @@ interface Props {
   p: any
   txBusy: boolean
   txError: string
-  hash: string
+  hash?: `0x${string}`
 }
 
 export function TxStatusBar({ p, txBusy, txError, hash }: Props) {

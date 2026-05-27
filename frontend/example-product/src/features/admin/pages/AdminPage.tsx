@@ -9,6 +9,7 @@ import {
   RuleItemERC721State,
   TreasurySection,
   VRANConfig,
+  VRANReputationManagement,
   TxStatusBar,
   AdminWarning,
 } from '../components'
@@ -31,13 +32,16 @@ export default function AdminPage() {
     withdrawAmount, setWithdrawAmount,
     minStake, setMinStake,
     consensusThreshold, setConsensusThreshold,
+    targetAddress, setTargetAddress,
+    newReputation, setNewReputation,
+    reputationReason, setReputationReason,
     verifierInit, pwpInit, attVerInit,
     isAdmin,
     isTrustedAuthority, isTrustedAttester, isTrustedSchema,
     isPaused, maxSlot, subCents, oracleAddrRead, treasuryBal,
     vMinStake, vConsensus,
     ethPrice, priceInEth, nativeSymbol,
-    initVerifier, initPWP, setAuthority, setSchema, setAttester, setPrice, setOracle, togglePause, withdraw, withdrawAll, setStake, setConsensus,
+    initVerifier, initPWP, setAuthority, setSchema, setAttester, setPrice, setOracle, togglePause, withdraw, withdrawAll, setStake, setConsensus, adjustReputation,
     CONTRACTS_LIST,
   } = useAdminPage()
 
@@ -90,12 +94,12 @@ export default function AdminPage() {
         setAuthorityAddr={setAuthorityAddr}
         isTrustedAuthority={isTrustedAuthority}
         setAuthority={setAuthority}
-        address={address}
+        address={address!}
       />
 
       <PayWithPayIDSetup
         p={p}
-        pwpInit={pwpInit}
+        pwpInit={pwpInit ?? false}
         initPWP={initPWP}
         txBusy={txBusy}
         initPWPVerifierAddr={initPWPVerifierAddr}
@@ -106,7 +110,7 @@ export default function AdminPage() {
 
       <AttestationVerifierSetup
         p={p}
-        attVerInit={attVerInit}
+        attVerInit={attVerInit ?? false}
         txBusy={txBusy}
         schemaUID={schemaUID}
         setSchemaUID={setSchemaUID}
@@ -120,7 +124,7 @@ export default function AdminPage() {
 
       <RuleItemERC721State
         p={p}
-        isPaused={isPaused}
+        isPaused={isPaused ?? false}
         maxSlot={maxSlot}
         togglePause={togglePause}
         txBusy={txBusy}
@@ -161,6 +165,17 @@ export default function AdminPage() {
         setConsensusThreshold={setConsensusThreshold}
         setStake={setStake}
         setConsensus={setConsensus}
+        txBusy={txBusy}
+      />
+
+      <VRANReputationManagement
+        targetAddress={targetAddress}
+        setTargetAddress={setTargetAddress}
+        newReputation={newReputation}
+        setNewReputation={setNewReputation}
+        reputationReason={reputationReason}
+        setReputationReason={setReputationReason}
+        adjustReputation={adjustReputation}
         txBusy={txBusy}
       />
 

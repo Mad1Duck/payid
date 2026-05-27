@@ -9,12 +9,12 @@ interface Props {
   txBusy: boolean
   subCents: bigint
   priceInEth: string
-  ethPrice: string
+  ethPrice: string | null
   nativeSymbol: string
   priceCents: string
   setPriceCents: (val: string) => void
   setPrice: () => void
-  oracleAddrRead: string
+  oracleAddrRead?: string
   oracleAddr: string
   setOracleAddr: (val: string) => void
   setOracle: () => void

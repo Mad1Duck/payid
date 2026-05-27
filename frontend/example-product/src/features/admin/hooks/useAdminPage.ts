@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract, useChainId, useChains } from 'wagmi';
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract, useChainId, useChains, usePublicClient } from 'wagmi';
 import { usePayIDContext } from 'payid-react';
 import { parseEther } from 'viem';
 import {
@@ -61,6 +61,7 @@ export function useAdminPage() {
   const chainId = useChainId();
   const chains = useChains();
   const nativeSymbol = chains.find(c => c.id === chainId)?.nativeCurrency.symbol ?? 'ETH';
+  const publicClient = usePublicClient();
 
   const { writeContract, isPending, error, data: hash } = useWriteContract();
   const { isLoading: confirming } = useWaitForTransactionReceipt({ hash });
@@ -68,6 +69,26 @@ export function useAdminPage() {
   const txError = error
     ? ((error as any).shortMessage ?? (error as any).message ?? 'Transaction failed')
     : null;
+
+  // Helper to get gas config with proper maxFeePerGas > baseFee
+  const getGasConfig = async () => {
+    if (!publicClient) return {};
+    try {
+      const block = await publicClient.getBlock();
+      if (block?.baseFeePerGas) {
+        // Set maxPriorityFeePerGas to 1 gwei, maxFeePerGas = baseFee + priority
+        const maxPriorityFeePerGas = 1000000000n; // 1 gwei
+        const maxFeePerGas = block.baseFeePerGas + maxPriorityFeePerGas;
+        return {
+          maxFeePerGas,
+          maxPriorityFeePerGas,
+        };
+      }
+    } catch {
+      // Fallback if block fetch fails
+    }
+    return {};
+  };
 
   /* ── Contract addresses ── */
   const attestationVerifierAddr: `0x${string}` =
@@ -98,6 +119,11 @@ export function useAdminPage() {
 
   const [minStake, setMinStake] = useState('');
   const [consensusThreshold, setConsensusThreshold] = useState('');
+
+  /* ── VRAN Reputation Management ── */
+  const [targetAddress, setTargetAddress] = useState('');
+  const [newReputation, setNewReputation] = useState('');
+  const [reputationReason, setReputationReason] = useState('');
 
   /* ── Sync init-form fields when context loads ── */
   useEffect(() => {
@@ -167,6 +193,11 @@ export function useAdminPage() {
     query: { enabled: schemaUID.startsWith('0x') && schemaUID.length === 66 },
   });
 
+  // Default to false when undefined (query disabled or not loaded)
+  const isTrustedAuthoritySafe = isTrustedAuthority ?? false;
+  const isTrustedAttesterSafe = isTrustedAttester ?? false;
+  const isTrustedSchemaSafe = isTrustedSchema ?? false;
+
   const { data: isPaused } = useReadContract({
     address: contracts.ruleItemERC721,
     abi: RuleItemERC721Abi,
@@ -218,110 +249,145 @@ export function useAdminPage() {
   const priceInEth = subCents && ethPrice ? (Number(subCents) / 100 / Number(ethPrice)).toFixed(6) : '—';
 
   /* ── Handlers ── */
-  const initVerifier = () => {
+  const initVerifier = async () => {
     if (!initRuleAuthorityAddr || !initAttestVerifierAddr) return;
+    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.payIDVerifier,
       abi: PayIDVerifierAbi,
       functionName: 'initialize',
       args: [initRuleAuthorityAddr as `0x${string}`, initAttestVerifierAddr as `0x${string}`],
+      ...gasConfig,
     });
   };
-  const initPWP = () => {
+  const initPWP = async () => {
     if (!initPWPVerifierAddr || !initPWPAttestAddr) return;
+    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.payWithPayID,
       abi: PayWithPayIDAbi,
       functionName: 'initialize',
       args: [initPWPVerifierAddr as `0x${string}`, initPWPAttestAddr as `0x${string}`],
+      ...gasConfig,
     });
   };
-  const setAuthority = (trusted: boolean) => {
+  const setAuthority = async (trusted: boolean) => {
     if (!authorityAddr) return;
+    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.payIDVerifier,
       abi: PayIDVerifierAbi,
       functionName: 'setTrustedAuthority',
       args: [authorityAddr as `0x${string}`, trusted],
+      ...gasConfig,
     });
   };
-  const setSchema = (trusted: boolean) => {
+  const setSchema = async (trusted: boolean) => {
     if (!schemaUID) return;
+    const gasConfig = await getGasConfig();
     writeContract({
       address: attestationVerifierAddr,
       abi: AttestationVerifierAbi,
       functionName: 'setTrustedSchema',
       args: [schemaUID as `0x${string}`, trusted],
+      ...gasConfig,
     });
   };
-  const setAttester = (trusted: boolean) => {
+  const setAttester = async (trusted: boolean) => {
     if (!attesterAddr) return;
+    const gasConfig = await getGasConfig();
     writeContract({
       address: attestationVerifierAddr,
       abi: AttestationVerifierAbi,
       functionName: 'setTrustedAttester',
       args: [attesterAddr as `0x${string}`, trusted],
+      ...gasConfig,
     });
   };
-  const setPrice = () => {
+  const setPrice = async () => {
     if (!priceCents) return;
+    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.ruleItemERC721,
       abi: RuleItemERC721Abi,
       functionName: 'setSubscriptionUsdCents',
       args: [BigInt(priceCents)],
+      ...gasConfig,
     });
   };
-  const setOracle = () => {
+  const setOracle = async () => {
     if (!oracleAddr) return;
+    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.ruleItemERC721,
       abi: RuleItemERC721Abi,
       functionName: 'setOracle',
       args: [oracleAddr as `0x${string}`],
+      ...gasConfig,
     });
   };
-  const togglePause = () => {
+  const togglePause = async () => {
+    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.ruleItemERC721,
       abi: RuleItemERC721Abi,
       functionName: isPaused ? 'unpause' : 'pause',
+      ...gasConfig,
     });
   };
-  const withdraw = () => {
+  const withdraw = async () => {
     if (!withdrawTo || !withdrawAmount) return;
+    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.ruleItemERC721,
       abi: TREASURY_ABI,
       functionName: 'withdrawTreasury',
       args: [withdrawTo as `0x${string}`, parseEther(withdrawAmount)],
+      ...gasConfig,
     });
   };
-  const withdrawAll = () => {
+  const withdrawAll = async () => {
     if (!withdrawTo) return;
+    const gasConfig = await getGasConfig();
     writeContract({
       address: contracts.ruleItemERC721,
       abi: TREASURY_ABI,
       functionName: 'withdrawAllTreasury',
       args: [withdrawTo as `0x${string}`],
+      ...gasConfig,
     });
   };
-  const setStake = () => {
+  const setStake = async () => {
     if (!minStake) return;
+    const gasConfig = await getGasConfig();
     writeContract({
       address: vindexRegistryAddr,
       abi: VindexRegistryAbi,
       functionName: 'setMinStake',
       args: [parseEther(minStake)],
+      ...gasConfig,
     });
   };
-  const setConsensus = () => {
+  const setConsensus = async () => {
     if (!consensusThreshold) return;
+    const gasConfig = await getGasConfig();
     writeContract({
       address: vindexRegistryAddr,
       abi: VindexRegistryAbi,
       functionName: 'setConsensusThreshold',
       args: [Number(consensusThreshold)],
+      ...gasConfig,
+    });
+  };
+  const adjustReputation = async () => {
+    if (!targetAddress || !newReputation) return;
+    const gasConfig = await getGasConfig();
+    writeContract({
+      address: vindexRegistryAddr,
+      abi: VindexRegistryAbi,
+      functionName: 'adjustReputation',
+      args: [targetAddress as `0x${string}`, Number(newReputation), reputationReason || 'Admin adjustment'],
+      ...gasConfig,
     });
   };
 
@@ -351,13 +417,18 @@ export function useAdminPage() {
     withdrawAmount, setWithdrawAmount,
     minStake, setMinStake,
     consensusThreshold, setConsensusThreshold,
+    targetAddress, setTargetAddress,
+    newReputation, setNewReputation,
+    reputationReason, setReputationReason,
     verifierInit, pwpInit, attVerInit,
     isAdmin,
-    isTrustedAuthority, isTrustedAttester, isTrustedSchema,
-    isPaused, maxSlot, subCents, oracleAddrRead, priceData, treasuryBal,
-    vMinStake, vConsensus,
+    isTrustedAuthority: isTrustedAuthoritySafe,
+    isTrustedAttester: isTrustedAttesterSafe,
+    isTrustedSchema: isTrustedSchemaSafe,
+    isPaused, maxSlot: (maxSlot ?? 0n) as bigint, subCents: (subCents ?? 0n) as bigint, oracleAddrRead, priceData, treasuryBal: (treasuryBal ?? 0n) as bigint,
+    vMinStake: vMinStake ?? 0n, vConsensus: (vConsensus ?? 0n) as bigint,
     ethPrice, priceInEth, nativeSymbol,
-    initVerifier, initPWP, setAuthority, setSchema, setAttester, setPrice, setOracle, togglePause, withdraw, withdrawAll, setStake, setConsensus,
+    initVerifier, initPWP, setAuthority, setSchema, setAttester, setPrice, setOracle, togglePause, withdraw, withdrawAll, setStake, setConsensus, adjustReputation,
     CONTRACTS_LIST,
   };
 }

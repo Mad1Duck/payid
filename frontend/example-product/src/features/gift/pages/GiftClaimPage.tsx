@@ -285,7 +285,25 @@ export default function GiftClaimPage() {
           await publicClient.simulateContract({ address: contracts.payWithPayID, abi: PayWithPayIDAbi, functionName: 'payERC20' as const, args: [decision as any, policy.signature, []] as const, account: address as `0x${string}` })
         }
       }
-      const hash = await writeContractAsync(callArgs as any)
+      // Get gas config to avoid "max fee per gas less than block base fee" error
+      let gasConfig = {}
+      if (publicClient) {
+        try {
+          const block = await publicClient.getBlock()
+          if (block?.baseFeePerGas) {
+            // Set maxPriorityFeePerGas to 1 gwei, maxFeePerGas = baseFee + priority
+            const maxPriorityFeePerGas = 1000000000n // 1 gwei
+            const maxFeePerGas = block.baseFeePerGas + maxPriorityFeePerGas
+            gasConfig = {
+              maxFeePerGas,
+              maxPriorityFeePerGas,
+            }
+          }
+        } catch {
+          // Fallback if block fetch fails
+        }
+      }
+      const hash = await writeContractAsync({ ...callArgs, ...gasConfig } as any)
       setTxHash(hash)
     } catch (err: any) {
       console.error('Claim error:', err)
