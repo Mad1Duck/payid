@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { formatUnits } from 'viem'
 import { formatNumber } from '@/lib/utils'
 import TransactionSimulation from '@/components/v4/TransactionSimulation'
 import TargetPolicyInfo from './TargetPolicyInfo'
@@ -20,13 +21,36 @@ interface Props {
   nativeSymbol: string
   resolvedName: string
   targetPolicy: any
+  onBack: () => void
+  onNext: () => void
 }
 
 export function AmountStep({
   p, amount, setAmount, setDenyReason, asset, setAsset,
   balanceValue, balance, displayCurrency, convert, format, toggle,
-  nativeSymbol, resolvedName, targetPolicy
+  nativeSymbol, resolvedName, targetPolicy,
+  onBack, onNext,
 }: Props) {
+  const percentages = [
+    { label: 'Max', value: 1 },
+    { label: '50%', value: 0.5 },
+    { label: '30%', value: 0.3 },
+    { label: '10%', value: 0.1 },
+    { label: '5%', value: 0.05 },
+  ]
+
+  const applyPercent = (pct: number) => {
+    if (!balance?.value || balance.value <= 0n) return
+    if (pct === 1) {
+      setAmount(formatUnits(balance.value, balance.decimals))
+      setDenyReason('')
+      return
+    }
+    const basis = BigInt(Math.round(pct * 1_000_000))
+    const val = (balance.value * basis) / 1_000_000n
+    setAmount(formatUnits(val, balance.decimals))
+    setDenyReason('')
+  }
   return (
     <motion.div
       key="amount"
@@ -71,6 +95,20 @@ export function AmountStep({
                   )}
                 </div>
               )}
+
+              {/* Percentage quick-select */}
+              <div className="flex gap-1.5 mt-2">
+                {percentages.map(({ label, value }) => (
+                  <button
+                    key={label}
+                    onClick={() => applyPercent(value)}
+                    disabled={!balance?.value || balance.value <= 0n}
+                    className={`flex-1 px-2 py-1.5 rounded-lg border ${p.glass.border} ${p.textMuted} hover:${p.textMain} hover:bg-black/5 transition-colors cursor-pointer text-[10px] font-medium disabled:opacity-30 disabled:cursor-not-allowed`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="shrink-0">
               <label className={`text-[11px] font-medium ${p.textMuted} block mb-1.5`}>Token</label>
@@ -109,13 +147,13 @@ export function AmountStep({
 
           <div className="flex gap-2 pt-1">
             <button
-              onClick={() => {}}
+              onClick={onBack}
               className={`px-4 py-3 rounded-xl border ${p.glass.border} ${p.textMuted} hover:${p.textMain} transition-colors cursor-pointer text-sm font-medium`}
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
             <button
-              onClick={() => {}}
+              onClick={onNext}
               disabled={!amount || parseFloat(amount) <= 0}
               className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-bold hover:bg-[#00B86E] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >

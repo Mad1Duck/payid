@@ -63,6 +63,8 @@ export default function SendFlow() {
             nativeSymbol={nativeSymbol}
             resolvedName={resolvedName}
             targetPolicy={targetPolicy}
+            onBack={() => setStep('who')}
+            onNext={() => setStep('review')}
           />
         )}
 

@@ -80,7 +80,7 @@ function RuleDetail({ ruleId, p }: RuleDetailProps) {
 }
 
 export default function TargetPolicyInfo({ policy, p }: Props) {
-  const [expandedRule, setExpandedRule] = useState<number | null>(null)
+  const [expandedRule, setExpandedRule] = useState<number | null>(0)
 
   if (!policy) {
     return (
@@ -95,11 +95,22 @@ export default function TargetPolicyInfo({ policy, p }: Props) {
 
   return (
     <div className={`p-4 rounded-xl ${p.dark ? 'bg-white/4 border border-white/8' : 'bg-black/4 border border-black/8'}`}>
-      <div className="flex items-center gap-2 mb-3">
-        <Shield className="w-4 h-4 text-[#00D084]" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-[#00D084]">Recipient Policy</span>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Shield className="w-4 h-4 text-[#00D084]" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#00D084]">Recipient Policy</span>
+        </div>
+        {policy.direction !== undefined && (
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${
+            policy.direction === 0
+              ? 'border-[#00D084]/30 text-[#00D084] bg-[#00D084]/10'
+              : 'border-[#8B5CF6]/30 text-[#8B5CF6] bg-[#8B5CF6]/10'
+          }`}>
+            {policy.direction === 0 ? 'Inbound' : 'Outbound'}
+          </span>
+        )}
       </div>
-      
+
       <div className="space-y-2">
         <div className="flex justify-between items-center py-1">
           <span className={`text-[12px] ${p.textMuted}`}>Policy Hash</span>
