@@ -37,10 +37,10 @@ export function useHistoryPage() {
 
   const totalSent = txs
     .filter((t) => t.type === 'sent')
-    .reduce((a, t) => a + parseFloat(t.amount), 0);
+    .reduce((a, t) => a + (parseFloat(t.amount) || 0), 0);
   const totalReceived = txs
     .filter((t) => t.type === 'received')
-    .reduce((a, t) => a + parseFloat(t.amount), 0);
+    .reduce((a, t) => a + (parseFloat(t.amount) || 0), 0);
 
   return {
     p, isConnected, activeTab, setActiveTab, search, setSearch,
