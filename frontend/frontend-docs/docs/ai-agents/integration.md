@@ -1,6 +1,6 @@
 ---
-id: ai-agents
-title: AI Agents
+id: ai-agents-integration
+title: AI Agents Integration
 sidebar_label: AI Agents
 ---
 

@@ -4,7 +4,7 @@ const sidebars: SidebarsConfig = {
   tutorialSidebar: [
     {
       type: 'category',
-      label: '🚀 Getting Started',
+      label: 'Getting Started',
       collapsed: false,
       items: [
         'intro',
@@ -16,19 +16,10 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: '📚 Core Concepts',
+      label: 'Core Concepts',
       collapsed: true,
       items: [
         'core-concepts/overview',
-        'advanced-usage',
-      ],
-    },
-
-    {
-      type: 'category',
-      label: '📋 Rules',
-      collapsed: true,
-      items: [
         'rules/rule-basics',
         'rules/combining-rules',
       ],
@@ -36,17 +27,55 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: '⚛️ React Integration',
+      label: 'Integration Guides',
       collapsed: true,
       items: [
         'integration/react-integration',
-        'integration/ai-agents',
+        'integration/platform-adapters',
       ],
     },
 
     {
       type: 'category',
-      label: '💻 Code Examples',
+      label: 'AI Agents',
+      collapsed: true,
+      items: [
+        'ai-agents/ai-agents-integration',
+      ],
+    },
+
+    {
+      type: 'category',
+      label: 'Security & Trust',
+      collapsed: true,
+      items: [
+        'security/vran-reputation',
+        'security/bank-qris-bridge',
+      ],
+    },
+
+    {
+      type: 'category',
+      label: 'Payment Flows',
+      collapsed: true,
+      items: [
+        'payment-flows/multi-token-pricing',
+        'payment-flows/platform-payid-bridge',
+      ],
+    },
+
+    {
+      type: 'category',
+      label: 'Testing & Simulation',
+      collapsed: true,
+      items: [
+        'testing/tokochain-simulation',
+      ],
+    },
+
+    {
+      type: 'category',
+      label: 'Code Examples',
       collapsed: true,
       items: [
         'examples/client',
@@ -58,23 +87,19 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: '🌐 Real-World',
+      label: 'API Reference',
       collapsed: true,
       items: [
-        'integration/tokochain-simulation',
-        'integration/bank-qris-bridge',
-        'integration/vran-reputation',
+        'api/sdk-reference',
       ],
     },
 
     {
       type: 'category',
-      label: '📖 Reference',
+      label: 'Resources',
       collapsed: true,
       items: [
-        'api/sdk-reference',
         'network/contracts-address',
-        'contracts/contracts',
         'changelog',
       ],
     },

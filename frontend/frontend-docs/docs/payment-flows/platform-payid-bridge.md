@@ -2,8 +2,6 @@
 id: platform-payid-bridge
 title: Platform × PAY.ID Bridge
 sidebar_label: Platform Bridge
-sidebar_position: 8
-slug: /integration/platform-payid-bridge
 ---
 
 # 🔗 Platform × PAY.ID Bridge

@@ -1,3 +1,9 @@
+---
+id: multi-token-pricing
+title: Multi-Token Pricing
+sidebar_label: Multi-Token Pricing
+---
+
 # Multi-Token Pricing
 
 PAY.ID supports USD-equivalent pricing across multiple tokens, allowing rules to check payment values in USD regardless of the token used.
