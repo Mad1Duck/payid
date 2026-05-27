@@ -14,6 +14,7 @@ import {
   Repeat,
 } from 'lucide-react'
 import { formatUnits } from 'viem'
+import { toast } from 'sonner'
 import { useDAOPayroll } from '../hooks/useDAOPayroll'
 
 export default function DAOPayroll() {
@@ -22,7 +23,8 @@ export default function DAOPayroll() {
     recipients, newAddress, setNewAddress, newAmount, setNewAmount,
     newRole, setNewRole, newSchedule, setNewSchedule, showAddForm, setShowAddForm,
     simulationResult, runs, totalPayroll, isSufficient,
-    addRecipient, removeRecipient, simulate,
+    addRecipient, removeRecipient, simulate, createSubscriptions, isCreating, isBatching,
+    userSubscriptions, isLoadingSubs, fetchUserSubscriptions,
   } = useDAOPayroll()
 
   return (
@@ -224,15 +226,51 @@ export default function DAOPayroll() {
               ))}
             </div>
             {simulationResult.decision === 'ALLOW' && (
-              <div className="p-5 border-t border-dashed border-[#E5E7EB]/30">
+              <div className="p-5 border-t border-dashed border-[#E5E7EB]/30 space-y-4">
                 <button
-                  disabled
-                  title="Batch payroll contract not yet deployed on this chain"
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#64748B]/10 text-[#64748B] text-sm font-semibold border border-dashed border-[#64748B]/20 cursor-not-allowed opacity-70"
+                  onClick={createSubscriptions}
+                  disabled={isCreating}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#00D084] text-[#0B0F1A] text-sm font-semibold hover:bg-[#00D084]/90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Wallet className="w-4 h-4" /> Execute Payroll (Contract Not Deployed)
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Creating Subscriptions...
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="w-4 h-4" />
+                      Create Recurring Subscriptions
+                    </>
+                  )}
                 </button>
-                <p className={`text-[11px] text-center mt-2 ${p.textMuted}`}>Batch contract required. Use SendFlow for individual payments.</p>
+                <p className={`text-[11px] ${p.textMuted}`}>
+                  Sets up automatic recurring payments for all contributors. First payment sent immediately, then based on schedule (weekly/monthly).
+                </p>
+                <button
+                  onClick={() => {
+                    // TODO: Generate decision proofs and signatures for batch payment
+                    // This requires SDK integration to generate DecisionProofs for each recipient
+                    toast.info('Batch payment requires DecisionProofs - integrate SDK to generate proofs')
+                  }}
+                  disabled={isBatching}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#8B5CF6] text-white text-sm font-semibold hover:bg-[#8B5CF6]/90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isBatching ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processing Batch...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Execute One-Time Batch Payment
+                    </>
+                  )}
+                </button>
+                <p className={`text-[11px] ${p.textMuted}`}>
+                  Sends a one-time payment to all recipients in a single transaction using PayWithPayIDBatch contract. Requires DecisionProofs for each recipient.
+                </p>
               </div>
             )}
           </motion.div>
@@ -308,6 +346,81 @@ export default function DAOPayroll() {
               )}
             </div>
           ))}
+        </div>
+      </motion.div>
+
+      {/* Active Subscriptions */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className={`rounded-2xl border ${p.cardBorder} overflow-hidden`}
+        style={{ backgroundColor: p.cardBg }}
+      >
+        <div className="p-5 border-b border-dashed border-[#E5E7EB]/30 flex items-center justify-between">
+          <h2 className={`text-sm font-semibold ${p.textMain}`}>Active Subscriptions</h2>
+          <button
+            onClick={fetchUserSubscriptions}
+            disabled={isLoadingSubs}
+            className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
+              isLoadingSubs
+                ? 'opacity-50 cursor-not-allowed'
+                : 'bg-[#8B5CF6]/10 text-[#8B5CF6] hover:bg-[#8B5CF6]/20'
+            }`}
+          >
+            {isLoadingSubs ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
+        <div className="divide-y divide-dashed divide-[#E5E7EB]/30">
+          {userSubscriptions.length === 0 ? (
+            <div className="p-8 text-center">
+              <Repeat className="w-8 h-8 mx-auto mb-2 text-[#E5E7EB]" />
+              <p className={`text-sm ${p.textMuted}`}>No active subscriptions</p>
+              <p className={`text-xs ${p.textMuted} mt-1`}>Create subscriptions to see them here</p>
+            </div>
+          ) : (
+            userSubscriptions.map(({ subId, sub }) => (
+              <div key={subId.toString()} className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#00D084]/10 flex items-center justify-center">
+                      <Repeat className="w-4 h-4 text-[#00D084]" />
+                    </div>
+                    <div>
+                      <p className={`text-xs font-medium ${p.textMain}`}>
+                        {sub.receiver.slice(0, 6)}...{sub.receiver.slice(-4)}
+                      </p>
+                      <p className={`text-[10px] ${p.textMuted}`}>
+                        {formatUnits(sub.maxAmount, 18)} {nativeSymbol} · {sub.period === 604800n ? 'Weekly' : 'Monthly'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-xs font-medium ${p.textMain}`}>
+                      {formatUnits(sub.totalCharged, 18)} {nativeSymbol}
+                    </p>
+                    <p className={`text-[10px] ${p.textMuted}`}>
+                      {sub.numCharges.toString()} charges
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-dashed border-[#E5E7EB]/30">
+                  <div className={`text-[10px] ${p.textMuted}`}>
+                    Next charge: {new Date(Number(sub.nextCharge) * 1000).toLocaleDateString()}
+                  </div>
+                  <button
+                    onClick={() => {
+                      // TODO: Generate DecisionProof and charge subscription
+                      toast.info('Manual charge requires DecisionProof - integrate SDK to generate proof')
+                    }}
+                    className={`text-xs px-3 py-1.5 rounded-lg bg-[#00D084] text-[#0B0F1A] font-medium hover:bg-[#00D084]/90 transition-colors`}
+                  >
+                    Charge Now
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </motion.div>
     </div>

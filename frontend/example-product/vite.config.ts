@@ -20,13 +20,14 @@ export default defineConfig({
   ],
   resolve: {
     alias: [
-      { find: 'vite-plugin-node-polyfills/shims/buffer', replacement: _require.resolve('buffer') },
+      // { find: 'vite-plugin-node-polyfills/shims/buffer', replacement: _require.resolve('buffer') },
       { find: 'vite-plugin-node-polyfills/shims/process', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: 'node:fs/promises', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: 'node:fs', replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: /^fs\/promises$/, replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: /^fs$/, replacement: fileURLToPath(new URL('./src/stubs/node-fs.stub.ts', import.meta.url)) },
       { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
+      { find: 'payid-react', replacement: fileURLToPath(new URL('../../packages/payid-react/src/index.ts', import.meta.url)) },
     ],
     dedupe: ['react', 'react-dom', 'wagmi', 'viem', '@wagmi/core'],
   },

@@ -3,11 +3,11 @@ import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteCont
 import { usePayIDContext } from 'payid-react';
 import { parseEther } from 'viem';
 import {
-  attestationVerifierAbi,
-  payIDVerifierAbi,
-  payWithPayIDAbi,
-  ruleItemERC721Abi,
-  vindexRegistryAbi,
+  AttestationVerifierAbi,
+  PayIDVerifierAbi,
+  PayWithPayIDAbi,
+  RuleItemERC721Abi,
+  VindexRegistryAbi,
 } from '@/constants/contracts';
 import { useV4Palette } from '@/components/v4/theme';
 
@@ -118,50 +118,50 @@ export function useAdminPage() {
   /* ── On-chain reads ── */
   const { data: verifierInit } = useReadContract({
     address: contracts.payIDVerifier,
-    abi: payIDVerifierAbi,
+    abi: PayIDVerifierAbi,
     functionName: 'isInitialized',
   });
   const { data: adminRole } = useReadContract({
     address: contracts.payIDVerifier,
-    abi: payIDVerifierAbi,
+    abi: PayIDVerifierAbi,
     functionName: 'DEFAULT_ADMIN_ROLE',
   });
   const { data: isAdmin } = useReadContract({
     address: contracts.payIDVerifier,
-    abi: payIDVerifierAbi,
+    abi: PayIDVerifierAbi,
     functionName: 'hasRole',
     args: adminRole ? [adminRole, address as `0x${string}`] : undefined,
     query: { enabled: !!adminRole && !!address },
   });
   const { data: pwpInit } = useReadContract({
     address: contracts.payWithPayID,
-    abi: payWithPayIDAbi,
+    abi: PayWithPayIDAbi,
     functionName: 'isInitialized',
   });
   const { data: attVerInit } = useReadContract({
     address: attestationVerifierAddr,
-    abi: attestationVerifierAbi,
+    abi: AttestationVerifierAbi,
     functionName: 'isInitialized',
     query: { enabled: attestationVerifierAddr !== '0x0000000000000000000000000000000000000000' },
   });
 
   const { data: isTrustedAuthority } = useReadContract({
     address: contracts.payIDVerifier,
-    abi: payIDVerifierAbi,
+    abi: PayIDVerifierAbi,
     functionName: 'trustedAuthorities',
     args: [authorityAddr as `0x${string}`],
     query: { enabled: authorityAddr.startsWith('0x') && authorityAddr.length === 42 },
   });
   const { data: isTrustedAttester } = useReadContract({
     address: attestationVerifierAddr,
-    abi: attestationVerifierAbi,
+    abi: AttestationVerifierAbi,
     functionName: 'trustedAttesters',
     args: [attesterAddr as `0x${string}`],
     query: { enabled: attesterAddr.startsWith('0x') && attesterAddr.length === 42 },
   });
   const { data: isTrustedSchema } = useReadContract({
     address: attestationVerifierAddr,
-    abi: attestationVerifierAbi,
+    abi: AttestationVerifierAbi,
     functionName: 'trustedSchemas',
     args: [schemaUID as `0x${string}`],
     query: { enabled: schemaUID.startsWith('0x') && schemaUID.length === 66 },
@@ -169,22 +169,22 @@ export function useAdminPage() {
 
   const { data: isPaused } = useReadContract({
     address: contracts.ruleItemERC721,
-    abi: ruleItemERC721Abi,
+    abi: RuleItemERC721Abi,
     functionName: 'paused',
   });
   const { data: maxSlot } = useReadContract({
     address: contracts.ruleItemERC721,
-    abi: ruleItemERC721Abi,
+    abi: RuleItemERC721Abi,
     functionName: 'MAX_SLOT',
   });
   const { data: subCents } = useReadContract({
     address: contracts.ruleItemERC721,
-    abi: ruleItemERC721Abi,
+    abi: RuleItemERC721Abi,
     functionName: 'subscriptionUsdCents',
   });
   const { data: oracleAddrRead } = useReadContract({
     address: contracts.ruleItemERC721,
-    abi: ruleItemERC721Abi,
+    abi: RuleItemERC721Abi,
     functionName: 'ethUsdFeed',
   });
   const { data: priceData } = useReadContract({
@@ -203,13 +203,13 @@ export function useAdminPage() {
 
   const { data: vMinStake } = useReadContract({
     address: vindexRegistryAddr,
-    abi: vindexRegistryAbi,
+    abi: VindexRegistryAbi,
     functionName: 'minStake',
     query: { enabled: vindexRegistryAddr !== '0x0000000000000000000000000000000000000000' },
   });
   const { data: vConsensus } = useReadContract({
     address: vindexRegistryAddr,
-    abi: vindexRegistryAbi,
+    abi: VindexRegistryAbi,
     functionName: 'consensusThreshold',
     query: { enabled: vindexRegistryAddr !== '0x0000000000000000000000000000000000000000' },
   });
@@ -222,7 +222,7 @@ export function useAdminPage() {
     if (!initRuleAuthorityAddr || !initAttestVerifierAddr) return;
     writeContract({
       address: contracts.payIDVerifier,
-      abi: payIDVerifierAbi,
+      abi: PayIDVerifierAbi,
       functionName: 'initialize',
       args: [initRuleAuthorityAddr as `0x${string}`, initAttestVerifierAddr as `0x${string}`],
     });
@@ -231,7 +231,7 @@ export function useAdminPage() {
     if (!initPWPVerifierAddr || !initPWPAttestAddr) return;
     writeContract({
       address: contracts.payWithPayID,
-      abi: payWithPayIDAbi,
+      abi: PayWithPayIDAbi,
       functionName: 'initialize',
       args: [initPWPVerifierAddr as `0x${string}`, initPWPAttestAddr as `0x${string}`],
     });
@@ -240,7 +240,7 @@ export function useAdminPage() {
     if (!authorityAddr) return;
     writeContract({
       address: contracts.payIDVerifier,
-      abi: payIDVerifierAbi,
+      abi: PayIDVerifierAbi,
       functionName: 'setTrustedAuthority',
       args: [authorityAddr as `0x${string}`, trusted],
     });
@@ -249,7 +249,7 @@ export function useAdminPage() {
     if (!schemaUID) return;
     writeContract({
       address: attestationVerifierAddr,
-      abi: attestationVerifierAbi,
+      abi: AttestationVerifierAbi,
       functionName: 'setTrustedSchema',
       args: [schemaUID as `0x${string}`, trusted],
     });
@@ -258,7 +258,7 @@ export function useAdminPage() {
     if (!attesterAddr) return;
     writeContract({
       address: attestationVerifierAddr,
-      abi: attestationVerifierAbi,
+      abi: AttestationVerifierAbi,
       functionName: 'setTrustedAttester',
       args: [attesterAddr as `0x${string}`, trusted],
     });
@@ -267,7 +267,7 @@ export function useAdminPage() {
     if (!priceCents) return;
     writeContract({
       address: contracts.ruleItemERC721,
-      abi: ruleItemERC721Abi,
+      abi: RuleItemERC721Abi,
       functionName: 'setSubscriptionUsdCents',
       args: [BigInt(priceCents)],
     });
@@ -276,7 +276,7 @@ export function useAdminPage() {
     if (!oracleAddr) return;
     writeContract({
       address: contracts.ruleItemERC721,
-      abi: ruleItemERC721Abi,
+      abi: RuleItemERC721Abi,
       functionName: 'setOracle',
       args: [oracleAddr as `0x${string}`],
     });
@@ -284,7 +284,7 @@ export function useAdminPage() {
   const togglePause = () => {
     writeContract({
       address: contracts.ruleItemERC721,
-      abi: ruleItemERC721Abi,
+      abi: RuleItemERC721Abi,
       functionName: isPaused ? 'unpause' : 'pause',
     });
   };
@@ -310,7 +310,7 @@ export function useAdminPage() {
     if (!minStake) return;
     writeContract({
       address: vindexRegistryAddr,
-      abi: vindexRegistryAbi,
+      abi: VindexRegistryAbi,
       functionName: 'setMinStake',
       args: [parseEther(minStake)],
     });
@@ -319,7 +319,7 @@ export function useAdminPage() {
     if (!consensusThreshold) return;
     writeContract({
       address: vindexRegistryAddr,
-      abi: vindexRegistryAbi,
+      abi: VindexRegistryAbi,
       functionName: 'setConsensusThreshold',
       args: [Number(consensusThreshold)],
     });

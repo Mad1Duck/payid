@@ -29,7 +29,7 @@ import { useRuleBuilder } from '../hooks/useRuleBuilder'
 import { getPinataJWT, RuleImage } from '@/features/rules'
 import { toast } from 'sonner'
 import { uriToHttp } from '../utils/storage'
-import { ruleItemERC721Abi } from '@/constants/contracts/RuleItemERC721'
+import { RuleItemERC721Abi } from '@/constants/contracts'
 
 function RuleCardItem({ rule, p, contracts, refetchMyRules, refetchSub }: any) {
   const [meta, setMeta] = useState<any>(null)
@@ -217,7 +217,7 @@ function RuleCardItem({ rule, p, contracts, refetchMyRules, refetchSub }: any) {
                 ) {
                   writeContract({
                     address: contracts.ruleItemERC721,
-                    abi: ruleItemERC721Abi,
+                    abi: RuleItemERC721Abi,
                     functionName: 'deactivateRule',
                     args: [rule.ruleId],
                   })
@@ -1915,7 +1915,7 @@ export default function RulesPage() {
                                     ) {
                                       writeContract({
                                         address: contracts.ruleItemERC721,
-                                        abi: ruleItemERC721Abi,
+                                        abi: RuleItemERC721Abi,
                                         functionName: 'deactivateRule',
                                         args: [r.ruleId],
                                       })

@@ -20,7 +20,7 @@ import { formatUnits } from 'viem'
 import { BrowserProvider } from 'ethers'
 import { usePayIDContext } from 'payid-react'
 import { decodeSessionPolicyV2QR } from 'payid/sessionPolicy'
-import { payWithPayIDAbi } from '@/constants/contracts'
+import { PayWithPayIDAbi } from '@/constants/contracts'
 import { toast } from 'sonner'
 
 function normalizeDirectPayload(directData: { decision: Record<string, any>; signature: string }) {
@@ -276,13 +276,13 @@ export default function GiftClaimPage() {
     try {
       const decision = buildDecision()!
       const callArgs = isNative
-        ? { address: contracts.payWithPayID, abi: payWithPayIDAbi, functionName: 'payNative' as const, args: [decision as any, policy.signature, []] as const, value: BigInt(policy.maxAmount) }
-        : { address: contracts.payWithPayID, abi: payWithPayIDAbi, functionName: 'payERC20' as const, args: [decision as any, policy.signature, []] as const }
+        ? { address: contracts.payWithPayID, abi: PayWithPayIDAbi, functionName: 'payNative' as const, args: [decision as any, policy.signature, []] as const, value: BigInt(policy.maxAmount) }
+        : { address: contracts.payWithPayID, abi: PayWithPayIDAbi, functionName: 'payERC20' as const, args: [decision as any, policy.signature, []] as const }
       if (publicClient) {
         if (isNative) {
-          await publicClient.simulateContract({ address: contracts.payWithPayID, abi: payWithPayIDAbi, functionName: 'payNative' as const, args: [decision as any, policy.signature, []] as const, value: BigInt(policy.maxAmount), account: address as `0x${string}` })
+          await publicClient.simulateContract({ address: contracts.payWithPayID, abi: PayWithPayIDAbi, functionName: 'payNative' as const, args: [decision as any, policy.signature, []] as const, value: BigInt(policy.maxAmount), account: address as `0x${string}` })
         } else {
-          await publicClient.simulateContract({ address: contracts.payWithPayID, abi: payWithPayIDAbi, functionName: 'payERC20' as const, args: [decision as any, policy.signature, []] as const, account: address as `0x${string}` })
+          await publicClient.simulateContract({ address: contracts.payWithPayID, abi: PayWithPayIDAbi, functionName: 'payERC20' as const, args: [decision as any, policy.signature, []] as const, account: address as `0x${string}` })
         }
       }
       const hash = await writeContractAsync(callArgs as any)

@@ -71,6 +71,8 @@ export {
   useVranConfig,
   useSubmitReport,
   useConfirmReport,
+  useReport,
+  useSuccessfulReports,
 } from './hooks/useReputation';
 
 // Hooks: Offline Cache

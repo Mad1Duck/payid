@@ -34,8 +34,10 @@ import { SendFlow as V4SendFlow } from '@/features/send'
 import { SettingsPage as V4SettingsPage } from '@/features/settings'
 import { CheckoutPage as V4CheckoutPage } from '@/features/checkout'
 import { GiftCardPage as V4GiftCardPage, GiftClaimPage as V4GiftClaimPage } from '@/features/gift'
+import { TimeLockVesting as V4TimeLockVesting } from '@/features/shared'
+import { ReputationPage as V4ReputationPage, ScamReportPage as V4ScamReportPage } from '@/features/reputation'
 
-import { addresses } from './constants/contracts'
+import { addresses } from './constants/contracts/addresses'
 import { Toaster } from './components/ui/sonner'
 import './globals.css'
 import reportWebVitals from './reportWebVitals.ts'
@@ -192,6 +194,12 @@ const v4DAOPayrollRoute = createRoute({
   component: V4DAOPayroll,
 })
 
+const v4VestingRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'vesting',
+  component: V4TimeLockVesting,
+})
+
 const v4SettingsRoute = createRoute({
   getParentRoute: () => v4AppRoute,
   path: 'settings',
@@ -222,6 +230,18 @@ const v4CheckoutRoute = createRoute({
   component: V4CheckoutPage,
 })
 
+const v4ReputationRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'reputation',
+  component: V4ReputationPage,
+})
+
+const v4ScamReportRoute = createRoute({
+  getParentRoute: () => v4AppRoute,
+  path: 'reputation/report',
+  component: V4ScamReportPage,
+})
+
 const routeTree = rootRoute.addChildren([
   rootIndexRoute,
   v4Route.addChildren([
@@ -240,11 +260,14 @@ const routeTree = rootRoute.addChildren([
       v4MarketplaceRoute,
       v4AdvancedToolsRoute,
       v4DAOPayrollRoute,
+      v4VestingRoute,
       v4SettingsRoute,
       v4AdminRoute,
       v4AgentRoute,
       v4AIAgentMarketplaceRoute,
       v4CheckoutRoute,
+      v4ReputationRoute,
+      v4ScamReportRoute,
     ]),
   ]),
 ])

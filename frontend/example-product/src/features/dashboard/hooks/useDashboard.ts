@@ -6,7 +6,7 @@ import { useReputation, useOfflineCache } from 'payid-react';
 import { useTxHistory, relativeTime } from '@/hooks/useTxHistory';
 import { formatNumber } from '@/lib/utils';
 import { shortAddr, useClipboard } from '@/features/shared';
-import { addresses } from '@/constants/contracts';
+import { addresses } from '@/constants/contracts/addresses';
 
 const CHAINLINK_ORACLE_ABI = [
   {

@@ -6,6 +6,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
   useConnectorClient,
+  useReadContract,
 } from 'wagmi';
 import type { Address, Hash, Abi } from 'viem';
 import { BrowserProvider } from 'ethers';
@@ -14,9 +15,11 @@ import { usePayIDContext } from '../PayIDProvider';
 
 import CombinedRuleStorageArtifact from '../abis/PayIDModule#CombinedRuleStorage.json';
 import PayWithPayIDArtifact from '../abis/PayIDModule#PayWithPayID.json';
+import AttestationVerifierArtifact from '../abis/PayIDModule#AttestationVerifier.json';
 
 const CombinedRuleStorageABI = CombinedRuleStorageArtifact.abi as Abi;
 const PayWithPayIDABI = PayWithPayIDArtifact.abi as Abi;
+const AttestationVerifierABI = AttestationVerifierArtifact.abi as Abi;
 
 const TOKEN_URI_ABI = [
   {
@@ -607,10 +610,45 @@ export function usePayIDFlow(): PayIDFlowResult {
         warn('step-5', 'verifyDecision check failed', e);
       }
 
-      // Decide which payment function to use
+      if (params.attestationUIDs && params.attestationUIDs.length > 0 && contracts.attestationVerifier && contracts.attestationVerifier !== '0x0000000000000000000000000000000000000000') {
+        try {
+          log('step-5.5', 'verifying attestations', { count: params.attestationUIDs.length });
+
+          const isInit = await publicClient!.readContract({
+            address: contracts.attestationVerifier,
+            abi: AttestationVerifierABI,
+            functionName: 'isInitialized',
+          }) as boolean;
+
+          if (!isInit) {
+            warn('step-5.5', 'AttestationVerifier not initialized, skipping attestation verification');
+          } else {
+            await publicClient!.readContract({
+              address: contracts.attestationVerifier,
+              abi: AttestationVerifierABI,
+              functionName: 'verifyAttestationBatch',
+              args: [params.attestationUIDs, payer],
+            });
+            log('step-5.5', 'attestation verification', 'valid');
+          }
+        } catch (e: unknown) {
+          if (e instanceof Error) {
+            if (d.requiresAttestation) {
+              throw new Error(
+                `ATTESTATION_VERIFICATION_FAILED: ${e.message}. ` +
+                `Attestations are required for this payment but verification failed.`
+              );
+            } else {
+              warn('step-5.5', 'attestation verification failed (optional, continuing)', e);
+            }
+          } else {
+            warn('step-5.5', 'attestation verification failed (optional, continuing)', e);
+          }
+        }
+      }
+
       const useOracleGuard = !isETH && params.tokenPriceOracle && params.minUsdValue !== undefined && params.tokenDecimals !== undefined;
 
-      // Simulate before sending to MetaMask — catches reverts with decoded errors
       await publicClient!.simulateContract(
         isETH
           ? {

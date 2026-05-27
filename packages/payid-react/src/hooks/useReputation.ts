@@ -104,6 +104,43 @@ const VindexRegistryABI = [
     outputs: [],
     stateMutability: 'nonpayable',
   },
+  {
+    type: 'function',
+    name: 'reports',
+    inputs: [{ name: '', type: 'uint256' }],
+    outputs: [
+      { name: 'target', type: 'address' },
+      { name: 'reporter', type: 'address' },
+      { name: 'evidenceHash', type: 'string' },
+      { name: 'stake', type: 'uint256' },
+      { name: 'timestamp', type: 'uint256' },
+      { name: 'confirmations', type: 'uint8' },
+      { name: 'resolved', type: 'bool' },
+      { name: 'valid', type: 'bool' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'reportCount',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'successfulReports',
+    inputs: [{ name: '', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'minReporterReputation',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint16' }],
+    stateMutability: 'view',
+  },
 ] as const;
 
 interface UseReputationParams {
@@ -219,9 +256,82 @@ export function useVranConfig({ registryAddress }: Pick<UseReputationParams, 're
     query: { enabled },
   });
 
+  const { data: minReporterReputation } = useReadContract({
+    address: resolvedRegistry,
+    abi: VindexRegistryABI,
+    functionName: 'minReporterReputation',
+    query: { enabled },
+  });
+
+  const { data: reportCount } = useReadContract({
+    address: resolvedRegistry,
+    abi: VindexRegistryABI,
+    functionName: 'reportCount',
+    query: { enabled },
+  });
+
   return {
     minStake: minStake ?? 0n,
     consensusThreshold: threshold ?? 3,
+    minReporterReputation: minReporterReputation ?? 700,
+    reportCount: Number(reportCount ?? 0n),
+  };
+}
+
+/**
+ * @notice Read a single report by ID.
+ */
+export function useReport({ registryAddress, reportId }: Pick<UseReputationParams, 'registryAddress'> & { reportId?: bigint; }) {
+  const { contracts } = usePayIDContext();
+  const resolvedRegistry = registryAddress ?? contracts.vindexRegistry;
+  const enabled = !!reportId && !!resolvedRegistry && resolvedRegistry !== '0x0000000000000000000000000000000000000000';
+
+  const { data, isLoading } = useReadContract({
+    address: resolvedRegistry,
+    abi: VindexRegistryABI,
+    functionName: 'reports',
+    args: reportId !== undefined ? [reportId] : undefined,
+    query: { enabled },
+  });
+
+  return {
+    report: data
+      ? {
+        target: data[0],
+        reporter: data[1],
+        evidenceHash: data[2],
+        stake: data[3],
+        timestamp: data[4],
+        confirmations: data[5],
+        resolved: data[6],
+        valid: data[7],
+      }
+      : undefined,
+    isLoading,
+  };
+}
+
+/**
+ * @notice Read successful report count for an address.
+ */
+export function useSuccessfulReports({ registryAddress, target }: Pick<UseReputationParams, 'registryAddress' | 'target'>) {
+  const { address: connectedAddress } = useAccount();
+  const { contracts } = usePayIDContext();
+  const account = target ?? connectedAddress;
+  const resolvedRegistry = registryAddress ?? contracts.vindexRegistry;
+  const enabled = !!account && !!resolvedRegistry && resolvedRegistry !== '0x0000000000000000000000000000000000000000';
+
+  const { data, isLoading } = useReadContract({
+    address: resolvedRegistry,
+    abi: VindexRegistryABI,
+    functionName: 'successfulReports',
+    args: account ? [account] : undefined,
+    query: { enabled },
+  });
+
+  return {
+    count: Number(data ?? 0n),
+    isLoading,
   };
 }
 

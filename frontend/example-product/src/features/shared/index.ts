@@ -8,3 +8,4 @@ export { ParticleField } from './components/visuals/ParticleField';
 export { StorageHexGrid } from './components/visuals/StorageHexGrid';
 export { SignatureAnimation } from './components/visuals/SignatureAnimation';
 export { BlockChainLink } from './components/visuals/BlockChainLink';
+export { TimeLockVesting } from './pages/TimeLockVesting';

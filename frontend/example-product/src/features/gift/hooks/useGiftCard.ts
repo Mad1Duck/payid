@@ -231,8 +231,8 @@ export function useGiftCard() {
       // payNative requires msg.value from the caller (the sender). We do it here
       // so the friend's claim URL is purely a receipt/notification — no action needed.
       if (mode === 'gift' && tokenType === 'native' && type === 'targeted') {
-        const { payWithPayIDAbi } = await import('@/constants/contracts');
-        const payContract = new Contract(contracts.payWithPayID, payWithPayIDAbi, signer);
+        const { PayWithPayIDAbi } = await import('@/constants/contracts');
+        const payContract = new Contract(contracts.payWithPayID, PayWithPayIDAbi, signer);
         const decisionForTx = {
           version: proof.payload.version,
           payId: proof.payload.payId,

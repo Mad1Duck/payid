@@ -4,6 +4,7 @@
  *   - addresses.ts        (contract addresses per chain)
  *   - chainRegistry.ts    (viem Chain objects — auto-generated, imported by main.tsx)
  *   - chain.ts            (chainMeta — auto-generated)
+ *   - ABI files           (contract ABIs from artifacts)
  *
  * Usage:
  *   bun run scripts/sync-deployments.ts
@@ -13,6 +14,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 // ─── Single source of truth for all known chains ─────────────────────────────
 //
@@ -439,6 +441,13 @@ async function main() {
   console.log('\n📝 Regenerating chainRegistry.ts and chain.ts...');
   writeChainRegistry(extraChain);
   writeChainMeta(extraChain ? { id: chainId, label: extraChain.label, networkName: `chain${chainId}`, isTestnet: true } : undefined);
+
+  console.log('\n📝 Syncing contract ABIs...');
+  try {
+    execSync('bun run scripts/sync-abi.ts', { cwd: path.join(__dirname, '..'), stdio: 'inherit' });
+  } catch (error) {
+    console.warn('  ⚠️  ABI sync failed, but addresses were updated successfully');
+  }
 
   console.log(`\n✅ Sync complete for chain ${chainId} (${networkArg})\n`);
 }

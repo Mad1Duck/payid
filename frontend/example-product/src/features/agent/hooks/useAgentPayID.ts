@@ -25,10 +25,12 @@ import {
 } from 'payid-react';
 import type { AdminAgent, CombinedRule } from 'payid-react';
 import { addresses } from '@/constants/contracts/addresses';
-import { agentPayIDAbi } from '@/constants/contracts/AgentPayID';
-import { mockAgentRegistryAbi } from '@/constants/contracts/MockAgentRegistry';
-import { combinedRuleStorageAbi } from '@/constants/contracts/CombinedRuleStorage';
-import { ruleItemERC721Abi } from '@/constants/contracts';
+import {
+  AgentPayIDAbi,
+  MockAgentRegistryAbi,
+  CombinedRuleStorageAbi,
+  RuleItemERC721Abi,
+} from '@/constants/contracts';
 import {
   uploadTo0G,
   uploadToIPFS,
@@ -332,7 +334,7 @@ export function useAgentPayID(): AgentPayIDState {
 
   const { data: activeRuleHash } = useReadContract({
     address: combinedRuleStorageAddr,
-    abi: combinedRuleStorageAbi,
+    abi: CombinedRuleStorageAbi,
     functionName: 'getActiveRuleOf',
     args: [selectedAgent?.agentWallet as `0x${string}` ?? zeroAddress],
     query: { enabled: !!combinedRuleStorageAddr && !!selectedAgent?.agentWallet },
@@ -340,7 +342,7 @@ export function useAgentPayID(): AgentPayIDState {
 
   const { data: nextRuleId } = useReadContract({
     address: ruleItemAddr,
-    abi: ruleItemERC721Abi,
+    abi: RuleItemERC721Abi,
     functionName: 'nextRuleId',
     chainId: activeChainId,
   });
@@ -361,7 +363,7 @@ export function useAgentPayID(): AgentPayIDState {
         try {
           const [hash, uri, , , , deprecated, tokenId] = await publicClient.readContract({
             address: ruleItemAddr,
-            abi: ruleItemERC721Abi,
+            abi: RuleItemERC721Abi,
             functionName: 'rules',
             args: [ruleId],
           }) as [string, string, string, bigint, number, boolean, bigint];
@@ -510,7 +512,7 @@ export function useAgentPayID(): AgentPayIDState {
 
   const { data: currentRuleHash } = useReadContract({
     address: agentPayIDAddr,
-    abi: agentPayIDAbi,
+    abi: AgentPayIDAbi,
     functionName: 'agentRules',
     args: [BigInt(tokenId)],
     chainId: activeChainId,
@@ -778,7 +780,7 @@ export function useAgentPayID(): AgentPayIDState {
         addLog(`[REGISTRY] setOwner(${tid}, ${shortAddr(address)})…`);
         const tx1 = await writeContractAsync({
           address: mockRegistryAddr,
-          abi: mockAgentRegistryAbi,
+          abi: MockAgentRegistryAbi,
           functionName: 'setOwner',
           args: [tid, address],
           chainId: activeChainId,
@@ -791,7 +793,7 @@ export function useAgentPayID(): AgentPayIDState {
         addLog(`[AGENT] linkAgentRule(${tid}, ${shortHash(ruleHashToLink)})…`);
         const tx2 = await writeContractAsync({
           address: agentPayIDAddr,
-          abi: agentPayIDAbi,
+          abi: AgentPayIDAbi,
           functionName: 'linkAgentRule',
           args: [tid, ruleHashToLink],
           chainId: activeChainId,
