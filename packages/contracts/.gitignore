@@ -20,4 +20,4 @@
 /coverage
 
 .env
-decs/*
+docs/*
