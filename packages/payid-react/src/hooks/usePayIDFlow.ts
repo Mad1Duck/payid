@@ -463,8 +463,9 @@ export function usePayIDFlow(): PayIDFlowResult {
           });
           const priceInUsd = oracleData[1] as bigint;
           if (priceInUsd > 0n) {
-            // computeTxValueUsd = (amount * price) / (10^(decimals + 8))
-            const denominator = 10n ** BigInt(params.tokenDecimals + 8);
+            // computeTxValueUsd = (amount * price) / (10^decimals)
+            // priceInUsd already has 8 decimals (Chainlink standard)
+            const denominator = 10n ** BigInt(params.tokenDecimals);
             const txValueUsd = (params.amount * priceInUsd) / denominator;
             oracleContext = {
               oracle: {
@@ -496,6 +497,7 @@ export function usePayIDFlow(): PayIDFlowResult {
       };
 
       log('step-3', 'context', context);
+      console.log('[usePayIDFlow][step-3] FULL CONTEXT', JSON.stringify(context, null, 2));
 
       setStatus('proving');
 
@@ -536,6 +538,15 @@ export function usePayIDFlow(): PayIDFlowResult {
 
       if (result.decision !== 'ALLOW' || !proof) {
         const reason = (result as any).reason ?? 'Rule denied this payment';
+        console.error('[usePayIDFlow][step-4] DENIED', {
+          decision: result.decision,
+          reason: (result as any).reason,
+          code: (result as any).code,
+          txValueUsd: (oracleContext as any)?.oracle?.txValueUsd,
+          txValueUsdFormatted: (oracleContext as any)?.oracle?.txValueUsdFormatted,
+          amount: params.amount.toString(),
+          tokenPriceOracle: params.tokenPriceOracle,
+        });
         warn('step-4', 'DENIED', reason);
         setDenyReason(reason);
         setStatus('denied');
