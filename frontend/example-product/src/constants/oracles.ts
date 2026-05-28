@@ -7,7 +7,7 @@ export const CHAINLINK_ORACLE_ADDRESSES: Record<number, `0x${string}` | undefine
   16602: '0x49fF785E85e5cA564E8bc1EE7EF5548E41500C12', // 0G Galileo Testnet — deployed MockOracle
   16661: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // 0G Mainnet
   4202: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // Lisk Sepolia
-  421614: '0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165', // Arbitrum Sepolia ETH/USD
+  421614: '0x8232c56cff125faba09556f02647b4789257abba', // Arbitrum Sepolia MockV3Aggregator (ETH/USD)
   84532: '0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1',  // Base Sepolia ETH/USD
 };
 
@@ -51,7 +51,7 @@ export const TOKEN_PRICE_ORACLES: Record<number, Record<string, `0x${string}`>> 
     'DAI/USD': '0x49fF785E85e5cA564E8bc1EE7EF5548E41500C12',
   },
   421614: {
-    'ETH/USD': '0xd30e2101a97dcbAeBC04F14C3f624E67A35165', // Arbitrum Sepolia ETH/USD
+    'ETH/USD': '0x8232c56cff125faba09556f02647b4789257abba', // Arbitrum Sepolia MockV3Aggregator (ETH/USD)
     'LINK/USD': '0xd6d4Cad5cb37AfA6b9C3bfA3f7fea4cFB1be18CB', // Arbitrum Sepolia
   },
   84532: {
