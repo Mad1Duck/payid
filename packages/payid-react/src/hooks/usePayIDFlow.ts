@@ -156,7 +156,6 @@ async function loadRuleConfigs(
         args: [tokenId],
       })) as string;
 
-      // Reject dangerous URI schemes — only http(s), ipfs://, and 0g:// are allowed
       if (
         !tokenUri.startsWith('http://') &&
         !tokenUri.startsWith('https://') &&
@@ -201,7 +200,6 @@ async function loadRuleConfigs(
       if (!ruleVal || typeof ruleVal !== 'object') {
         throw new Error(`Missing 'rule' in metadata: ${url}`);
       }
-      // Unwrap double-nested { rule: { if, ... } } written by older RulesPage v4
       if ((ruleVal as any).rule && !(ruleVal as any).if && !(ruleVal as any).conditions) {
         ruleVal = (ruleVal as any).rule;
       }
@@ -327,8 +325,6 @@ export function usePayIDFlow(): PayIDFlowResult {
 
     try {
       reset();
-
-      // Preflight: verify PayWithPayID is initialized — fail early with clear message
       try {
         const isInit = await publicClient!.readContract({
           address: contracts.payWithPayID,
@@ -423,9 +419,6 @@ export function usePayIDFlow(): PayIDFlowResult {
 
       log('step-3', 'signer', await signer.getAddress());
       log('step-3', 'chainId', { wagmi: chainId, signer: signerChainId });
-
-      // Use chain's block.timestamp to stay in sync with Hardhat/testnet
-      // (Hardhat block.timestamp lags behind wall clock if no recent blocks)
       const latestBlock = await publicClient!.getBlock({ blockTag: 'latest' });
       const chainTimestamp = Number(latestBlock.timestamp);
       log('step-3', 'chainTimestamp', chainTimestamp);
@@ -437,7 +430,6 @@ export function usePayIDFlow(): PayIDFlowResult {
         );
       }
 
-      // ── Auto-inject oracle.txValueUsd if tokenPriceOracle is provided ──
       let oracleContext: Record<string, unknown> = {};
       if (params.tokenPriceOracle && params.tokenDecimals !== undefined && publicClient) {
         console.log('[usePayIDFlow][step-3] fetching oracle price from', params.tokenPriceOracle, 'decimals', params.tokenDecimals);
@@ -463,8 +455,6 @@ export function usePayIDFlow(): PayIDFlowResult {
           });
           const priceInUsd = oracleData[1] as bigint;
           if (priceInUsd > 0n) {
-            // computeTxValueUsd = (amount * price) / (10^decimals)
-            // priceInUsd already has 8 decimals (Chainlink standard)
             const denominator = 10n ** BigInt(params.tokenDecimals);
             const txValueUsd = (params.amount * priceInUsd) / denominator;
             console.log('[usePayIDFlow][step-3] CALC DEBUG', {
@@ -529,15 +519,29 @@ export function usePayIDFlow(): PayIDFlowResult {
 
       log('step-4', 'result', { decision: result.decision, reason: (result as any).reason });
 
-      // Provide clearer error messages for common rule failures
       const rawReason = (result as any).reason ?? '';
       const ruleCode = (result as any).code ?? '';
       if (result.decision === 'REJECT') {
         if (rawReason.includes('oracle.txValueUsd') || ruleCode === 'usd_minimum') {
           if (!(oracleContext as any).oracle?.txValueUsd) {
-            (result as any).reason = 'USD value unavailable for this token. Try sending USDC instead, or ask the recipient to remove the USD Minimum rule.';
+            (result as any).reason = 'USD value unavailable for this token. Try sending USDC instead, or ask the recipient to remove the USD value rule.';
           } else {
-            (result as any).reason = `Transaction USD value (${(result as any).reason}) below minimum threshold. Increase amount or ask recipient to lower the minimum.`;
+            const usdRule = authorityRule?.rules?.find((r: any) => r.if?.field === 'oracle.txValueUsd');
+            const txValueFormatted = (oracleContext as any).oracle?.txValueUsdFormatted ?? `$${(Number((oracleContext as any).oracle?.txValueUsd) / 1e8).toFixed(2)}`;
+            if (usdRule) {
+              const threshold = Number(usdRule.if.value) / 1e8;
+              const op = usdRule.if.op;
+              const thresholdStr = `$${threshold.toFixed(2)}`;
+              let constraint = '';
+              if (op === '<=') constraint = `Must be at least ${thresholdStr}`;
+              else if (op === '>=') constraint = `Must be at most ${thresholdStr}`;
+              else if (op === '<') constraint = `Must be greater than ${thresholdStr}`;
+              else if (op === '>') constraint = `Must be less than ${thresholdStr}`;
+              else constraint = `${op} ${thresholdStr}`;
+              (result as any).reason = `Rule: "${usdRule.message || rawReason}". ${constraint}. Your tx value: ${txValueFormatted}.`;
+            } else {
+              (result as any).reason = `Transaction USD value (${rawReason}). Your tx value: ${txValueFormatted}.`;
+            }
           }
         }
       }
@@ -593,7 +597,6 @@ export function usePayIDFlow(): PayIDFlowResult {
 
       log('step-5', 'submitting', { isETH, asset: params.asset, amount: params.amount.toString() });
 
-      // Diagnostic: verify PayWithPayID.verifier matches the configured payIDVerifier address
       try {
         const storedVerifier = await publicClient!.readContract({
           address: contracts.payWithPayID,
@@ -613,7 +616,6 @@ export function usePayIDFlow(): PayIDFlowResult {
         warn('step-5', 'verifier address check failed', e);
       }
 
-      // Diagnostic: call verifyDecision to detect INVALID_PROOF early
       try {
         const isValid = await publicClient!.readContract({
           address: contracts.payIDVerifier,
@@ -749,9 +751,6 @@ export function usePayIDFlow(): PayIDFlowResult {
       const raw = err instanceof Error ? err.message : String(err);
       warn('execute', 'error', err);
 
-      // Decode 4-byte custom error selectors from viem's cause.data
-      // keccak256("NotInitialized()") = 0xd7e6bcf8
-      // keccak256("AlreadyInitialized()") = 0x0dc149f0
       const causeData: string | undefined =
         (err as any)?.cause?.data ??
         (err as any)?.data ??
@@ -763,7 +762,6 @@ export function usePayIDFlow(): PayIDFlowResult {
       if (causeData?.startsWith('0xd7e6bcf8') || causeData?.startsWith('0xd7e6BCF8')) {
         msg = 'Contracts not initialized — go to Admin page and call Initialize.';
       } else if (low.includes('unknown reason') && causeData) {
-        // Unknown custom error — show selector to help debugging
         msg = `Contract reverted with unknown error: ${causeData.slice(0, 10)}`;
       } else if (low.includes('user rejected') || low.includes('user denied')) {
         msg = 'Transaction rejected by user';
