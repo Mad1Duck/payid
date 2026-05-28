@@ -467,6 +467,14 @@ export function usePayIDFlow(): PayIDFlowResult {
             // priceInUsd already has 8 decimals (Chainlink standard)
             const denominator = 10n ** BigInt(params.tokenDecimals);
             const txValueUsd = (params.amount * priceInUsd) / denominator;
+            console.log('[usePayIDFlow][step-3] CALC DEBUG', {
+              amount: params.amount.toString(),
+              priceInUsd: priceInUsd.toString(),
+              tokenDecimals: params.tokenDecimals,
+              denominator: denominator.toString(),
+              rawProduct: (params.amount * priceInUsd).toString(),
+              txValueUsd: txValueUsd.toString(),
+            });
             oracleContext = {
               oracle: {
                 txValueUsd: txValueUsd.toString(),
