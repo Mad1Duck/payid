@@ -113,6 +113,7 @@ export function useSendFlow() {
       execParams.minUsdValue = 4500000000n; // $45.00
     }
 
+    console.log('[useSendFlow] oracle address:', tokenPriceOracle, 'chainId:', chainId, 'asset:', asset);
     execute(execParams);
   }, [payId, amount, address, execute, chainId, asset]);
 

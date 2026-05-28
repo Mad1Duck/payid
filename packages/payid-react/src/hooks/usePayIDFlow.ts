@@ -440,6 +440,7 @@ export function usePayIDFlow(): PayIDFlowResult {
       // ── Auto-inject oracle.txValueUsd if tokenPriceOracle is provided ──
       let oracleContext: Record<string, unknown> = {};
       if (params.tokenPriceOracle && params.tokenDecimals !== undefined && publicClient) {
+        console.log('[usePayIDFlow][step-3] fetching oracle price from', params.tokenPriceOracle, 'decimals', params.tokenDecimals);
         try {
           const oracleData = await publicClient.readContract({
             address: params.tokenPriceOracle,
@@ -475,6 +476,7 @@ export function usePayIDFlow(): PayIDFlowResult {
             log('step-3', 'oracle.txValueUsd injected', { txValueUsd: txValueUsd.toString(), price: priceInUsd.toString() });
           }
         } catch (e) {
+          console.error('[usePayIDFlow][step-3] oracle price fetch FAILED for', params.tokenPriceOracle, e);
           warn('step-3', 'oracle price fetch failed, skipping txValueUsd', e);
         }
       }
