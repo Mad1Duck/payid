@@ -34,6 +34,11 @@ export const TOKEN_CONFIG: Record<number, TokenConfig[]> = {
     { symbol: 'USDT', address: '0x0000000000000000000000000000000000000000', decimals: 6, oracleKey: 'USDT/USD' },
     { symbol: 'DAI', address: '0x0000000000000000000000000000000000000000', decimals: 18, oracleKey: 'DAI/USD' },
   ],
+  421614: [
+    { symbol: 'ETH', address: '0x0000000000000000000000000000000000000000', decimals: 18, oracleKey: 'ETH/USD' },
+    { symbol: 'USDC', address: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AE4f', decimals: 6 },
+    { symbol: 'USDT', address: '0x0000000000000000000000000000000000000000', decimals: 6 },
+  ],
 };
 
 /**

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { X, Loader2 } from 'lucide-react'
+import type { Step } from '../types'
 
 interface Props {
   p: any
@@ -8,7 +9,7 @@ interface Props {
   flowError: any
   copy: (text: string) => void
   reset: () => void
-  setStep: (step: string) => void
+  setStep: (step: Step) => void
   handleRunPolicy: () => void
 }
 

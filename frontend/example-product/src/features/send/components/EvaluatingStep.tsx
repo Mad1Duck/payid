@@ -1,16 +1,18 @@
 import { motion } from 'framer-motion'
 import PolicyScanning from '@/components/v4/PolicyScanning'
 import { getTokenConfig } from '@/constants/tokens'
+import type { Step } from '../types'
 
 interface Props {
   p: any
   pipeline: any
   targetPolicy: any
+  targetAddress: string | null
   flowStatus: string
   denyReason: string
   onBack: () => void
   backDisabled: boolean
-  setStep: (step: string) => void
+  setStep: (step: Step) => void
   setDenyReason: (val: string) => void
   chainId: number
   asset: string
@@ -61,8 +63,37 @@ function explainRule(condition: string): string {
   return 'Evaluates a condition on this transaction.';
 }
 
+function computeRiskScore(
+  targetAddress: string | null,
+  targetPolicy: any,
+  isDenied: boolean,
+  chainId: number,
+  asset: string
+): number {
+  if (!targetAddress) return 50;
+
+  // Base: deterministic hash from target address (0-40 range)
+  let hash = 0;
+  for (let i = 0; i < targetAddress.length; i++) {
+    hash = ((hash << 5) - hash + targetAddress.charCodeAt(i)) | 0;
+  }
+  const baseScore = (Math.abs(hash) % 41); // 0-40
+
+  // Policy modifiers
+  let modifier = 0;
+  if (targetPolicy?.active && targetPolicy.ruleRefs?.length > 0) {
+    modifier += 15; // active policy = higher risk baseline
+    modifier += Math.min(targetPolicy.ruleRefs.length * 5, 20); // more rules = more risk
+  }
+  if (isDenied) modifier += 25; // denied = high risk
+  if (chainId !== 1 && chainId !== 8453) modifier += 5; // testnet = slightly higher risk
+  if (asset === 'ETH' || asset === 'A0GI') modifier += 5; // volatile native = slightly higher
+
+  return Math.min(baseScore + modifier, 100);
+}
+
 export function EvaluatingStep({
-  p, pipeline, targetPolicy, flowStatus, denyReason, onBack, backDisabled,
+  p, pipeline, targetPolicy, targetAddress, flowStatus, denyReason, onBack, backDisabled,
   setStep, setDenyReason, chainId, asset
 }: Props) {
   const isDenied = flowStatus === 'denied';
@@ -119,7 +150,7 @@ export function EvaluatingStep({
         onBack={onBack}
         backDisabled={backDisabled}
         ruleEvaluations={ruleEvaluations}
-        riskScore={flowStatus === 'denied' ? 80 : 25}
+        riskScore={computeRiskScore(targetAddress, targetPolicy, isDenied, chainId, asset)}
         errorDetail={denyReason || null}
       />
 

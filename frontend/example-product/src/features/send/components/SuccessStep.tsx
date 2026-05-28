@@ -5,7 +5,7 @@ interface Props {
   p: any
   amount: string
   asset: string
-  resolvedName: string
+  resolvedName: string | null
   txHash: string
   reset: () => void
 }

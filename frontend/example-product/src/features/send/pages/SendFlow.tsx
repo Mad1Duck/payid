@@ -24,7 +24,7 @@ export default function SendFlow() {
     denyReason, setDenyReason,
     flowStatus, flowIsPending, flowError,
     balanceValue, pipeline,
-    targetPolicy, preflightWarning,
+    targetPolicy, preflightWarning, targetAddress,
     resolvePayId, handleRunPolicy, reset, copy,
   } = useSendFlow()
 
@@ -90,6 +90,7 @@ export default function SendFlow() {
             p={p}
             pipeline={pipeline}
             targetPolicy={targetPolicy}
+            targetAddress={targetAddress}
             flowStatus={flowStatus}
             denyReason={denyReason}
             onBack={() => {

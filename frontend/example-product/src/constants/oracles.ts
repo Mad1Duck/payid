@@ -51,6 +51,7 @@ export const TOKEN_PRICE_ORACLES: Record<number, Record<string, `0x${string}`>> 
     'DAI/USD': '0x49fF785E85e5cA564E8bc1EE7EF5548E41500C12',
   },
   421614: {
+    'ETH/USD': '0xd30e2101a97dcbAeBC04F14C3f624E67A35165', // Arbitrum Sepolia ETH/USD
     'LINK/USD': '0xd6d4Cad5cb37AfA6b9C3bfA3f7fea4cFB1be18CB', // Arbitrum Sepolia
   },
   84532: {

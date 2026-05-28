@@ -3,13 +3,13 @@ import { ArrowLeft, AlertTriangle, X, Shield, Loader2 } from 'lucide-react'
 
 interface Props {
   p: any
-  resolvedName: string
+  resolvedName: string | null
   amount: string
   asset: string
   chainName: string
   chainId: number
   nativeSymbol: string
-  preflightWarning: string
+  preflightWarning: string | null
   denyReason: string
   flowIsPending: boolean
   onBack: () => void

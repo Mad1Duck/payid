@@ -4,6 +4,7 @@ import { formatUnits } from 'viem'
 import { formatNumber } from '@/lib/utils'
 import TransactionSimulation from '@/components/v4/TransactionSimulation'
 import TargetPolicyInfo from './TargetPolicyInfo'
+import type { CurrencyCode } from '../../../hooks/useMultiCurrency'
 
 interface Props {
   p: any
@@ -14,12 +15,12 @@ interface Props {
   setAsset: (val: string) => void
   balanceValue: number
   balance: any
-  displayCurrency: string
-  convert: (val: number, currency: string) => number
-  format: (val: number, currency: string) => string
+  displayCurrency: CurrencyCode
+  convert: (val: number, currency: CurrencyCode) => number
+  format: (val: number, currency: CurrencyCode) => string
   toggle: () => void
   nativeSymbol: string
-  resolvedName: string
+  resolvedName: string | null
   targetPolicy: any
   onBack: () => void
   onNext: () => void

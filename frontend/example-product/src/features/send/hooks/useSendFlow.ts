@@ -189,7 +189,7 @@ export function useSendFlow() {
     denyReason, setDenyReason,
     flowStatus, flowIsPending, flowTxHash, flowDenyReason, flowError,
     balanceValue, pipeline,
-    targetPolicy, preflightWarning,
+    targetPolicy, preflightWarning, targetAddress,
     resolvePayId, handleRunPolicy, reset, copy,
   };
 }
